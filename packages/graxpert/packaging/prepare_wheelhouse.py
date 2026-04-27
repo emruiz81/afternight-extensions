@@ -55,7 +55,7 @@ IGNORED_PACKAGES = {
 # declared in the wheel metadata, so seed it explicitly.
 EXPLICIT_TOP_LEVEL_SPECS = [
     "onnxruntime-gpu[cuda,cudnn]==1.24.4",
-    "packaging",
+    "packaging==26.1",
 ]
 
 # Two upstream pins need runtime-target overrides for cp314:
@@ -68,6 +68,7 @@ EXPLICIT_TOP_LEVEL_SPECS = [
 #   otherwise pick newer Windows-only builds for some packages (for example
 #   `nvidia-cudnn-cu12`) that do not publish matching Linux wheels.
 OVERRIDE_SPECS = {
+    "astropy-iers-data": "astropy-iers-data==0.2026.4.20.0.58.15",
     "cffi": "cffi==2.0.0",
     "opencv-python-headless": "opencv-python-headless==4.13.0.92",
     "onnxruntime-gpu": "onnxruntime-gpu[cuda,cudnn]==1.24.4",
