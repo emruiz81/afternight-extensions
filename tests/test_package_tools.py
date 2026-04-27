@@ -14,6 +14,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 from afternight_repo.package_tools import (  # noqa: E402
     build_package,
     generate_index,
+    is_package_published,
     load_valid_manifest,
     read_json,
     sha256_file,
@@ -131,6 +132,22 @@ class PackageToolTests(unittest.TestCase):
                 release["assets"][0]["download_url"],
                 "https://example.invalid/releases/" + asset["name"],
             )
+
+    def test_generate_index_skips_unpublished_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            write_json(package_dir.parent / "repository.json", {"publish": False, "releases": []})
+
+            index = generate_index(
+                packages_root=root / "packages",
+                assets_dir=root / "dist",
+                repository="afternight-extensions",
+                updated_at="2026-04-27T00:00:00Z",
+            )
+
+            self.assertFalse(is_package_published(package_dir.parent))
+            self.assertEqual(index["extensions"], [])
 
 
 class RepositoryPackageTests(unittest.TestCase):

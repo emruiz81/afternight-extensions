@@ -24,12 +24,7 @@ jobs:
         run: python3 -m unittest discover -s tests
 
       - name: Build package assets
-        run: |
-          mkdir -p dist
-          shopt -s nullglob
-          for package_dir in packages/*/package; do
-            python3 tools/build_package.py "$package_dir" --output-dir dist
-          done
+        run: python3 tools/build_repository_assets.py --output-dir dist
 
       - name: Verify generated index
         run: |

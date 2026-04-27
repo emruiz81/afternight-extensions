@@ -88,6 +88,8 @@ Example:
 
 `repository.json` is merged with `extension.json` and built asset sidecars to generate `index.json`.
 
+Set `"publish": false` in `repository.json` for source-staged packages that should validate locally but remain absent from the generated public index until their release assets are available.
+
 ## Dependency Metadata
 
 When `requirements_file` is present:

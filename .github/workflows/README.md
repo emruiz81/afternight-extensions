@@ -4,7 +4,8 @@
 
 - installs `zstd`
 - runs package-tool unit tests
-- builds every `packages/*/package` source tree into deterministic `.tar.zst` assets
+- builds published package source trees into deterministic `.tar.zst` assets
+- skips source-staged packages marked with `"publish": false`
 - verifies generated sidecar hashes against compressed assets
 - regenerates `index.json` and diffs it against the checked-in file
 

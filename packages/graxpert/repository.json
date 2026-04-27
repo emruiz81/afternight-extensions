@@ -1,0 +1,14 @@
+{
+  "publish": false,
+  "latest_version": "1.0.0",
+  "releases": [
+    {
+      "version": "1.0.0",
+      "min_app_version": "2.0.0",
+      "changelog": "Initial staged official repository source for the GraXpert AI adapter. Publication waits for target-specific generated wheelhouse assets.",
+      "published_at": "2026-04-27T00:00:00Z",
+      "signature_state": "unsigned",
+      "signature_detail": "Unsigned official package; SHA-256 verified from index"
+    }
+  ]
+}

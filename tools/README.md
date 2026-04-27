@@ -31,6 +31,14 @@ python3 tools/build_package.py packages/<extension_id>/package \
   --runtime-target linux-clang-x86_64
 ```
 
+To build all currently published packages for the generated repository index:
+
+```bash
+python3 tools/build_repository_assets.py --output-dir dist
+```
+
+Packages with `"publish": false` in `packages/<extension_id>/repository.json` are source-staged but omitted from repository asset builds and `index.json`.
+
 ## Generate The Index
 
 ```bash
@@ -48,9 +56,7 @@ Each package must provide `packages/<extension_id>/repository.json` with release
 ```bash
 python3 -m unittest discover -s tests
 mkdir -p dist
-for package_dir in packages/*/package; do
-  python3 tools/build_package.py "$package_dir" --output-dir dist
-done
+python3 tools/build_repository_assets.py --output-dir dist
 python3 tools/generate_index.py --packages-root packages --assets-dir dist --updated-at "$(python3 -c 'import json; print(json.load(open("index.json"))["updated_at"])')" --output /tmp/index.json
 diff -u index.json /tmp/index.json
 ```

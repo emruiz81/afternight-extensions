@@ -117,6 +117,8 @@ def generate_index(
     packages = []
     for package_source in sorted(packages_root.glob("*/package")):
         if (package_source / "extension.json").is_file():
+            if not is_package_published(package_source.parent):
+                continue
             packages.append(_generate_package_index_entry(package_source, assets_dir, base_url))
 
     return {
@@ -174,6 +176,14 @@ def load_valid_manifest(package_dir):
     _validate_entry_point(package_dir, manifest["entry_point"])
     _validate_license(package_dir)
     return manifest
+
+
+def is_package_published(package_root):
+    repository_metadata_path = Path(package_root) / "repository.json"
+    if not repository_metadata_path.is_file():
+        return True
+    repository_metadata = read_json(repository_metadata_path)
+    return repository_metadata.get("publish", True) is not False
 
 
 def _generate_package_index_entry(package_source, assets_dir, base_url):

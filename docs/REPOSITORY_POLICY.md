@@ -28,6 +28,8 @@ Release asset names should end in `.tar.zst`. `package_hash` is the selected com
 
 Do not hand-edit package entries in `index.json`. Update the package source or `repository.json`, rebuild assets, regenerate the index, and commit the resulting metadata.
 
+Packages may be source-staged with `"publish": false` in `repository.json`. Those packages are still validated as source but are skipped by `tools/build_repository_assets.py` and omitted from `index.json`.
+
 ## Signature Policy
 
 Initial official packages may be unsigned.

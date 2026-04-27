@@ -16,8 +16,11 @@ packages/<extension_id>/
   README.md
   tests/
   packaging/
+  repository.json
 ```
 
-The `package/` directory is the source for release archives. CI should build target-specific `.tar` assets from this directory and publish them as release assets.
+The `package/` directory is the source for release archives. CI should build target-specific `.tar.zst` assets from this directory and publish them as release assets.
+
+Use `"publish": false` in `repository.json` when a package is source-staged but not ready for the generated public index.
 
 Keep package IDs stable. Use lowercase snake-case or dotted identifiers that pass AfterNight manifest validation.

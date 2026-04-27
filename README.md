@@ -73,7 +73,7 @@ Each target archive should include only the wheelhouse and native artifacts need
 2. Include `extension.json`, package source, tests, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
 3. Add `packages/<extension_id>/repository.json` with release metadata.
 4. Declare dependencies using a hashed `requirements.lock` and package-local `wheelhouse/` when needed.
-5. Build package assets with `tools/build_package.py`.
+5. Build package assets with `tools/build_repository_assets.py` or a package-specific builder under `packages/<extension_id>/packaging/`.
 6. Regenerate `index.json` with `tools/generate_index.py`.
 7. Run package validation and tests.
 8. Open a pull request.

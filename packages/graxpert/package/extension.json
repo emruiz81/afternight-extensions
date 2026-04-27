@@ -1,0 +1,82 @@
+{
+  "id": "graxpert",
+  "name": "GraXpert AI",
+  "version": "1.0.0",
+  "summary": "GraXpert background extraction, denoise, and deconvolution processes hosted through the extension runtime.",
+  "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. Generated release assets include the target-specific offline wheelhouse needed by the shared GraXpert dependency context.",
+  "author": "AfterNight / GraXpert Development Team",
+  "license": "GPL-3.0",
+  "publisher_id": "afternight",
+  "homepage_url": "https://graxpert.com/",
+  "repository_url": "https://github.com/Steffenhir/GraXpert",
+  "support_url": "https://github.com/emruiz81/afternight/issues",
+  "type": "python",
+  "entry_point": "graxpert_extension",
+  "category": "denoising",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "ai",
+    "background-extraction",
+    "denoise",
+    "deconvolution",
+    "gpu"
+  ],
+  "dependencies": {
+    "dependency_context": "shared_group",
+    "shared_group": "graxpert",
+    "requirements_file": "requirements.lock",
+    "bundled_runtime_packages": [
+      "numpy",
+      "scipy",
+      "skimage"
+    ],
+    "pip": {
+      "require_hashes": true,
+      "no_deps": true,
+      "find_links": [
+        "wheelhouse"
+      ]
+    }
+  },
+  "processes": [
+    {
+      "id_suffix": "background",
+      "class": "GraXpertBackgroundExtension",
+      "display_name": "GraXpert AI Background Extraction",
+      "category": "background_extraction",
+      "action_object_name": "actionGraXpert_Background_Extraction_AI",
+      "capabilities": {
+        "keep_open": true
+      }
+    },
+    {
+      "id_suffix": "denoise",
+      "class": "GraXpertDenoiseExtension",
+      "display_name": "GraXpert AI Denoise",
+      "category": "denoising",
+      "action_object_name": "actionGraXpert_AI_Denoise",
+      "capabilities": {
+        "keep_open": true
+      }
+    },
+    {
+      "id_suffix": "deconvolution",
+      "class": "GraXpertDeconvolutionExtension",
+      "display_name": "GraXpert AI Deconvolution",
+      "category": "sharpening_enhancement",
+      "action_object_name": "actionGraXpert_Deconvolution",
+      "capabilities": {
+        "keep_open": true
+      }
+    }
+  ]
+}
