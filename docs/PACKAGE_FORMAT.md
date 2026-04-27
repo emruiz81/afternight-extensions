@@ -15,7 +15,7 @@ example_extension-1.0.0-linux-clang-x86_64.tar.zst
     └── THIRD_PARTY_NOTICES.md
 ```
 
-The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate. CI should build deterministic uncompressed tar payloads with sorted entries, then compress them with zstd for publication.
+The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate. CI should build deterministic uncompressed tar payloads with sorted entries, then compress them with zstd for publication. The repository builder uses POSIX PAX tar headers so long wheel filenames can be represented without renaming upstream artifacts.
 
 The repository builder writes a sidecar next to each asset:
 

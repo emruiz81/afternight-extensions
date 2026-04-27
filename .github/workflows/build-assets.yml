@@ -1,0 +1,94 @@
+name: Build Package Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package asset set to build
+        required: true
+        default: published
+        type: choice
+        options:
+          - published
+          - cosmic_clarity
+          - graxpert
+      graxpert_target:
+        description: GraXpert runtime target
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - linux-clang-x86_64
+          - windows-msvc-x86_64
+      compression_level:
+        description: zstd compression level
+        required: true
+        default: "10"
+
+jobs:
+  assets:
+    name: Build Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends zstd
+
+      - name: Build selected package assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          case "${{ inputs.package }}" in
+            published)
+              python3 tools/build_repository_assets.py --output-dir dist
+              ;;
+            cosmic_clarity)
+              python3 tools/build_package.py \
+                packages/cosmic_clarity/package \
+                --output-dir dist \
+                --compression-level "${{ inputs.compression_level }}"
+              ;;
+            graxpert)
+              target_args=()
+              if [[ "${{ inputs.graxpert_target }}" != "all" ]]; then
+                target_args+=(--target "${{ inputs.graxpert_target }}")
+              fi
+              python3 packages/graxpert/packaging/build_assets.py \
+                --output-dir dist \
+                --compression-level "${{ inputs.compression_level }}" \
+                --download-wheelhouse \
+                "${target_args[@]}"
+              ;;
+          esac
+
+      - name: List generated assets
+        run: |
+          find dist -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+          sha256sum dist/*.tar.zst
+
+      - name: Generate candidate index for published packages
+        if: ${{ inputs.package == 'published' || inputs.package == 'cosmic_clarity' }}
+        run: |
+          updated_at="$(python3 -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')"
+          python3 tools/generate_index.py \
+            --packages-root packages \
+            --assets-dir dist \
+            --updated-at "$updated_at" \
+            --output dist/index.json
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: afternight-extension-assets-${{ inputs.package }}-${{ inputs.graxpert_target }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

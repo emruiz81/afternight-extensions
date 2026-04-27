@@ -295,7 +295,7 @@ def _generate_release_entry(manifest, release_metadata, assets_by_version, metad
 
 def _write_deterministic_tar(package_dir, tar_path, archive_root):
     paths = _collect_package_paths(package_dir)
-    with tarfile.open(tar_path, "w", format=tarfile.USTAR_FORMAT) as archive:
+    with tarfile.open(tar_path, "w", format=tarfile.PAX_FORMAT) as archive:
         root_info = tarfile.TarInfo(archive_root)
         root_info.type = tarfile.DIRTYPE
         root_info.mode = 0o755

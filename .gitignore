@@ -13,6 +13,7 @@ ExtensionEnvs/
 
 # Build/package outputs
 dist/
+dist-*/
 build/
 out/
 *.tar
@@ -21,6 +22,7 @@ out/
 *.tar.gz
 *.zip
 *.whl
+*.metadata.json
 
 # Logs and local state
 *.log

@@ -103,6 +103,28 @@ class PackageToolTests(unittest.TestCase):
                 self.assertIn("example_ext/example_ext.py", names)
                 self.assertTrue(all(member.mtime == 0 for member in archive.getmembers()))
 
+    def test_build_package_accepts_long_wheel_filenames(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            wheelhouse = package_dir / "wheelhouse"
+            wheelhouse.mkdir()
+            long_wheel_name = (
+                "nvidia_cuda_runtime_cu12-12.9.79-py3-none-"
+                "manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
+            )
+            (wheelhouse / long_wheel_name).write_text("wheel fixture\n", encoding="utf-8")
+
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+
+            tar_bytes = subprocess.check_output(
+                ["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])]
+            )
+            tar_path = root / "package.tar"
+            tar_path.write_bytes(tar_bytes)
+            with tarfile.open(tar_path, "r") as archive:
+                self.assertIn(f"example_ext/wheelhouse/{long_wheel_name}", archive.getnames())
+
     def test_generate_index_uses_compressed_asset_hash(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

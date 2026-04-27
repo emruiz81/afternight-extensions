@@ -39,6 +39,29 @@ python3 tools/build_repository_assets.py --output-dir dist
 
 Packages with `"publish": false` in `packages/<extension_id>/repository.json` are source-staged but omitted from repository asset builds and `index.json`.
 
+## Build GraXpert Assets
+
+GraXpert is source-staged until its large target-specific wheelhouse assets are published. To reuse an existing local wheelhouse:
+
+```bash
+python3 packages/graxpert/packaging/build_assets.py \
+  --output-dir dist-graxpert-local \
+  --target linux-clang-x86_64 \
+  --source-wheelhouse ../afternight/extensions/graxpert/wheelhouse \
+  --source-lockfile ../afternight/extensions/graxpert/requirements.lock
+```
+
+To resolve the wheelhouse from package metadata instead:
+
+```bash
+python3 packages/graxpert/packaging/build_assets.py \
+  --output-dir dist-graxpert-local \
+  --target linux-clang-x86_64 \
+  --download-wheelhouse
+```
+
+The manual `Build Package Assets` GitHub Actions workflow uses the download path and uploads generated assets as workflow artifacts.
+
 ## Generate The Index
 
 ```bash
