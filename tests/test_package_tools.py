@@ -11,7 +11,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from afternight_repo.package_tools import build_package, generate_index, sha256_file  # noqa: E402
+from afternight_repo.package_tools import (  # noqa: E402
+    build_package,
+    generate_index,
+    load_valid_manifest,
+    read_json,
+    sha256_file,
+)
 
 
 def write_json(path, data):
@@ -125,6 +131,22 @@ class PackageToolTests(unittest.TestCase):
                 release["assets"][0]["download_url"],
                 "https://example.invalid/releases/" + asset["name"],
             )
+
+
+class RepositoryPackageTests(unittest.TestCase):
+    def test_repository_packages_have_release_metadata(self):
+        package_dirs = sorted((REPO_ROOT / "packages").glob("*/package"))
+        self.assertTrue(package_dirs)
+
+        for package_dir in package_dirs:
+            with self.subTest(package=package_dir.parent.name):
+                manifest = load_valid_manifest(package_dir)
+                repository_metadata = read_json(package_dir.parent / "repository.json")
+                releases = repository_metadata.get("releases", [])
+                versions = {release.get("version") for release in releases}
+
+                self.assertIn(manifest["version"], versions)
+                self.assertIn(repository_metadata.get("latest_version", manifest["version"]), versions)
 
 
 if __name__ == "__main__":

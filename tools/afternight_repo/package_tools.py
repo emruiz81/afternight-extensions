@@ -343,6 +343,7 @@ def _compress_with_zstd(tar_path, archive_path, compression_level):
             "-q",
             "-f",
             "--no-progress",
+            "-T1",
             f"-{compression_level}",
             "-o",
             str(archive_path),

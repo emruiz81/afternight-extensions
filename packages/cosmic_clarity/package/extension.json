@@ -1,0 +1,64 @@
+{
+  "id": "cosmic_clarity",
+  "name": "Cosmic Clarity",
+  "version": "1.0.0",
+  "summary": "Cosmic Clarity denoise, dark-star, sharpening, and super-resolution workflows hosted through the extension runtime.",
+  "description": "First-party AfterNight adapter for the Cosmic Clarity tool suite. It provides denoise, Dark Star, sharpening, and super-resolution processes while keeping the upstream Cosmic Clarity executables outside the package and user-configurable.",
+  "author": "AfterNight / Seti Astro",
+  "license": "GPL-3.0",
+  "publisher_id": "afternight",
+  "homepage_url": "https://www.setiastro.com/cosmic-clarity",
+  "repository_url": "https://github.com/setiastro/cosmicclarity",
+  "support_url": "https://github.com/emruiz81/afternight/issues",
+  "type": "python",
+  "entry_point": "cosmic_clarity_extension",
+  "category": "star_object",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64",
+    "windows-msys2-x86_64"
+  ],
+  "tags": [
+    "ai",
+    "denoise",
+    "sharpening",
+    "super-resolution",
+    "stars"
+  ],
+  "dependencies": {
+    "dependency_context": "shared_host",
+    "shared_host_profile": "scientific_core"
+  },
+  "processes": [
+    {
+      "id_suffix": "denoise",
+      "class": "CosmicClarityDenoiseExtension",
+      "display_name": "Cosmic Clarity Denoise",
+      "action_object_name": "actionCosmic_Clarity_Denoise"
+    },
+    {
+      "id_suffix": "dark_star",
+      "class": "CosmicClarityDarkStarExtension",
+      "display_name": "Cosmic Clarity Dark Star",
+      "action_object_name": "actionCosmic_Clarity_Dark_Star"
+    },
+    {
+      "id_suffix": "super_resolution",
+      "class": "CosmicClaritySuperResExtension",
+      "display_name": "Cosmic Clarity Super Resolution",
+      "action_object_name": "actionCosmic_Clarity_Super_Resolution"
+    },
+    {
+      "id_suffix": "sharpening",
+      "class": "CosmicClaritySharpeningExtension",
+      "display_name": "Cosmic Clarity Sharpening",
+      "action_object_name": "actionCosmic_Clarity_Sharpening"
+    }
+  ]
+}
