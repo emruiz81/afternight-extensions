@@ -34,6 +34,8 @@ Initial Phase 6 is official-repository-only. User-configured third-party reposit
 
 Package source belongs in `packages/<extension_id>/package/`. Built archives and heavyweight wheels should normally be produced by CI and published as release assets, not committed directly to `main`.
 
+Release-only metadata belongs in `packages/<extension_id>/repository.json`. The global `index.json` is generated from `extension.json`, `repository.json`, and built asset sidecars.
+
 ## Package Format
 
 AfterNight Phase 6 package assets are target-specific zstd-compressed tar archives (`.tar.zst`). Each archive extracts to exactly one package root containing `extension.json`.
@@ -69,12 +71,15 @@ Each target archive should include only the wheelhouse and native artifacts need
 
 1. Add or update package source under `packages/<extension_id>/package/`.
 2. Include `extension.json`, package source, tests, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
-3. Declare dependencies using a hashed `requirements.lock` and package-local `wheelhouse/` when needed.
-4. Run package validation and tests.
-5. Open a pull request.
-6. CI validates package layout, manifest metadata, runtime targets, dependency locks, license files, and generated index metadata.
-7. Maintainers review code quality, license compatibility, package ownership, and runtime behavior.
-8. On release, CI publishes target `.tar.zst` archives and regenerates `index.json`.
+3. Add `packages/<extension_id>/repository.json` with release metadata.
+4. Declare dependencies using a hashed `requirements.lock` and package-local `wheelhouse/` when needed.
+5. Build package assets with `tools/build_package.py`.
+6. Regenerate `index.json` with `tools/generate_index.py`.
+7. Run package validation and tests.
+8. Open a pull request.
+9. CI validates package layout, manifest metadata, runtime targets, dependency locks, license files, compressed asset hashes, and generated index metadata.
+10. Maintainers review code quality, license compatibility, package ownership, and runtime behavior.
+11. On release, CI publishes target `.tar.zst` archives and regenerates `index.json`.
 
 Every community package must have a named maintainer. Packages may use their own licenses, but licenses must be compatible with AfterNight's extension distribution policy.
 

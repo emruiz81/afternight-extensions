@@ -1,0 +1,2 @@
+"""AfterNight extension repository tooling."""
+

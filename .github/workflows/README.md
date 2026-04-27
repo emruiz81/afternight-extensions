@@ -1,11 +1,11 @@
 # Workflows
 
-Planned GitHub Actions workflows:
+`validate.yml` is the first Phase 6 repository gate. It:
 
-- validate package manifests and layouts on pull requests
-- build target-specific package archives
-- verify SHA-256 package hashes
-- generate and publish `index.json`
-- publish package archives as GitHub Release assets
+- installs `zstd`
+- runs package-tool unit tests
+- builds every `packages/*/package` source tree into deterministic `.tar.zst` assets
+- verifies generated sidecar hashes against compressed assets
+- regenerates `index.json` and diffs it against the checked-in file
 
-CI should treat `index.json` as generated metadata once the generator lands.
+Release publication workflows are still future work. They should reuse the same builder and generator instead of creating archives directly in workflow shell.

@@ -1,0 +1,42 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  package-repository:
+    name: Package Repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends zstd
+
+      - name: Run tool tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Build package assets
+        run: |
+          mkdir -p dist
+          shopt -s nullglob
+          for package_dir in packages/*/package; do
+            python3 tools/build_package.py "$package_dir" --output-dir dist
+          done
+
+      - name: Verify generated index
+        run: |
+          updated_at="$(python3 -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')"
+          python3 tools/generate_index.py \
+            --packages-root packages \
+            --assets-dir dist \
+            --updated-at "$updated_at" \
+            --output /tmp/index.json
+          diff -u index.json /tmp/index.json

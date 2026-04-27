@@ -17,6 +17,14 @@ example_extension-1.0.0-linux-clang-x86_64.tar.zst
 
 The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate. CI should build deterministic uncompressed tar payloads with sorted entries, then compress them with zstd for publication.
 
+The repository builder writes a sidecar next to each asset:
+
+```text
+dist/example_extension-1.0.0-linux-clang-x86_64.tar.zst.metadata.json
+```
+
+That sidecar is generated metadata, not package source. It records the compressed asset hash, size, version, and runtime targets used by `tools/generate_index.py`.
+
 ## Required Manifest Fields
 
 Repository-ready packages must declare:
@@ -49,6 +57,36 @@ Current target IDs:
 - `windows-msys2-x86_64`
 
 Pure Python packages may omit `runtime_targets` or publish one asset that supports multiple targets.
+
+## Repository Release Metadata
+
+Each package folder must include release-only metadata outside the archive source:
+
+```text
+packages/example_extension/
+├── package/
+│   └── extension.json
+└── repository.json
+```
+
+Example:
+
+```json
+{
+  "latest_version": "1.0.0",
+  "releases": [
+    {
+      "version": "1.0.0",
+      "min_app_version": "2.0.0",
+      "changelog": "Initial release.",
+      "published_at": "2026-04-27T00:00:00Z",
+      "signature_state": "unsigned"
+    }
+  ]
+}
+```
+
+`repository.json` is merged with `extension.json` and built asset sidecars to generate `index.json`.
 
 ## Dependency Metadata
 

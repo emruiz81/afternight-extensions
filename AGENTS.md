@@ -69,15 +69,21 @@ For every release asset:
 
 ## Validation
 
-Until this repo has its own validator CLI, use the sibling AfterNight test binary after building it:
+Prefer repository-local tooling for Phase 6 package-repository work:
+
+```bash
+python3 -m unittest discover -s tests
+python3 tools/build_package.py packages/<extension_id>/package --output-dir dist
+python3 tools/generate_index.py --packages-root packages --assets-dir dist --updated-at <timestamp> --output index.json
+```
+
+Use the sibling AfterNight test binary when you need to verify client-side Extension Manager behavior after building it:
 
 ```bash
 cd ../afternight
 make -C build/make-linux/tests -j4 Test_ProcessFramework
 LD_LIBRARY_PATH=bin/clang/release ./bin/clang/release/Test_ProcessFramework --gtest_filter='ExtensionManagerTest.PackageValidatorAcceptsBundledReferenceExtensions:ExtensionManagerTest.FirstPartyMigratedPackagesValidateAndStageThroughFixtureFeed'
 ```
-
-When tools are added here, prefer repository-local commands from `tools/` and document them in `README.md`.
 
 ## Editing Guidance
 

@@ -10,9 +10,12 @@ This repository is curated. Pull requests are reviewed for package behavior, sou
 2. Add `extension.json`, Python source, assets, tests, and package docs.
 3. Add `LICENSE`.
 4. Add `THIRD_PARTY_NOTICES.md` if the package includes dependencies, copied upstream code, models, helper tools, or binaries.
-5. Add target-specific packaging metadata under `packages/<extension_id>/packaging/` when platform-specific wheels or helper binaries are needed.
-6. Run validation.
-7. Open a pull request with a short description, target platforms, dependencies, and license summary.
+5. Add `packages/<extension_id>/repository.json` with release metadata.
+6. Add target-specific packaging metadata under `packages/<extension_id>/packaging/` when platform-specific wheels or helper binaries are needed.
+7. Run `python3 tools/build_package.py packages/<extension_id>/package --output-dir dist`.
+8. Regenerate `index.json` with `tools/generate_index.py`.
+9. Run validation.
+10. Open a pull request with a short description, target platforms, dependencies, and license summary.
 
 ## Updating A Package
 

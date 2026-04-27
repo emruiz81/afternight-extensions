@@ -1,0 +1,131 @@
+import json
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import unittest
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+
+from afternight_repo.package_tools import build_package, generate_index, sha256_file  # noqa: E402
+
+
+def write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+class PackageToolTests(unittest.TestCase):
+    def setUp(self):
+        if shutil.which("zstd") is None:
+            self.skipTest("zstd CLI is required for package builder tests")
+
+    def create_package(self, root):
+        package_dir = root / "packages" / "example_ext" / "package"
+        package_dir.mkdir(parents=True)
+        write_json(
+            package_dir / "extension.json",
+            {
+                "id": "example_ext",
+                "name": "Example Extension",
+                "version": "1.0.0",
+                "summary": "Small package fixture.",
+                "description": "A deterministic package-builder fixture.",
+                "author": "AfterNight Tests",
+                "license": "MIT",
+                "publisher_id": "afternight.tests",
+                "type": "python",
+                "entry_point": "example_ext",
+                "process_class": "ExampleExtension",
+                "category": "filters",
+                "launch_mode": "single_image",
+                "package_format_version": 1,
+                "protocol_version": 1,
+                "sdk_version": 1,
+                "runtime_targets": ["linux-clang-x86_64"],
+                "tags": ["fixture"],
+            },
+        )
+        (package_dir / "example_ext.py").write_text(
+            "class ExampleExtension: pass\n", encoding="utf-8"
+        )
+        (package_dir / "LICENSE").write_text("MIT\n", encoding="utf-8")
+        write_json(
+            root / "packages" / "example_ext" / "repository.json",
+            {
+                "releases": [
+                    {
+                        "version": "1.0.0",
+                        "min_app_version": "2.0.0",
+                        "changelog": "Initial fixture release.",
+                        "published_at": "2026-04-27T00:00:00Z",
+                    }
+                ]
+            },
+        )
+        return package_dir
+
+    def test_build_package_is_deterministic_tar_zst(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+
+            first = build_package(package_dir, root / "dist-a", compression_level=3)
+            second = build_package(package_dir, root / "dist-b", compression_level=3)
+
+            self.assertEqual(first["package_hash"], second["package_hash"])
+            self.assertEqual(
+                (root / "dist-a" / first["name"]).read_bytes(),
+                (root / "dist-b" / second["name"]).read_bytes(),
+            )
+            self.assertEqual(first["package_hash"], "sha256:" + sha256_file(root / "dist-a" / first["name"]))
+
+            tar_bytes = subprocess.check_output(
+                ["zstd", "-q", "-d", "-c", str(root / "dist-a" / first["name"])]
+            )
+            tar_path = root / "package.tar"
+            tar_path.write_bytes(tar_bytes)
+            with tarfile.open(tar_path, "r") as archive:
+                names = archive.getnames()
+                self.assertEqual(names, sorted(names))
+                self.assertIn("example_ext/extension.json", names)
+                self.assertIn("example_ext/example_ext.py", names)
+                self.assertTrue(all(member.mtime == 0 for member in archive.getmembers()))
+
+    def test_generate_index_uses_compressed_asset_hash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+
+            index = generate_index(
+                packages_root=root / "packages",
+                assets_dir=root / "dist",
+                repository="afternight-extensions",
+                updated_at="2026-04-27T00:00:00Z",
+                base_url="https://example.invalid/releases",
+            )
+
+            self.assertEqual(index["schema_version"], 1)
+            self.assertTrue(index["official"])
+            self.assertEqual(len(index["extensions"]), 1)
+            package = index["extensions"][0]
+            self.assertEqual(package["id"], "example_ext")
+            self.assertEqual(package["latest_version"], "1.0.0")
+            release = package["releases"][0]
+            self.assertEqual(release["runtime_targets"], ["linux-clang-x86_64"])
+            self.assertEqual(release["min_app_version"], "2.0.0")
+            self.assertEqual(release["assets"][0]["name"], asset["name"])
+            self.assertEqual(release["assets"][0]["package_hash"], asset["package_hash"])
+            self.assertEqual(
+                release["assets"][0]["download_url"],
+                "https://example.invalid/releases/" + asset["name"],
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
