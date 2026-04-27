@@ -51,6 +51,7 @@ If a package includes target-specific wheels, shared libraries, or helper binari
 - Set `dependencies.pip.require_hashes` to `true` when `requirements_file` is present.
 - Keep package-local `find_links` paths inside the package root.
 - Prefer target-specific release assets over one archive that contains all platform wheels.
+- Official release assets are `.tar.zst`; build a deterministic tar payload first, then compress it with zstd.
 - Use `shared_host` only for host-curated profiles such as `scientific_core`.
 - Use `shared_group` only for related packages that intentionally share one dependency context.
 
@@ -61,6 +62,7 @@ If a package includes target-specific wheels, shared libraries, or helper binari
 For every release asset:
 
 - `package_hash` is mandatory and authoritative
+- hash the downloadable `.tar.zst` asset, not the intermediate uncompressed tar
 - official launch assets may use `signature_state: "unsigned"`
 - do not emit `signature_state: "verified"` until real signing and verification exist
 - `signature_state: "failed"` blocks installation

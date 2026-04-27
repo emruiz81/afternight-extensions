@@ -18,7 +18,7 @@ Each release asset must include:
 - `signature_state`
 - compatible `runtime_targets` either on the asset or inherited from the release
 
-`package_hash` is the selected asset's authoritative SHA-256 digest. The installer refuses mismatches before extraction.
+Release asset names should end in `.tar.zst`. `package_hash` is the selected compressed asset's authoritative SHA-256 digest. The installer refuses mismatches before decompression or extraction.
 
 ## Signature Policy
 
@@ -50,6 +50,6 @@ Preferred flow:
 
 1. keep source and lock metadata in git
 2. let CI fetch/build target wheelhouses
-3. produce target-specific package archives
+3. produce target-specific `.tar.zst` package archives
 4. publish archives as GitHub Release assets
 5. regenerate and publish `index.json`

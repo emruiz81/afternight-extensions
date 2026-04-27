@@ -16,6 +16,8 @@ dist/
 build/
 out/
 *.tar
+*.tar.zst
+*.tzst
 *.tar.gz
 *.zip
 *.whl

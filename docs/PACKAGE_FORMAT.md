@@ -1,13 +1,13 @@
 # Package Format
 
-AfterNight Phase 6 packages are distributed as `.tar` archives referenced by the repository `index.json`.
+AfterNight Phase 6 packages are distributed as zstd-compressed tar archives (`.tar.zst`) referenced by the repository `index.json`.
 
 ## Archive Layout
 
 The archive must contain exactly one extension package root:
 
 ```text
-example_extension-1.0.0-linux-clang-x86_64.tar
+example_extension-1.0.0-linux-clang-x86_64.tar.zst
 └── example_extension/
     ├── extension.json
     ├── example_extension.py
@@ -15,7 +15,7 @@ example_extension-1.0.0-linux-clang-x86_64.tar
     └── THIRD_PARTY_NOTICES.md
 ```
 
-The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate.
+The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate. CI should build deterministic uncompressed tar payloads with sorted entries, then compress them with zstd for publication.
 
 ## Required Manifest Fields
 
@@ -62,7 +62,7 @@ Compiled wheels should live under package-local wheel sources such as `wheelhous
 
 ## Safe Extraction Policy
 
-Archives are rejected if they contain:
+AfterNight decompresses `.tar.zst` assets with libzstd and then applies the same tar extraction policy. Archives are rejected if they contain:
 
 - absolute paths
 - `..` path traversal

@@ -36,12 +36,12 @@ Package source belongs in `packages/<extension_id>/package/`. Built archives and
 
 ## Package Format
 
-AfterNight Phase 6 package assets are target-specific `.tar` archives. Each archive extracts to exactly one package root containing `extension.json`.
+AfterNight Phase 6 package assets are target-specific zstd-compressed tar archives (`.tar.zst`). Each archive extracts to exactly one package root containing `extension.json`.
 
 Example release asset:
 
 ```text
-graxpert-1.0.0-linux-clang-x86_64.tar
+graxpert-1.0.0-linux-clang-x86_64.tar.zst
 └── graxpert/
     ├── extension.json
     ├── graxpert_extension.py
@@ -51,7 +51,7 @@ graxpert-1.0.0-linux-clang-x86_64.tar
     └── THIRD_PARTY_NOTICES.md
 ```
 
-The repository `index.json` points AfterNight at immutable release assets and provides the authoritative SHA-256 `package_hash` for each downloadable archive.
+The repository `index.json` points AfterNight at immutable release assets and provides the authoritative SHA-256 `package_hash` for each downloadable compressed archive.
 
 ## Platform Wheels
 
@@ -74,7 +74,7 @@ Each target archive should include only the wheelhouse and native artifacts need
 5. Open a pull request.
 6. CI validates package layout, manifest metadata, runtime targets, dependency locks, license files, and generated index metadata.
 7. Maintainers review code quality, license compatibility, package ownership, and runtime behavior.
-8. On release, CI publishes target archives and regenerates `index.json`.
+8. On release, CI publishes target `.tar.zst` archives and regenerates `index.json`.
 
 Every community package must have a named maintainer. Packages may use their own licenses, but licenses must be compatible with AfterNight's extension distribution policy.
 
