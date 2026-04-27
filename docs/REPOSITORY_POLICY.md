@@ -1,0 +1,55 @@
+# Repository Policy
+
+This repository is the official curated source for AfterNight Extension Manager packages.
+
+## Scope
+
+Initial Phase 6 supports only the official `afternight-extensions` repository. User-configured third-party repositories, third-party trust prompts, and third-party badges are deferred to a later milestone.
+
+## Index Policy
+
+`index.json` is the global metadata source consumed by AfterNight.
+
+Each release asset must include:
+
+- `name`
+- `download_url`
+- `package_hash`
+- `signature_state`
+- compatible `runtime_targets` either on the asset or inherited from the release
+
+`package_hash` is the selected asset's authoritative SHA-256 digest. The installer refuses mismatches before extraction.
+
+## Signature Policy
+
+Initial official packages may be unsigned.
+
+Allowed initial states:
+
+- `unsigned` - allowed for official hash-pinned assets
+- `failed` - blocks installation
+
+Reserved/future states:
+
+- `verified` - do not emit until real signing keys and verification are implemented
+- `unknown` - should not be emitted by official repository CI
+
+## License Policy
+
+Each package must include license metadata in `extension.json` and a package-local `LICENSE` file.
+
+Packages that include dependencies, copied upstream source, models, helper tools, or binary artifacts must include `THIRD_PARTY_NOTICES.md` or equivalent notices.
+
+Packages may use individual licenses, but they must be compatible with official AfterNight extension distribution. Unclear or missing license information blocks publication.
+
+## Binary And Wheel Policy
+
+Do not commit large generated wheelhouses or release archives to `main` unless explicitly approved.
+
+Preferred flow:
+
+1. keep source and lock metadata in git
+2. let CI fetch/build target wheelhouses
+3. produce target-specific package archives
+4. publish archives as GitHub Release assets
+5. regenerate and publish `index.json`
