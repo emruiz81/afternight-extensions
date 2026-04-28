@@ -19,12 +19,12 @@ Use the sibling repository for AfterNight SDK/API context, package-validator beh
 - `packages/<extension_id>/package/` - source layout that becomes the package archive root
 - `packages/<extension_id>/README.md` - package-specific author/user notes
 - `packages/<extension_id>/tests/` - package tests
-- `packages/<extension_id>/packaging/` - target-specific lock/build metadata
+- `packages/<extension_id>/packaging/` - package-specific lock/build metadata
 - `docs/` - repository policy, package format, contribution docs
 - `tools/` - package validation, archive build, and index generation scripts
 - `index.json` - generated/published repository index
 
-Do not commit release archives, generated virtual environments, caches, or heavyweight wheel blobs unless a maintainer explicitly decides a package-local wheelhouse must be source-controlled.
+Do not commit release archives, generated virtual environments, caches, or heavyweight wheel blobs unless a maintainer explicitly decides a package-local wheelhouse for extension-specific/private artifacts must be source-controlled. Do not redistribute public PyPI wheels in new extension packages.
 
 ## Package Rules
 
@@ -42,14 +42,15 @@ Use current runtime target IDs:
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
 
-If a package includes target-specific wheels, shared libraries, or helper binaries, it must declare compatible `runtime_targets`.
+If a package includes extension-specific target artifacts such as private wheels, custom `.pyd`/`.so` modules, shared libraries, or helper binaries, it must declare compatible `runtime_targets`.
 
 ## Dependency Rules
 
 - Use hashed `requirements.lock` files when Python dependencies are declared.
 - Set `dependencies.pip.require_hashes` to `true` when `requirements_file` is present.
-- Keep package-local `find_links` paths inside the package root.
-- Prefer target-specific release assets over one archive that contains all platform wheels.
+- Use official PyPI indexes with pinned hashes for packages that are available from PyPI.
+- Keep package-local `find_links` paths inside the package root, and use them only for extension-specific/private artifacts unavailable from official indexes.
+- Prefer one cross-target asset unless the package bundles real target-specific artifacts.
 - Official release assets are `.tar.zst`; build a deterministic tar payload first, then compress it with zstd.
 - Use `shared_host` only for host-curated profiles such as `scientific_core`.
 - Use `shared_group` only for related packages that intentionally share one dependency context.
@@ -101,6 +102,6 @@ A package/repository change is ready when:
 - package tests pass
 - generated index metadata is updated or confirmed unchanged
 - release assets, if produced, hash-match the index
-- dependency locks are hashed and target-specific where needed
+- dependency locks are hashed, and bundled artifacts are target-specific where needed
 - license and third-party notices are present
 - docs are updated for any new package or process

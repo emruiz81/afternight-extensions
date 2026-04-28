@@ -1,8 +1,8 @@
 # Third-Party Notices
 
-Generated GraXpert release assets include an offline wheelhouse resolved by `packages/graxpert/packaging/prepare_wheelhouse.py`.
+The GraXpert package source and official release assets contain only the AfterNight adapter code.
 
-The package source itself does not commit those wheels. Before publishing a generated asset, maintainers must review the generated wheelhouse contents, upstream license metadata, and compatibility notes for the included GraXpert and dependency distributions.
+GraXpert and its Python dependencies are installed by the host from hash-locked official PyPI artifacts declared in `requirements.lock`. Maintainers must review upstream license metadata and compatibility notes before changing that lock file, but PyPI-hosted wheels are not redistributed in this package.
 
 Primary upstream project:
 

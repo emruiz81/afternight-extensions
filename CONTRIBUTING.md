@@ -11,11 +11,12 @@ This repository is curated. Pull requests are reviewed for package behavior, sou
 3. Add `LICENSE`.
 4. Add `THIRD_PARTY_NOTICES.md` if the package includes dependencies, copied upstream code, models, helper tools, or binaries.
 5. Add `packages/<extension_id>/repository.json` with release metadata.
-6. Add target-specific packaging metadata under `packages/<extension_id>/packaging/` when platform-specific wheels or helper binaries are needed.
-7. Run `python3 tools/build_package.py packages/<extension_id>/package --output-dir dist`.
-8. Regenerate `index.json` with `tools/generate_index.py`.
-9. Run validation.
-10. Open a pull request with a short description, target platforms, dependencies, and license summary.
+6. Use official PyPI indexes plus hash-locked requirements for dependencies available from PyPI; do not redistribute those wheels in package assets.
+7. Add target-specific packaging metadata under `packages/<extension_id>/packaging/` when extension-specific/private wheels, custom `.pyd`/`.so` modules, or helper binaries are needed.
+8. Run `python3 tools/build_package.py packages/<extension_id>/package --output-dir dist`.
+9. Regenerate `index.json` with `tools/generate_index.py`.
+10. Run validation.
+11. Open a pull request with a short description, target platforms, dependencies, and license summary.
 
 ## Updating A Package
 

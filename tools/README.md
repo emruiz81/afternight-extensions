@@ -41,26 +41,25 @@ Packages with `"publish": false` in `packages/<extension_id>/repository.json` ar
 
 ## Build GraXpert Assets
 
-GraXpert publishes large target-specific wheelhouse assets. To reuse an existing local wheelhouse:
+GraXpert's official asset is thin and PyPI-backed:
 
 ```bash
 python3 packages/graxpert/packaging/build_assets.py \
-  --output-dir dist-graxpert-local \
-  --target linux-clang-x86_64 \
-  --source-wheelhouse ../afternight/extensions/graxpert/wheelhouse \
-  --source-lockfile ../afternight/extensions/graxpert/requirements.lock
+  --output-dir dist-graxpert
 ```
 
-To resolve the wheelhouse from package metadata instead:
+Refresh the hash lock only when changing GraXpert dependencies:
 
 ```bash
-python3 packages/graxpert/packaging/build_assets.py \
-  --output-dir dist-graxpert-local \
+python3 packages/graxpert/packaging/prepare_wheelhouse.py \
   --target linux-clang-x86_64 \
-  --download-wheelhouse
+  --target windows-msvc-x86_64 \
+  --wheelhouse /tmp/graxpert-wheel-check \
+  --lockfile packages/graxpert/package/requirements.lock \
+  --clean
 ```
 
-When no source wheelhouse is supplied, the GraXpert builder resolves the wheelhouse from package metadata. The manual `Build Package Assets` GitHub Actions workflow also uses that download path and uploads generated assets as workflow artifacts.
+The `--source-wheelhouse` and `--download-wheelhouse` builder paths are reserved for exceptional custom/private artifacts that are not available from official PyPI. New extensions must not redistribute public PyPI wheels inside package assets; use explicit indexes plus hash-locked requirements instead.
 
 ## Generate The Index
 

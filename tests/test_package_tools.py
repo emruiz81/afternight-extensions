@@ -173,6 +173,31 @@ class PackageToolTests(unittest.TestCase):
                 "https://example.invalid/releases/" + asset["name"],
             )
 
+    def test_generate_index_allows_release_specific_asset_base_url(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+            repository_metadata = read_json(package_dir.parent / "repository.json")
+            repository_metadata["releases"][0]["asset_base_url"] = (
+                "https://example.invalid/releases/example_ext-v1.0.0"
+            )
+            write_json(package_dir.parent / "repository.json", repository_metadata)
+
+            index = generate_index(
+                packages_root=root / "packages",
+                assets_dir=root / "dist",
+                repository="afternight-extensions",
+                updated_at="2026-04-27T00:00:00Z",
+                base_url="https://example.invalid/releases/global",
+            )
+
+            release = index["extensions"][0]["releases"][0]
+            self.assertEqual(
+                release["assets"][0]["download_url"],
+                "https://example.invalid/releases/example_ext-v1.0.0/" + asset["name"],
+            )
+
     def test_generate_index_skips_unpublished_package(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

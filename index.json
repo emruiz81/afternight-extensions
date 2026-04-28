@@ -58,11 +58,11 @@
       "id": "graxpert",
       "name": "GraXpert AI",
       "summary": "GraXpert background extraction, denoise, and deconvolution processes hosted through the extension runtime.",
-      "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. Generated release assets include the target-specific offline wheelhouse needed by the shared GraXpert dependency context.",
+      "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. The package keeps only AfterNight-specific adapter code; the shared GraXpert dependency context is provisioned from hash-locked official PyPI wheels during install.",
       "author": "AfterNight / GraXpert Development Team",
       "license": "GPL-3.0",
       "publisher_id": "afternight",
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.1",
       "tags": [
         "ai",
         "background-extraction",
@@ -72,7 +72,7 @@
       ],
       "releases": [
         {
-          "version": "1.0.0",
+          "version": "1.0.1",
           "min_app_version": "2.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
@@ -85,27 +85,18 @@
           ],
           "assets": [
             {
-              "name": "graxpert-1.0.0-linux-clang-x86_64.tar.zst",
-              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0/graxpert-1.0.0-linux-clang-x86_64.tar.zst",
-              "package_hash": "sha256:d9d5a14b51b727319da067bb3f379be420c7750a8e256fdcdb49365e806295ce",
+              "name": "graxpert-1.0.1-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.1/graxpert-1.0.1-all.tar.zst",
+              "package_hash": "sha256:d5d44ed43784bc162a1e0ff551527c8d7c7750d3ff4cc479f739327cf8e31d84",
               "signature_state": "unsigned",
               "runtime_targets": [
-                "linux-clang-x86_64"
-              ],
-              "signature_detail": "Unsigned official package; SHA-256 verified from index"
-            },
-            {
-              "name": "graxpert-1.0.0-windows-msvc-x86_64.tar.zst",
-              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0/graxpert-1.0.0-windows-msvc-x86_64.tar.zst",
-              "package_hash": "sha256:cc413912d7663d03af2d39db803420f8ce03c94a77c38a5b582bfda20f1b1fb4",
-              "signature_state": "unsigned",
-              "runtime_targets": [
+                "linux-clang-x86_64",
                 "windows-msvc-x86_64"
               ],
               "signature_detail": "Unsigned official package; SHA-256 verified from index"
             }
           ],
-          "changelog": "Initial official repository release of the GraXpert AI adapter with target-specific offline wheelhouse assets.",
+          "changelog": "Switch GraXpert to a thin PyPI-backed package. Official PyPI wheels are hash-locked and downloaded by the host during install instead of being redistributed as release-asset payload.",
           "published_at": "2026-04-28T00:00:00Z"
         }
       ],

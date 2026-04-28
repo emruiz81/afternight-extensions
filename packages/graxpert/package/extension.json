@@ -1,9 +1,9 @@
 {
   "id": "graxpert",
   "name": "GraXpert AI",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "summary": "GraXpert background extraction, denoise, and deconvolution processes hosted through the extension runtime.",
-  "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. Generated release assets include the target-specific offline wheelhouse needed by the shared GraXpert dependency context.",
+  "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. The package keeps only AfterNight-specific adapter code; the shared GraXpert dependency context is provisioned from hash-locked official PyPI wheels during install.",
   "author": "AfterNight / GraXpert Development Team",
   "license": "GPL-3.0",
   "publisher_id": "afternight",
@@ -42,8 +42,8 @@
     "pip": {
       "require_hashes": true,
       "no_deps": true,
-      "find_links": [
-        "wheelhouse"
+      "index_urls": [
+        "https://pypi.org/simple"
       ]
     }
   },

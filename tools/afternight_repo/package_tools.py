@@ -261,12 +261,16 @@ def _generate_release_entry(manifest, release_metadata, assets_by_version, metad
     if not release_targets:
         release_targets = _normalize_runtime_targets(manifest.get("runtime_targets"), allow_empty=False)
 
+    release_base_url = release_metadata.get("asset_base_url", base_url)
+    if not isinstance(release_base_url, str):
+        raise PackageToolError(f"{metadata_path}: release {version} asset_base_url must be a string")
+
     assets = []
     for asset in matching_assets:
         targets = _normalize_runtime_targets(asset.get("runtime_targets"), allow_empty=False)
         asset_entry = {
             "name": asset["name"],
-            "download_url": _download_url(base_url, asset["name"]),
+            "download_url": _download_url(release_base_url, asset["name"]),
             "package_hash": asset["package_hash"],
             "signature_state": release_metadata.get("signature_state", DEFAULT_SIGNATURE_STATE),
             "runtime_targets": targets,

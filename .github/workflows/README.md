@@ -18,6 +18,6 @@ The app-side validator checkout defaults to `emruiz81/afternight@extensions_sdk`
 
 - all currently published packages
 - Cosmic Clarity by itself
-- GraXpert target-specific assets by resolving the generated wheelhouse in CI
+- GraXpert's thin PyPI-backed asset without redistributing public wheels
 
 The workflow uploads `.tar.zst` files and sidecars as GitHub Actions artifacts. It does not create a GitHub Release.

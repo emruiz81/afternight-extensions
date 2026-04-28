@@ -21,7 +21,7 @@ Initial Phase 6 is official-repository-only. User-configured third-party reposit
 │       │   ├── extension.json
 │       │   ├── *.py
 │       │   ├── requirements.lock
-│       │   ├── wheelhouse/
+│       │   ├── wheelhouse/       # only for custom/private artifacts unavailable from PyPI
 │       │   ├── LICENSE
 │       │   └── THIRD_PARTY_NOTICES.md
 │       ├── README.md
@@ -32,46 +32,45 @@ Initial Phase 6 is official-repository-only. User-configured third-party reposit
 └── .github/workflows/         # CI validation and publication workflows
 ```
 
-Package source belongs in `packages/<extension_id>/package/`. Built archives and heavyweight wheels should normally be produced by CI and published as release assets, not committed directly to `main`.
+Package source belongs in `packages/<extension_id>/package/`. Built archives should normally be produced by CI and published as release assets, not committed directly to `main`. New extensions must not redistribute binary wheels that can be downloaded from the official PyPI index; use hash-locked `requirements.lock` files plus explicit `pip.index_urls` instead.
 
 Release-only metadata belongs in `packages/<extension_id>/repository.json`. The global `index.json` is generated from `extension.json`, `repository.json`, and built asset sidecars.
 
 ## Package Format
 
-AfterNight Phase 6 package assets are target-specific zstd-compressed tar archives (`.tar.zst`). Each archive extracts to exactly one package root containing `extension.json`.
+AfterNight Phase 6 package assets are zstd-compressed tar archives (`.tar.zst`). Each archive extracts to exactly one package root containing `extension.json`. Assets are target-specific only when they bundle extension-specific native artifacts.
 
 Example release asset:
 
 ```text
-graxpert-1.0.0-linux-clang-x86_64.tar.zst
-└── graxpert/
+example_extension-1.0.0-all.tar.zst
+└── example_extension/
     ├── extension.json
-    ├── graxpert_extension.py
+    ├── example_extension.py
     ├── requirements.lock
-    ├── wheelhouse/
     ├── LICENSE
     └── THIRD_PARTY_NOTICES.md
 ```
 
 The repository `index.json` points AfterNight at immutable release assets and provides the authoritative SHA-256 `package_hash` for each downloadable compressed archive.
 
-## Platform Wheels
+## Platform Artifacts
 
-Pure Python packages may publish one archive for multiple runtime targets.
+Pure Python packages and packages whose dependencies are downloaded from official PyPI may publish one archive for multiple runtime targets.
 
-Packages with compiled wheels, native helper binaries, CUDA/ONNX dependencies, or platform-specific libraries should publish separate release assets per runtime target, for example:
+Packages that bundle extension-specific native helper binaries, private wheels, custom `.pyd`/`.so` modules, models, or platform-specific libraries should publish separate release assets per runtime target when needed, for example:
 
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
 
-Each target archive should include only the wheelhouse and native artifacts needed for that target.
+Each target archive should include only the extension-specific artifacts needed for that target. Public PyPI wheels must stay out of package assets and be downloaded by the host from hash-locked requirements during install.
 
 ## Contributor Flow
 
 1. Add or update package source under `packages/<extension_id>/package/`.
 2. Include `extension.json`, package source, tests, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
 3. Add `packages/<extension_id>/repository.json` with release metadata.
-4. Declare dependencies using a hashed `requirements.lock` and package-local `wheelhouse/` when needed.
+4. Declare dependencies using a hashed `requirements.lock` and official PyPI indexes by default. Use package-local `wheelhouse/` only for custom/private artifacts unavailable from official indexes.
 5. Build package assets with `tools/build_repository_assets.py` or a package-specific builder under `packages/<extension_id>/packaging/`.
 6. Regenerate `index.json` with `tools/generate_index.py`.
 7. Run package validation and tests.

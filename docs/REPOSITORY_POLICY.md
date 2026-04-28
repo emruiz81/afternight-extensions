@@ -59,7 +59,10 @@ Do not commit large generated wheelhouses or release archives to `main` unless e
 Preferred flow:
 
 1. keep source and lock metadata in git
-2. let CI fetch/build target wheelhouses
-3. produce target-specific `.tar.zst` package archives with `tools/build_package.py`
-4. publish archives as GitHub Release assets
-5. regenerate and publish `index.json` with `tools/generate_index.py`
+2. declare official PyPI dependencies through explicit pip indexes and hash-locked requirements
+3. bundle only extension-specific/private artifacts unavailable from official package indexes
+4. produce `.tar.zst` package archives with `tools/build_package.py`
+5. publish archives as GitHub Release assets
+6. regenerate and publish `index.json` with `tools/generate_index.py`
+
+New extensions must not redistribute binaries that can be downloaded from the official PyPI repository. Package-local binaries should be specific to the extension, such as custom `.pyd`/`.so` modules, helper executables, private wheels, models, or native data that has no official package-index source.

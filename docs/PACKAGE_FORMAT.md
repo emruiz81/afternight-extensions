@@ -15,7 +15,7 @@ example_extension-1.0.0-linux-clang-x86_64.tar.zst
     └── THIRD_PARTY_NOTICES.md
 ```
 
-The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate. CI should build deterministic uncompressed tar payloads with sorted entries, then compress them with zstd for publication. The repository builder uses POSIX PAX tar headers so long wheel filenames can be represented without renaming upstream artifacts.
+The package root may include `requirements.lock`, `wheelhouse/`, `assets/`, helper binaries, or tests when appropriate. Package-local `wheelhouse/` directories are reserved for extension-specific/private artifacts that are unavailable from official package indexes; do not use them to redistribute wheels that can be downloaded from PyPI. CI should build deterministic uncompressed tar payloads with sorted entries, then compress them with zstd for publication. The repository builder uses POSIX PAX tar headers so long filenames can be represented without renaming upstream artifacts.
 
 The repository builder writes a sidecar next to each asset:
 
@@ -95,9 +95,10 @@ When `requirements_file` is present:
 
 - the file must exist inside the package root
 - `dependencies.pip.require_hashes` must be `true`
-- package-local `dependencies.pip.find_links` paths must exist inside the package root
+- public PyPI dependencies should use explicit `dependencies.pip.index_urls` / `extra_index_urls` and fully pinned hashes
+- package-local `dependencies.pip.find_links` paths must exist inside the package root and are only for extension-specific/private artifacts unavailable from official indexes
 
-Compiled wheels should live under package-local wheel sources such as `wheelhouse/`.
+Compiled wheels from official PyPI should be downloaded by the host during install, not bundled into release assets. Bundle only extension-specific binaries such as custom `.pyd`/`.so` modules, helper executables, private wheels, or native data that cannot be fetched from official package repositories.
 
 ## Safe Extraction Policy
 
