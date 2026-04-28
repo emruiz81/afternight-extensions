@@ -44,22 +44,21 @@ Packages with `"publish": false` in `packages/<extension_id>/repository.json` ar
 GraXpert's official asset is thin and PyPI-backed:
 
 ```bash
-python3 packages/graxpert/packaging/build_assets.py \
+python3 tools/build_package.py packages/graxpert/package \
   --output-dir dist-graxpert
 ```
 
 Refresh the hash lock only when changing GraXpert dependencies:
 
 ```bash
-python3 packages/graxpert/packaging/prepare_wheelhouse.py \
+python3 packages/graxpert/packaging/refresh_requirements_lock.py \
   --target linux-clang-x86_64 \
   --target windows-msvc-x86_64 \
-  --wheelhouse /tmp/graxpert-wheel-check \
-  --lockfile packages/graxpert/package/requirements.lock \
+  --download-dir /tmp/graxpert-wheel-check \
   --clean
 ```
 
-The `--source-wheelhouse` and `--download-wheelhouse` builder paths are reserved for exceptional custom/private artifacts that are not available from official PyPI. New extensions must not redistribute public PyPI wheels inside package assets; use explicit indexes plus hash-locked requirements instead.
+New extensions must not redistribute public PyPI wheels inside package assets; use explicit indexes plus hash-locked requirements instead.
 
 ## Generate The Index
 

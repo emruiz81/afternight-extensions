@@ -22,8 +22,8 @@ def main():
     )
     parser.add_argument(
         "--base-url",
-        default="https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0",
-        help="Base URL prepended to release asset names",
+        default="",
+        help="Fallback base URL prepended to release asset names when repository.json omits release.asset_base_url",
     )
     parser.add_argument("--output", default="index.json", help="Output index path")
     args = parser.parse_args()

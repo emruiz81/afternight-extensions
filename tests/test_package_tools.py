@@ -1,4 +1,3 @@
-import importlib.util
 import json
 import shutil
 import subprocess
@@ -6,7 +5,6 @@ import sys
 import tarfile
 import tempfile
 import unittest
-import zipfile
 from pathlib import Path
 
 
@@ -26,22 +24,6 @@ from afternight_repo.package_tools import (  # noqa: E402
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-
-
-def write_wheel(path, package_name, version):
-    dist_info = f"{package_name.replace('-', '_')}-{version}.dist-info"
-    metadata = f"Name: {package_name}\nVersion: {version}\n"
-    with zipfile.ZipFile(path, "w") as archive:
-        archive.writestr(f"{dist_info}/METADATA", metadata)
-        archive.writestr(f"{dist_info}/WHEEL", "Wheel-Version: 1.0\n")
-
-
-def load_graxpert_builder_module():
-    module_path = REPO_ROOT / "packages" / "graxpert" / "packaging" / "build_assets.py"
-    spec = importlib.util.spec_from_file_location("graxpert_build_assets", module_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 class PackageToolTests(unittest.TestCase):
@@ -213,36 +195,6 @@ class PackageToolTests(unittest.TestCase):
 
             self.assertFalse(is_package_published(package_dir.parent))
             self.assertEqual(index["extensions"], [])
-
-
-class GraxpertPackagingTests(unittest.TestCase):
-    def test_existing_wheelhouse_prefers_target_specific_wheel(self):
-        builder = load_graxpert_builder_module()
-
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            source = root / "wheelhouse"
-            destination = root / "staged"
-            source.mkdir()
-
-            write_wheel(source / "protobuf-7.34.1-py3-none-any.whl", "protobuf", "7.34.1")
-            write_wheel(
-                source / "protobuf-7.34.1-cp310-abi3-win_amd64.whl",
-                "protobuf",
-                "7.34.1",
-            )
-            write_wheel(source / "appdirs-1.4.4-py2.py3-none-any.whl", "appdirs", "1.4.4")
-
-            builder.copy_existing_wheelhouse(source, "windows-msvc-x86_64", destination)
-
-            staged = sorted(path.name for path in destination.glob("*.whl"))
-            self.assertEqual(
-                staged,
-                [
-                    "appdirs-1.4.4-py2.py3-none-any.whl",
-                    "protobuf-7.34.1-cp310-abi3-win_amd64.whl",
-                ],
-            )
 
 
 class RepositoryPackageTests(unittest.TestCase):

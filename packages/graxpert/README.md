@@ -21,4 +21,4 @@ The Windows MSYS2 target is not published until compatible wheel availability an
 
 ## Packaging
 
-Use `tools/build_package.py` or `packaging/build_assets.py` to build the thin official release asset. `packaging/prepare_wheelhouse.py` remains only as a lock-maintenance helper for verifying target wheel availability and refreshing hashes; do not publish public PyPI wheels inside official package assets.
+Use `tools/build_package.py` to build the thin official release asset. `packaging/refresh_requirements_lock.py` is only a lock-maintenance helper for verifying target wheel availability and refreshing hashes; do not publish public PyPI wheels inside official package assets.

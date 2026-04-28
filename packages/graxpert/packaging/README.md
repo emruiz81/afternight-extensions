@@ -10,8 +10,7 @@ The source repository keeps:
 - `package/graxpert_extension.py`
 - `package/extension.json`
 - `package/requirements.lock`
-- `packaging/prepare_wheelhouse.py`
-- `packaging/build_assets.py`
+- `packaging/refresh_requirements_lock.py`
 
 It does not keep generated `.whl` files in git and official assets do not
 redistribute public PyPI wheels.
@@ -19,21 +18,16 @@ redistribute public PyPI wheels.
 Official thin asset build:
 
 ```bash
-python3 packages/graxpert/packaging/build_assets.py \
+python3 tools/build_package.py packages/graxpert/package \
   --output-dir dist-graxpert
 ```
 
 Lock refresh / compatibility check:
 
 ```bash
-python3 packages/graxpert/packaging/prepare_wheelhouse.py \
+python3 packages/graxpert/packaging/refresh_requirements_lock.py \
   --target linux-clang-x86_64 \
   --target windows-msvc-x86_64 \
-  --wheelhouse /tmp/graxpert-wheel-check \
-  --lockfile packages/graxpert/package/requirements.lock \
+  --download-dir /tmp/graxpert-wheel-check \
   --clean
 ```
-
-Package-local wheelhouse builds remain available only for custom/private
-extension-specific binaries that are unavailable from official package indexes.
-Do not use them to publish wheels that can be fetched from PyPI.

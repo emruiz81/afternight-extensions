@@ -39,6 +39,7 @@ jobs:
   afternight-validator:
     name: AfterNight Package Validator
     needs: package-repository
+    if: ${{ vars.AFTERNIGHT_VALIDATOR_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
 
     env:
@@ -61,6 +62,7 @@ jobs:
           ref: ${{ env.AFTERNIGHT_VALIDATOR_REF }}
           submodules: recursive
           path: afternight
+          token: ${{ secrets.AFTERNIGHT_VALIDATOR_TOKEN || github.token }}
 
       - name: Install system dependencies
         working-directory: afternight

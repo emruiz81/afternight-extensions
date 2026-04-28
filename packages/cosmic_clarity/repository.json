@@ -6,6 +6,7 @@
       "min_app_version": "2.0.0",
       "changelog": "Initial official repository release of the Cosmic Clarity adapter.",
       "published_at": "2026-04-27T00:00:00Z",
+      "asset_base_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0",
       "signature_state": "unsigned",
       "signature_detail": "Unsigned official package; SHA-256 verified from index"
     }

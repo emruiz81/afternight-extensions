@@ -12,15 +12,6 @@ on:
           - published
           - cosmic_clarity
           - graxpert
-      graxpert_target:
-        description: Reserved for custom GraXpert wheelhouse builds; official thin assets ignore this
-        required: true
-        default: all
-        type: choice
-        options:
-          - all
-          - linux-clang-x86_64
-          - windows-msvc-x86_64
       compression_level:
         description: zstd compression level
         required: true
@@ -57,7 +48,8 @@ jobs:
                 --compression-level "${{ inputs.compression_level }}"
               ;;
             graxpert)
-              python3 packages/graxpert/packaging/build_assets.py \
+              python3 tools/build_package.py \
+                packages/graxpert/package \
                 --output-dir dist \
                 --compression-level "${{ inputs.compression_level }}"
               ;;
