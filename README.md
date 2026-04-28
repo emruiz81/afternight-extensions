@@ -63,7 +63,6 @@ Packages with compiled wheels, native helper binaries, CUDA/ONNX dependencies, o
 
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
-- `windows-msys2-x86_64`
 
 Each target archive should include only the wheelhouse and native artifacts needed for that target.
 

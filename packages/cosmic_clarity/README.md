@@ -17,7 +17,5 @@ This adapter is pure Python and supports the current AfterNight runtime targets:
 
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
-- `windows-msys2-x86_64`
 
 The selected Cosmic Clarity helper installation must be compatible with the user's operating system.
-

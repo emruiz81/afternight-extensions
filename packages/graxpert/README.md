@@ -21,5 +21,4 @@ The Windows MSYS2 target is not published until compatible wheel availability an
 
 ## Packaging
 
-Use `packaging/build_assets.py` to stage a target-specific wheelhouse and build release assets. The default repository index skips this package while `repository.json` has `"publish": false`.
-
+Use `packaging/build_assets.py` to stage a target-specific wheelhouse and build release assets. When no source wheelhouse is supplied, the builder resolves the target wheelhouse from package metadata before creating the release archive.

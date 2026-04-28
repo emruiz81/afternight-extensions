@@ -41,7 +41,6 @@ Use current runtime target IDs:
 
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
-- `windows-msys2-x86_64`
 
 If a package includes target-specific wheels, shared libraries, or helper binaries, it must declare compatible `runtime_targets`.
 

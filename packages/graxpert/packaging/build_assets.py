@@ -173,10 +173,7 @@ def build_target(args, target):
         elif args.download_wheelhouse:
             prepare_downloaded_wheelhouse(target, staged_package)
         else:
-            raise RuntimeError(
-                "GraXpert assets need --source-wheelhouse for local reuse or --download-wheelhouse "
-                "to resolve the target wheelhouse."
-            )
+            prepare_downloaded_wheelhouse(target, staged_package)
 
         return build_package(
             staged_package,

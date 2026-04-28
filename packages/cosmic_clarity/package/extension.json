@@ -21,8 +21,7 @@
   "python_compat": ">=3.14,<4",
   "runtime_targets": [
     "linux-clang-x86_64",
-    "windows-msvc-x86_64",
-    "windows-msys2-x86_64"
+    "windows-msvc-x86_64"
   ],
   "tags": [
     "ai",

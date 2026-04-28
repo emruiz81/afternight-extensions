@@ -20,7 +20,11 @@ def main():
         default=None,
         help="UTC timestamp to write into index.json. Defaults to current time.",
     )
-    parser.add_argument("--base-url", default="", help="Base URL prepended to release asset names")
+    parser.add_argument(
+        "--base-url",
+        default="https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0",
+        help="Base URL prepended to release asset names",
+    )
     parser.add_argument("--output", default="index.json", help="Output index path")
     args = parser.parse_args()
 

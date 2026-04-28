@@ -54,7 +54,6 @@ Current target IDs:
 
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
-- `windows-msys2-x86_64`
 
 Pure Python packages may omit `runtime_targets` or publish one asset that supports multiple targets.
 

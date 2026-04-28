@@ -11,7 +11,6 @@ from pathlib import Path
 SUPPORTED_RUNTIME_TARGETS = (
     "linux-clang-x86_64",
     "windows-msvc-x86_64",
-    "windows-msys2-x86_64",
 )
 
 SCHEMA_VERSION = 1

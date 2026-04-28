@@ -2,7 +2,7 @@
   "schema_version": 1,
   "repository": "afternight-extensions",
   "official": true,
-  "updated_at": "2026-04-27T00:00:00Z",
+  "updated_at": "2026-04-28T00:00:00Z",
   "extensions": [
     {
       "id": "cosmic_clarity",
@@ -31,19 +31,17 @@
           "launch_mode": "single_image",
           "runtime_targets": [
             "linux-clang-x86_64",
-            "windows-msvc-x86_64",
-            "windows-msys2-x86_64"
+            "windows-msvc-x86_64"
           ],
           "assets": [
             {
               "name": "cosmic_clarity-1.0.0-all.tar.zst",
-              "download_url": "cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:148e25f9d16baf6c5454ed84572ab6770ce272a0dcfe954691cb62eafcc15f34",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
+              "package_hash": "sha256:bbd82dd20d335d7a221bb08f195a1de09a5b070fe72ae0db963bbfe7b87812cb",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
-                "windows-msvc-x86_64",
-                "windows-msys2-x86_64"
+                "windows-msvc-x86_64"
               ],
               "signature_detail": "Unsigned official package; SHA-256 verified from index"
             }
@@ -54,6 +52,65 @@
       ],
       "homepage_url": "https://www.setiastro.com/cosmic-clarity",
       "repository_url": "https://github.com/setiastro/cosmicclarity",
+      "support_url": "https://github.com/emruiz81/afternight/issues"
+    },
+    {
+      "id": "graxpert",
+      "name": "GraXpert AI",
+      "summary": "GraXpert background extraction, denoise, and deconvolution processes hosted through the extension runtime.",
+      "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. Generated release assets include the target-specific offline wheelhouse needed by the shared GraXpert dependency context.",
+      "author": "AfterNight / GraXpert Development Team",
+      "license": "GPL-3.0",
+      "publisher_id": "afternight",
+      "latest_version": "1.0.0",
+      "tags": [
+        "ai",
+        "background-extraction",
+        "denoise",
+        "deconvolution",
+        "gpu"
+      ],
+      "releases": [
+        {
+          "version": "1.0.0",
+          "min_app_version": "2.0.0",
+          "package_format_version": 1,
+          "protocol_version": 1,
+          "sdk_version": 1,
+          "sdk_backend": "runtime",
+          "launch_mode": "single_image",
+          "runtime_targets": [
+            "linux-clang-x86_64",
+            "windows-msvc-x86_64"
+          ],
+          "assets": [
+            {
+              "name": "graxpert-1.0.0-linux-clang-x86_64.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0/graxpert-1.0.0-linux-clang-x86_64.tar.zst",
+              "package_hash": "sha256:d9d5a14b51b727319da067bb3f379be420c7750a8e256fdcdb49365e806295ce",
+              "signature_state": "unsigned",
+              "runtime_targets": [
+                "linux-clang-x86_64"
+              ],
+              "signature_detail": "Unsigned official package; SHA-256 verified from index"
+            },
+            {
+              "name": "graxpert-1.0.0-windows-msvc-x86_64.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/v1.0.0/graxpert-1.0.0-windows-msvc-x86_64.tar.zst",
+              "package_hash": "sha256:cc413912d7663d03af2d39db803420f8ce03c94a77c38a5b582bfda20f1b1fb4",
+              "signature_state": "unsigned",
+              "runtime_targets": [
+                "windows-msvc-x86_64"
+              ],
+              "signature_detail": "Unsigned official package; SHA-256 verified from index"
+            }
+          ],
+          "changelog": "Initial official repository release of the GraXpert AI adapter with target-specific offline wheelhouse assets.",
+          "published_at": "2026-04-28T00:00:00Z"
+        }
+      ],
+      "homepage_url": "https://graxpert.com/",
+      "repository_url": "https://github.com/Steffenhir/GraXpert",
       "support_url": "https://github.com/emruiz81/afternight/issues"
     }
   ]
