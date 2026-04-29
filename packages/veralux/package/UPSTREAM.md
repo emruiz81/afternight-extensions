@@ -10,6 +10,22 @@ suite by Riccardo Paterniti.
 - Captured checkout: `4ce0af52926e071caef55f4d17ac17ae8d8b4aac`
 - Latest captured VeraLux directory commit: `730814465d3c742a3e99a192083fc9d7b1bd0e59`
 
+## Refresh Workflow
+
+Use the repository-local provenance checker to verify this package against a
+local `siril-scripts` checkout:
+
+```bash
+python3 tools/check_veralux_upstream.py --upstream-checkout /path/to/siril-scripts
+```
+
+The command compares every `sources[]` entry in `UPSTREAM.json` against the
+selected git ref, including source SHA-256, file-specific last commit, and the
+VeraLux `VERSION` constant. Passing the default check confirms the captured
+baseline is internally consistent. Passing `--ref HEAD` against a refreshed
+upstream checkout shows which VeraLux sources changed and which local port
+modules need review before updating the baseline.
+
 ## Included Sources
 
 ### Revela
