@@ -157,6 +157,23 @@
         "Keep starless compositing available as a core helper for a future multi-input native UI slice.",
         "Use package-local NumPy blur and morphology helpers instead of requiring OpenCV for this first native process port."
       ]
+    },
+    {
+      "tool": "Starting Point",
+      "source_type": "workflow_guide",
+      "port_modules": [
+        "STARTING_POINT.md"
+      ],
+      "original_path": "VeraLux/VeraLux_Starting_Point.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Starting_Point.py",
+      "original_file_sha256": "1342e6fdcb5c33dcee541e372d959c460de6166b253a7fbba73fd9a11f76a3fb",
+      "original_file_last_commit": "667be9dcd9a6bebeab6805168d30e91485566d94",
+      "original_version": "1.0.0",
+      "intentional_divergences": [
+        "Adapt the PyQt6 interactive guide into package-local Markdown documentation instead of registering it as an executable AfterNight process.",
+        "Replace Siril-specific workflow directions with AfterNight native process-window terminology.",
+        "Document the first-pass native workflow order and deferred parity items for richer help panes and specialized preview widgets."
+      ]
     }
   ]
 }

@@ -285,9 +285,34 @@ class RepositoryPackageTests(unittest.TestCase):
                 "Revela",
                 "Silentium",
                 "StarComposer",
+                "Starting Point",
                 "Vectra",
             ],
         )
+
+    def test_veralux_starting_point_guide_documents_workflow_order(self):
+        package_dir = REPO_ROOT / "packages" / "veralux" / "package"
+        guide_path = package_dir / "STARTING_POINT.md"
+        self.assertTrue(guide_path.is_file())
+
+        guide = guide_path.read_text(encoding="utf-8")
+        self.assertIn("AfterNight adaptation of VeraLux Starting Point", guide)
+        self.assertIn("Starting Point is not registered as a processing process", guide)
+        self.assertIn("VeraLux Nox", guide)
+        self.assertIn("VeraLux Silentium", guide)
+        self.assertIn("VeraLux Alchemy", guide)
+        self.assertIn("VeraLux HyperMetric Stretch", guide)
+        self.assertIn("VeraLux Curves", guide)
+        self.assertIn("VeraLux Revela", guide)
+        self.assertIn("VeraLux Vectra", guide)
+        self.assertIn("VeraLux StarComposer", guide)
+        self.assertLess(guide.index("VeraLux Nox"), guide.index("VeraLux Silentium"))
+        self.assertLess(guide.index("VeraLux Silentium"), guide.index("VeraLux Alchemy"))
+        self.assertLess(guide.index("VeraLux Alchemy"), guide.index("VeraLux HyperMetric Stretch"))
+        self.assertLess(guide.index("VeraLux HyperMetric Stretch"), guide.index("VeraLux Curves"))
+        self.assertLess(guide.index("VeraLux Curves"), guide.index("VeraLux Revela"))
+        self.assertLess(guide.index("VeraLux Revela"), guide.index("VeraLux Vectra"))
+        self.assertLess(guide.index("VeraLux Vectra"), guide.index("VeraLux StarComposer"))
 
 
 if __name__ == "__main__":

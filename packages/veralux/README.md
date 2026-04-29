@@ -6,6 +6,10 @@ one VeraLux extension package, and the individual VeraLux tools register as
 separate AfterNight processes that share the same dependency environment and
 requirements lock.
 
+The original VeraLux Starting Point script is adapted as
+`package/STARTING_POINT.md`. It is a workflow guide rather than a process, and
+documents the recommended order for applying the suite inside AfterNight.
+
 The staged processes are:
 
 - VeraLux Revela, which enhances post-stretch local contrast and texture
@@ -30,6 +34,12 @@ The staged processes are:
 - VeraLux StarComposer, which shapes and stretches the active linear star mask
   using the upstream rational tone-mapping core. The core includes starless
   compositing support for a future multi-input host UI slice.
+
+Recommended order:
+
+```text
+Nox -> Silentium -> Alchemy -> HyperMetric Stretch -> Curves -> Revela -> Vectra -> StarComposer
+```
 
 The package remains source-staged with `publish: false` until release assets,
 image-quality comparisons, and the full suite dependency policy are complete.

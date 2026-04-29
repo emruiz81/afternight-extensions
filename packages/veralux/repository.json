@@ -5,7 +5,7 @@
     {
       "version": "0.1.0",
       "min_app_version": "2.0.0",
-      "changelog": "Initial source-staged VeraLux suite package with Revela, Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, and StarComposer ports. Release assets remain unpublished until image-quality validation and the full suite dependency policy are complete.",
+      "changelog": "Initial source-staged VeraLux suite package with Revela, Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, StarComposer, and the Starting Point workflow guide. Release assets remain unpublished until image-quality validation and the full suite dependency policy are complete.",
       "published_at": "2026-04-29T00:00:00Z",
       "signature_state": "unsigned"
     }

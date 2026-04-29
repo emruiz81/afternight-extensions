@@ -19,6 +19,7 @@ Included ports:
 - `VeraLux_Silentium.py`
 - `VeraLux_Vectra.py`
 - `VeraLux_StarComposer.py`
+- `VeraLux_Starting_Point.py` (adapted as `STARTING_POINT.md`)
 
 Runtime dependencies are resolved by AfterNight from official package indexes
 using `requirements.lock`; public PyPI wheels are not redistributed in this

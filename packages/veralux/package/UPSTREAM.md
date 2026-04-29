@@ -85,6 +85,17 @@ suite by Riccardo Paterniti.
 - Port modules: `veralux_starcomposer_core.py`,
   `veralux_starcomposer_adapter.py`, `veralux_starcomposer_ui.py`
 
+### Starting Point
+
+- Original file: `VeraLux/VeraLux_Starting_Point.py`
+- Latest file-specific commit in the local checkout: `667be9dcd9a6bebeab6805168d30e91485566d94`
+- Original file SHA-256 at captured checkout: `1342e6fdcb5c33dcee541e372d959c460de6166b253a7fbba73fd9a11f76a3fb`
+- Original VeraLux version constant: `1.0.0`
+- Port module: `STARTING_POINT.md`
+- Notes: Starting Point is a workflow guide, not a processing engine, so the
+  AfterNight package adapts it into documentation rather than registering a
+  process.
+
 ## Port Structure
 
 - `veralux_extension.py` is the suite entry point and exports all process
@@ -125,5 +136,8 @@ suite by Riccardo Paterniti.
 - StarComposer is exposed first as active star-mask shaping because the native
   process UI does not yet provide multi-input file selection. Starless
   compositing is available in the core for a later host UI slice.
+- Starting Point is adapted from a PyQt6 interactive guide into
+  `STARTING_POINT.md`, preserving the workflow order and attribution while
+  avoiding a non-processing extension entry.
 - Preview-specific zoom, compare, and live auto-stretched preview behavior are
   deferred to a later native-preview polish slice.

@@ -3,7 +3,7 @@
   "name": "VeraLux Suite",
   "version": "0.1.0",
   "summary": "VeraLux astrophotography post-processing suite ported from the original Siril scripts.",
-  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package includes Revela local contrast enhancement, Alchemy linear narrowband normalization/mixing, HyperMetric Stretch nonlinear tone mapping, Curves photometric curve sculpting, Nox additive gradient reduction, Silentium linear noise suppression, Vectra LCH color grading, and StarComposer star-mask shaping, with all VeraLux processes sharing one install, one dependency environment, and one requirements lock.",
+  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package includes Revela local contrast enhancement, Alchemy linear narrowband normalization/mixing, HyperMetric Stretch nonlinear tone mapping, Curves photometric curve sculpting, Nox additive gradient reduction, Silentium linear noise suppression, Vectra LCH color grading, StarComposer star-mask shaping, and a package-local Starting Point workflow guide, with all VeraLux processes sharing one install, one dependency environment, and one requirements lock.",
   "author": "AfterNight contributors / Riccardo Paterniti",
   "license": "GPL-3.0-or-later",
   "publisher_id": "afternight",
@@ -44,6 +44,8 @@
     "contrast",
     "texture",
     "ATWT",
+    "workflow",
+    "guide",
     "post-processing"
   ],
   "dependencies": {
