@@ -83,6 +83,25 @@
       ]
     },
     {
+      "tool": "Nox",
+      "port_modules": [
+        "veralux_nox_core.py",
+        "veralux_nox_adapter.py",
+        "veralux_nox_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Nox.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Nox.py",
+      "original_file_sha256": "89ff9da4fea181b1d3742cd325748ee7decf78ebe36061d7f0f6e93a385f52d8",
+      "original_file_last_commit": "a9fb2c7f505c488f5cfef5b7fa5022097551e06e",
+      "original_version": "1.0.1",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, user dialogs, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 BVI/manual-mask UI with native AfterNight parameter definitions for the first process port.",
+        "Use a package-local NumPy membrane-smoothing background estimator instead of requiring SciPy sparse solvers for this first native slice.",
+        "Preserve automatic signal protection, stiffness, rejection-power, and correction-strength controls while deferring manual mask painting and preview overlays to later host integration."
+      ]
+    },
+    {
       "tool": "Silentium",
       "port_modules": [
         "veralux_silentium_core.py",

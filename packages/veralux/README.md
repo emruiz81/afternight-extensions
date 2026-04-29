@@ -20,6 +20,8 @@ The staged processes are:
 - VeraLux Curves, which applies Akima-style photometric curve sculpting across
   RGB/K, channel, luminance, chrominance, and saturation domains with optional
   luminance-range masking.
+- VeraLux Nox, which estimates and removes broad additive gradients while
+  protecting stars, nebulosity, and other high-confidence signal.
 - VeraLux Silentium, which suppresses linear-stage luminance and chroma noise
   with multiscale thresholding, shadow-domain smoothing, and signal/highlight
   protection.

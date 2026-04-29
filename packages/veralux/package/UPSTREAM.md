@@ -49,6 +49,15 @@ suite by Riccardo Paterniti.
 - Port modules: `veralux_curves_core.py`, `veralux_curves_adapter.py`,
   `veralux_curves_ui.py`
 
+### Nox
+
+- Original file: `VeraLux/VeraLux_Nox.py`
+- Latest file-specific commit in the local checkout: `a9fb2c7f505c488f5cfef5b7fa5022097551e06e`
+- Original file SHA-256 at captured checkout: `89ff9da4fea181b1d3742cd325748ee7decf78ebe36061d7f0f6e93a385f52d8`
+- Original VeraLux version constant: `1.0.1`
+- Port modules: `veralux_nox_core.py`, `veralux_nox_adapter.py`,
+  `veralux_nox_ui.py`
+
 ### Silentium
 
 - Original file: `VeraLux/VeraLux_Silentium.py`
@@ -104,6 +113,10 @@ suite by Riccardo Paterniti.
   adding SciPy only for this process. The first native UI exposes a parametric
   curve operation; arbitrary point editing, histograms, and applied-stage stack
   parity are deferred to a later native UI slice.
+- Nox uses a package-local NumPy membrane-smoothing background estimator instead
+  of requiring SciPy sparse solvers for this first native slice. Manual mask
+  painting, BVI dialog parity, and preview overlays are deferred to later host
+  integration.
 - Silentium uses a package-local NumPy multiscale detail-thresholding path
   instead of requiring PyWavelets and SciPy for the first native slice. PSF-list
   masking and loupe UI parity are deferred to later host integration.

@@ -3,7 +3,7 @@
   "name": "VeraLux Suite",
   "version": "0.1.0",
   "summary": "VeraLux astrophotography post-processing suite ported from the original Siril scripts.",
-  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package includes Revela local contrast enhancement, Alchemy linear narrowband normalization/mixing, HyperMetric Stretch nonlinear tone mapping, Curves photometric curve sculpting, Silentium linear noise suppression, Vectra LCH color grading, and StarComposer star-mask shaping, with all VeraLux processes sharing one install, one dependency environment, and one requirements lock.",
+  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package includes Revela local contrast enhancement, Alchemy linear narrowband normalization/mixing, HyperMetric Stretch nonlinear tone mapping, Curves photometric curve sculpting, Nox additive gradient reduction, Silentium linear noise suppression, Vectra LCH color grading, and StarComposer star-mask shaping, with all VeraLux processes sharing one install, one dependency environment, and one requirements lock.",
   "author": "AfterNight contributors / Riccardo Paterniti",
   "license": "GPL-3.0-or-later",
   "publisher_id": "afternight",
@@ -34,6 +34,9 @@
     "HOO",
     "curves",
     "stretch",
+    "gradient",
+    "background",
+    "light-pollution",
     "stars",
     "denoise",
     "color",
@@ -78,6 +81,13 @@
       "display_name": "VeraLux HyperMetric Stretch",
       "category": "tone_brightness",
       "action_object_name": "actionVeraLux_HyperMetric_Stretch"
+    },
+    {
+      "id_suffix": "nox",
+      "class": "VeraLuxNoxExtension",
+      "display_name": "VeraLux Nox",
+      "category": "background_extraction",
+      "action_object_name": "actionVeraLux_Nox"
     },
     {
       "id_suffix": "starcomposer",
