@@ -290,6 +290,76 @@ class RepositoryPackageTests(unittest.TestCase):
             ],
         )
 
+    def test_veralux_package_asset_smoke_contains_one_suite_and_all_processes(self):
+        if shutil.which("zstd") is None:
+            self.skipTest("zstd CLI is required for VeraLux package smoke test")
+
+        package_dir = REPO_ROOT / "packages" / "veralux" / "package"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+
+            self.assertEqual(asset["package_id"], "veralux")
+            self.assertEqual(asset["name"], "veralux-0.1.0-all.tar.zst")
+            self.assertEqual(
+                asset["runtime_targets"],
+                ["linux-clang-x86_64", "windows-msvc-x86_64"],
+            )
+
+            tar_bytes = subprocess.check_output(
+                ["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])]
+            )
+            tar_path = root / "veralux-package.tar"
+            tar_path.write_bytes(tar_bytes)
+
+            with tarfile.open(tar_path, "r") as archive:
+                names = archive.getnames()
+                self.assertTrue(
+                    all(name == "veralux" or name.startswith("veralux/") for name in names)
+                )
+                self.assertIn("veralux/extension.json", names)
+                self.assertIn("veralux/requirements.lock", names)
+                self.assertIn("veralux/STARTING_POINT.md", names)
+                self.assertIn("veralux/UPSTREAM.json", names)
+                self.assertIn("veralux/THIRD_PARTY_NOTICES.md", names)
+
+                for split_root in (
+                    "veralux_revela",
+                    "veralux_alchemy",
+                    "veralux_hypermetric_stretch",
+                    "veralux_vectra",
+                    "veralux_starcomposer",
+                    "veralux_curves",
+                    "veralux_silentium",
+                    "veralux_nox",
+                ):
+                    self.assertNotIn(split_root, names)
+                    self.assertFalse(any(name.startswith(split_root + "/") for name in names))
+
+                manifest_member = archive.extractfile("veralux/extension.json")
+                self.assertIsNotNone(manifest_member)
+                manifest = json.loads(manifest_member.read().decode("utf-8"))
+
+        self.assertEqual(manifest["id"], "veralux")
+        self.assertEqual(manifest["entry_point"], "veralux_extension")
+        self.assertNotIn("process_class", manifest)
+        self.assertEqual(manifest["dependencies"]["dependency_context"], "private")
+        self.assertEqual(manifest["dependencies"]["requirements_file"], "requirements.lock")
+        self.assertTrue(manifest["dependencies"]["pip"]["require_hashes"])
+        self.assertEqual(
+            sorted(process["id_suffix"] for process in manifest["processes"]),
+            [
+                "alchemy",
+                "curves",
+                "hypermetric_stretch",
+                "nox",
+                "revela",
+                "silentium",
+                "starcomposer",
+                "vectra",
+            ],
+        )
+
     def test_veralux_starting_point_guide_documents_workflow_order(self):
         package_dir = REPO_ROOT / "packages" / "veralux" / "package"
         guide_path = package_dir / "STARTING_POINT.md"
