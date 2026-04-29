@@ -19,6 +19,9 @@ The staged processes are:
   scientific output control.
 - VeraLux Vectra, which performs selective LCH color-vector grading while
   preserving luminance and protecting neutral shadows and stellar cores.
+- VeraLux StarComposer, which shapes and stretches the active linear star mask
+  using the upstream rational tone-mapping core. The core includes starless
+  compositing support for a future multi-input host UI slice.
 
 The package remains source-staged with `publish: false` until release assets,
 image-quality comparisons, and the full suite dependency policy are complete.

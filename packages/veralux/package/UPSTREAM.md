@@ -49,6 +49,15 @@ suite by Riccardo Paterniti.
 - Port modules: `veralux_vectra_core.py`, `veralux_vectra_adapter.py`,
   `veralux_vectra_ui.py`
 
+### StarComposer
+
+- Original file: `VeraLux/VeraLux_StarComposer.py`
+- Latest file-specific commit in the local checkout: `85fc3c17f9df8920dac7b0c867609a25e3415a1c`
+- Original file SHA-256 at captured checkout: `280230908a7547d82c86c386f0d820b037147c46fe6f51148359ecd804008a23`
+- Original VeraLux version constant: `2.1.0`
+- Port modules: `veralux_starcomposer_core.py`,
+  `veralux_starcomposer_adapter.py`, `veralux_starcomposer_ui.py`
+
 ## Port Structure
 
 - `veralux_extension.py` is the suite entry point and exports all process
@@ -75,5 +84,8 @@ suite by Riccardo Paterniti.
   the source image layout when returning through the AfterNight SDK boundary.
 - Vectra uses a package-local NumPy reflect-convolution helper instead of
   adding SciPy for its small blur/filter needs.
+- StarComposer is exposed first as active star-mask shaping because the native
+  process UI does not yet provide multi-input file selection. Starless
+  compositing is available in the core for a later host UI slice.
 - Preview-specific zoom, compare, and live auto-stretched preview behavior are
   deferred to a later native-preview polish slice.

@@ -81,6 +81,25 @@
         "Use a package-local NumPy reflect-convolution helper instead of adding SciPy for Vectra's small blur/filter needs.",
         "Preserve input array layout at the SDK boundary and defer live vector-scope preview parity to a later native-preview polish slice."
       ]
+    },
+    {
+      "tool": "StarComposer",
+      "port_modules": [
+        "veralux_starcomposer_core.py",
+        "veralux_starcomposer_adapter.py",
+        "veralux_starcomposer_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_StarComposer.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_StarComposer.py",
+      "original_file_sha256": "280230908a7547d82c86c386f0d820b037147c46fe6f51148359ecd804008a23",
+      "original_file_last_commit": "85fc3c17f9df8920dac7b0c867609a25e3415a1c",
+      "original_version": "2.1.0",
+      "intentional_divergences": [
+        "Replace sirilpy FITS loading, save/reload, ICC cleanup, and logging with AfterNight SDK image handles and metadata.",
+        "Expose the current native slice as active star-mask shaping because the host process UI does not yet provide multi-input file selection.",
+        "Keep starless compositing available as a core helper for a future multi-input native UI slice.",
+        "Use package-local NumPy blur and morphology helpers instead of requiring OpenCV for this first native process port."
+      ]
     }
   ]
 }
