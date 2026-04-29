@@ -247,10 +247,12 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertNotIn("process_class", manifest)
         self.assertEqual(manifest["entry_point"], "veralux_extension")
         self.assertEqual(manifest["dependencies"]["dependency_context"], "private")
-        self.assertEqual(len(manifest["processes"]), 5)
+        self.assertEqual(len(manifest["processes"]), 6)
         processes = {process["id_suffix"]: process for process in manifest["processes"]}
         self.assertEqual(processes["alchemy"]["class"], "VeraLuxAlchemyExtension")
         self.assertEqual(processes["alchemy"]["category"], "color")
+        self.assertEqual(processes["curves"]["class"], "VeraLuxCurvesExtension")
+        self.assertEqual(processes["curves"]["category"], "tone_brightness")
         self.assertEqual(
             processes["hypermetric_stretch"]["class"],
             "VeraLuxHyperMetricStretchExtension",
@@ -271,7 +273,7 @@ class RepositoryPackageTests(unittest.TestCase):
         upstream = read_json(package_dir / "UPSTREAM.json")
         self.assertEqual(
             sorted(source["tool"] for source in upstream["sources"]),
-            ["Alchemy", "HyperMetric Stretch", "Revela", "StarComposer", "Vectra"],
+            ["Alchemy", "Curves", "HyperMetric Stretch", "Revela", "StarComposer", "Vectra"],
         )
 
 

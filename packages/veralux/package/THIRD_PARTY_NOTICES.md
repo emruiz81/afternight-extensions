@@ -14,6 +14,7 @@ Included ports:
 - `VeraLux_Revela.py`
 - `VeraLux_Alchemy.py`
 - `VeraLux_HyperMetric_Stretch.py`
+- `VeraLux_Curves.py`
 - `VeraLux_Vectra.py`
 - `VeraLux_StarComposer.py`
 

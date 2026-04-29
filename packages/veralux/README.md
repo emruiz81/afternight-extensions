@@ -17,6 +17,9 @@ The staged processes are:
 - VeraLux HyperMetric Stretch, which applies a nonlinear inverse-hyperbolic
   tone mapping while preserving color vectors and offering ready-to-use or
   scientific output control.
+- VeraLux Curves, which applies Akima-style photometric curve sculpting across
+  RGB/K, channel, luminance, chrominance, and saturation domains with optional
+  luminance-range masking.
 - VeraLux Vectra, which performs selective LCH color-vector grading while
   preserving luminance and protecting neutral shadows and stellar cores.
 - VeraLux StarComposer, which shapes and stretches the active linear star mask

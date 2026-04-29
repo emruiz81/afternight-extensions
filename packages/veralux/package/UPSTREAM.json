@@ -64,6 +64,25 @@
       ]
     },
     {
+      "tool": "Curves",
+      "port_modules": [
+        "veralux_curves_core.py",
+        "veralux_curves_adapter.py",
+        "veralux_curves_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Curves.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Curves.py",
+      "original_file_sha256": "bd5f2b41e7f19ac8276438fdc20742c6990cedb3e1d9eef66d194113d16ce00b",
+      "original_file_last_commit": "2f5687449a88bf0681430a3f577a044634ba5647",
+      "original_version": "1.0.1",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 arbitrary point-curve editor and histogram preview with native AfterNight parameter definitions for the first process port.",
+        "Use a package-local NumPy Akima-style Hermite interpolator instead of adding SciPy only for Curves.",
+        "Preserve RGB/K, channel, luminance, chrominance, saturation, and luminance-range behavior while deferring applied-stage stack UI parity to a later native UI slice."
+      ]
+    },
+    {
       "tool": "Vectra",
       "port_modules": [
         "veralux_vectra_core.py",

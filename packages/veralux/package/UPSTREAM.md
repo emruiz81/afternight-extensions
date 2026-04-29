@@ -40,6 +40,15 @@ suite by Riccardo Paterniti.
   `veralux_hypermetric_stretch_adapter.py`,
   `veralux_hypermetric_stretch_ui.py`
 
+### Curves
+
+- Original file: `VeraLux/VeraLux_Curves.py`
+- Latest file-specific commit in the local checkout: `2f5687449a88bf0681430a3f577a044634ba5647`
+- Original file SHA-256 at captured checkout: `bd5f2b41e7f19ac8276438fdc20742c6990cedb3e1d9eef66d194113d16ce00b`
+- Original VeraLux version constant: `1.0.1`
+- Port modules: `veralux_curves_core.py`, `veralux_curves_adapter.py`,
+  `veralux_curves_ui.py`
+
 ### Vectra
 
 - Original file: `VeraLux/VeraLux_Vectra.py`
@@ -82,6 +91,10 @@ suite by Riccardo Paterniti.
   first native process implementation.
 - HyperMetric Stretch keeps the core tone-mapping path NumPy-only and preserves
   the source image layout when returning through the AfterNight SDK boundary.
+- Curves uses a package-local NumPy Akima-style Hermite interpolator instead of
+  adding SciPy only for this process. The first native UI exposes a parametric
+  curve operation; arbitrary point editing, histograms, and applied-stage stack
+  parity are deferred to a later native UI slice.
 - Vectra uses a package-local NumPy reflect-convolution helper instead of
   adding SciPy for its small blur/filter needs.
 - StarComposer is exposed first as active star-mask shaping because the native

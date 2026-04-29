@@ -1,4 +1,4 @@
-# Initial VeraLux suite dependency slice for Revela, Alchemy, HyperMetric Stretch, Vectra, and StarComposer.
+# Initial VeraLux suite dependency slice for Revela, Alchemy, HyperMetric Stretch, Curves, Vectra, and StarComposer.
 # Public PyPI wheels are downloaded by the host during install.
 
 opencv-python-headless==4.13.0.92 --hash=sha256:0bd48544f77c68b2941392fcdf9bcd2b9cdf00e98cb8c29b2455d194763cf99e --hash=sha256:77a82fe35ddcec0f62c15f2ba8a12ecc2ed4207c17b0902c7a3151ae29f37fb6
