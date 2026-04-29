@@ -7,6 +7,7 @@ from veralux_alchemy_adapter import VeraLuxAlchemyExtension
 from veralux_curves_adapter import VeraLuxCurvesExtension
 from veralux_hypermetric_stretch_adapter import VeraLuxHyperMetricStretchExtension
 from veralux_revela_adapter import VeraLuxRevelaExtension
+from veralux_silentium_adapter import VeraLuxSilentiumExtension
 from veralux_starcomposer_adapter import VeraLuxStarComposerExtension
 from veralux_vectra_adapter import VeraLuxVectraExtension
 
@@ -16,6 +17,7 @@ __all__ = [
     "VeraLuxCurvesExtension",
     "VeraLuxHyperMetricStretchExtension",
     "VeraLuxRevelaExtension",
+    "VeraLuxSilentiumExtension",
     "VeraLuxStarComposerExtension",
     "VeraLuxVectraExtension",
 ]

@@ -83,6 +83,25 @@
       ]
     },
     {
+      "tool": "Silentium",
+      "port_modules": [
+        "veralux_silentium_core.py",
+        "veralux_silentium_adapter.py",
+        "veralux_silentium_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Silentium.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Silentium.py",
+      "original_file_sha256": "62e9db5e1f470d38d8e635da9d1f892ee59ab6b6477e471b69d2725de5d655f8",
+      "original_file_last_commit": "f70698e25f7c00d32593ba7ad3f1eb68ffe6a218",
+      "original_version": "1.0.3",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, findstar side effects, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 loupe/progress UI with native AfterNight parameter definitions for the first process port.",
+        "Use a package-local NumPy multiscale detail-thresholding path instead of requiring PyWavelets and SciPy for this first native slice.",
+        "Preserve the linear signal-probability, detail-guard, shadow-smoothness, chroma-denoise, and highlight-protection controls while deferring PSF-list masking and loupe UI parity to later host integration."
+      ]
+    },
+    {
       "tool": "Vectra",
       "port_modules": [
         "veralux_vectra_core.py",

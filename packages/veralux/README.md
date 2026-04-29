@@ -20,6 +20,9 @@ The staged processes are:
 - VeraLux Curves, which applies Akima-style photometric curve sculpting across
   RGB/K, channel, luminance, chrominance, and saturation domains with optional
   luminance-range masking.
+- VeraLux Silentium, which suppresses linear-stage luminance and chroma noise
+  with multiscale thresholding, shadow-domain smoothing, and signal/highlight
+  protection.
 - VeraLux Vectra, which performs selective LCH color-vector grading while
   preserving luminance and protecting neutral shadows and stellar cores.
 - VeraLux StarComposer, which shapes and stretches the active linear star mask

@@ -49,6 +49,15 @@ suite by Riccardo Paterniti.
 - Port modules: `veralux_curves_core.py`, `veralux_curves_adapter.py`,
   `veralux_curves_ui.py`
 
+### Silentium
+
+- Original file: `VeraLux/VeraLux_Silentium.py`
+- Latest file-specific commit in the local checkout: `f70698e25f7c00d32593ba7ad3f1eb68ffe6a218`
+- Original file SHA-256 at captured checkout: `62e9db5e1f470d38d8e635da9d1f892ee59ab6b6477e471b69d2725de5d655f8`
+- Original VeraLux version constant: `1.0.3`
+- Port modules: `veralux_silentium_core.py`,
+  `veralux_silentium_adapter.py`, `veralux_silentium_ui.py`
+
 ### Vectra
 
 - Original file: `VeraLux/VeraLux_Vectra.py`
@@ -95,6 +104,9 @@ suite by Riccardo Paterniti.
   adding SciPy only for this process. The first native UI exposes a parametric
   curve operation; arbitrary point editing, histograms, and applied-stage stack
   parity are deferred to a later native UI slice.
+- Silentium uses a package-local NumPy multiscale detail-thresholding path
+  instead of requiring PyWavelets and SciPy for the first native slice. PSF-list
+  masking and loupe UI parity are deferred to later host integration.
 - Vectra uses a package-local NumPy reflect-convolution helper instead of
   adding SciPy for its small blur/filter needs.
 - StarComposer is exposed first as active star-mask shaping because the native
