@@ -247,16 +247,23 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertNotIn("process_class", manifest)
         self.assertEqual(manifest["entry_point"], "veralux_extension")
         self.assertEqual(manifest["dependencies"]["dependency_context"], "private")
-        self.assertEqual(len(manifest["processes"]), 1)
-        self.assertEqual(manifest["processes"][0]["id_suffix"], "revela")
-        self.assertEqual(manifest["processes"][0]["class"], "VeraLuxRevelaExtension")
+        self.assertEqual(len(manifest["processes"]), 2)
+        processes = {process["id_suffix"]: process for process in manifest["processes"]}
+        self.assertEqual(processes["alchemy"]["class"], "VeraLuxAlchemyExtension")
+        self.assertEqual(processes["alchemy"]["category"], "color")
+        self.assertEqual(processes["revela"]["class"], "VeraLuxRevelaExtension")
+        self.assertEqual(processes["revela"]["category"], "sharpening_enhancement")
 
         for field in required_fields:
             self.assertTrue(manifest.get(field), f"{field} is required")
         self.assertEqual(manifest["original_author"], "Riccardo Paterniti")
         self.assertEqual(manifest["original_project"], "VeraLux")
         self.assertTrue((package_dir / "UPSTREAM.md").is_file())
-        self.assertTrue((package_dir / "UPSTREAM.json").is_file())
+        upstream = read_json(package_dir / "UPSTREAM.json")
+        self.assertEqual(
+            sorted(source["tool"] for source in upstream["sources"]),
+            ["Alchemy", "Revela"],
+        )
 
 
 if __name__ == "__main__":

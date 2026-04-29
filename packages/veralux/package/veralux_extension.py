@@ -3,9 +3,11 @@
 
 """Suite-level entry point for VeraLux process classes."""
 
+from veralux_alchemy_adapter import VeraLuxAlchemyExtension
 from veralux_revela_adapter import VeraLuxRevelaExtension
 
 
 __all__ = [
+    "VeraLuxAlchemyExtension",
     "VeraLuxRevelaExtension",
 ]

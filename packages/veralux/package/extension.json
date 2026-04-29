@@ -3,14 +3,14 @@
   "name": "VeraLux Suite",
   "version": "0.1.0",
   "summary": "VeraLux astrophotography post-processing suite ported from the original Siril scripts.",
-  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package currently includes Revela and is structured so the remaining VeraLux processes can share one install, one dependency environment, and one requirements lock.",
+  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package includes Revela local contrast enhancement and Alchemy linear narrowband normalization/mixing, with all VeraLux processes sharing one install, one dependency environment, and one requirements lock.",
   "author": "AfterNight contributors / Riccardo Paterniti",
   "license": "GPL-3.0-or-later",
   "publisher_id": "afternight",
-  "attribution": "AfterNight port of VeraLux Revela, originally authored by Riccardo Paterniti.",
+  "attribution": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti.",
   "original_author": "Riccardo Paterniti",
   "original_project": "VeraLux",
-  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Revela.py",
+  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/tree/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux",
   "upstream_commit": "4ce0af52926e071caef55f4d17ac17ae8d8b4aac",
   "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/tree/main/VeraLux",
   "repository_url": "https://gitlab.com/free-astro/siril-scripts",
@@ -30,6 +30,9 @@
   ],
   "tags": [
     "VeraLux",
+    "narrowband",
+    "HOO",
+    "color",
     "contrast",
     "texture",
     "ATWT",
@@ -50,6 +53,13 @@
     }
   },
   "processes": [
+    {
+      "id_suffix": "alchemy",
+      "class": "VeraLuxAlchemyExtension",
+      "display_name": "VeraLux Alchemy",
+      "category": "color",
+      "action_object_name": "actionVeraLux_Alchemy"
+    },
     {
       "id_suffix": "revela",
       "class": "VeraLuxRevelaExtension",

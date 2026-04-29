@@ -1,19 +1,48 @@
 {
   "upstream_repo_url": "https://gitlab.com/free-astro/siril-scripts.git",
   "upstream_commit": "4ce0af52926e071caef55f4d17ac17ae8d8b4aac",
-  "upstream_verlux_directory_commit": "730814465d3c742a3e99a192083fc9d7b1bd0e59",
-  "original_path": "VeraLux/VeraLux_Revela.py",
-  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Revela.py",
-  "original_file_sha256": "3c094fbda2d9b6810af15604c5c7110a3f1c80dfe4d61acc32e3d68349298cd4",
-  "original_file_last_commit": "15940a9e12b1700ae4c3e8aee8f00c7303e19b7f",
-  "original_version": "1.0.2",
+  "upstream_veralux_directory_commit": "730814465d3c742a3e99a192083fc9d7b1bd0e59",
   "port_package_version": "0.1.0",
   "original_author": "Riccardo Paterniti",
   "license": "GPL-3.0-or-later",
-  "intentional_divergences": [
-    "Replace sirilpy host operations with AfterNight SDK image handles and metadata.",
-    "Replace PyQt6 process window with native AfterNight parameter schema.",
-    "Keep OpenCV as the preferred runtime while retaining a NumPy fallback for tests and diagnostics.",
-    "Defer full preview compare and zoom parity to a later UI polish slice."
+  "sources": [
+    {
+      "tool": "Revela",
+      "port_modules": [
+        "veralux_revela_core.py",
+        "veralux_revela_adapter.py",
+        "veralux_revela_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Revela.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Revela.py",
+      "original_file_sha256": "3c094fbda2d9b6810af15604c5c7110a3f1c80dfe4d61acc32e3d68349298cd4",
+      "original_file_last_commit": "15940a9e12b1700ae4c3e8aee8f00c7303e19b7f",
+      "original_version": "1.0.2",
+      "intentional_divergences": [
+        "Replace sirilpy host operations with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 process window with native AfterNight parameter schema.",
+        "Keep OpenCV as the preferred runtime while retaining a NumPy fallback for tests and diagnostics.",
+        "Defer full preview compare and zoom parity to a later UI polish slice."
+      ]
+    },
+    {
+      "tool": "Alchemy",
+      "port_modules": [
+        "veralux_alchemy_core.py",
+        "veralux_alchemy_adapter.py",
+        "veralux_alchemy_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Alchemy.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Alchemy.py",
+      "original_file_sha256": "0b627b4bd5ae3836c7d823cf5a10017e64ba594995f605c73ebb420347b0be3e",
+      "original_file_last_commit": "cd4c8a6600455985d6764bbd61831728d11ac36a",
+      "original_version": "1.0.3",
+      "intentional_divergences": [
+        "Replace sirilpy image loading, image locking, save/load, and logging with AfterNight SDK image handles and metadata.",
+        "Replace the PyQt6 workstation with native AfterNight parameter definitions.",
+        "Keep Alchemy strictly array-based so the package does not need astropy for this first native process port.",
+        "Defer live auto-stretched preview parity to a later native-preview polish slice."
+      ]
+    }
   ]
 }
