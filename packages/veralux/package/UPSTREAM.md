@@ -40,6 +40,15 @@ suite by Riccardo Paterniti.
   `veralux_hypermetric_stretch_adapter.py`,
   `veralux_hypermetric_stretch_ui.py`
 
+### Vectra
+
+- Original file: `VeraLux/VeraLux_Vectra.py`
+- Latest file-specific commit in the local checkout: `c418d44a734d51a4cc4d7a51b0bb798d98582c2b`
+- Original file SHA-256 at captured checkout: `eca04c83e51815cfd69894c5526ecea8ec0a0f3345a6a77c63f787306cfed9a9`
+- Original VeraLux version constant: `1.0.3`
+- Port modules: `veralux_vectra_core.py`, `veralux_vectra_adapter.py`,
+  `veralux_vectra_ui.py`
+
 ## Port Structure
 
 - `veralux_extension.py` is the suite entry point and exports all process
@@ -64,5 +73,7 @@ suite by Riccardo Paterniti.
   first native process implementation.
 - HyperMetric Stretch keeps the core tone-mapping path NumPy-only and preserves
   the source image layout when returning through the AfterNight SDK boundary.
+- Vectra uses a package-local NumPy reflect-convolution helper instead of
+  adding SciPy for its small blur/filter needs.
 - Preview-specific zoom, compare, and live auto-stretched preview behavior are
   deferred to a later native-preview polish slice.

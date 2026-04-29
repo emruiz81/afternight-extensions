@@ -17,6 +17,8 @@ The staged processes are:
 - VeraLux HyperMetric Stretch, which applies a nonlinear inverse-hyperbolic
   tone mapping while preserving color vectors and offering ready-to-use or
   scientific output control.
+- VeraLux Vectra, which performs selective LCH color-vector grading while
+  preserving luminance and protecting neutral shadows and stellar cores.
 
 The package remains source-staged with `publish: false` until release assets,
 image-quality comparisons, and the full suite dependency policy are complete.
