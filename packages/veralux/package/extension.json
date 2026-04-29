@@ -1,0 +1,61 @@
+{
+  "id": "veralux",
+  "name": "VeraLux Suite",
+  "version": "0.1.0",
+  "summary": "VeraLux astrophotography post-processing suite ported from the original Siril scripts.",
+  "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti for Siril. This source-staged package currently includes Revela and is structured so the remaining VeraLux processes can share one install, one dependency environment, and one requirements lock.",
+  "author": "AfterNight contributors / Riccardo Paterniti",
+  "license": "GPL-3.0-or-later",
+  "publisher_id": "afternight",
+  "attribution": "AfterNight port of VeraLux Revela, originally authored by Riccardo Paterniti.",
+  "original_author": "Riccardo Paterniti",
+  "original_project": "VeraLux",
+  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Revela.py",
+  "upstream_commit": "4ce0af52926e071caef55f4d17ac17ae8d8b4aac",
+  "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/tree/main/VeraLux",
+  "repository_url": "https://gitlab.com/free-astro/siril-scripts",
+  "support_url": "https://github.com/emruiz81/afternight/issues",
+  "type": "python",
+  "entry_point": "veralux_extension",
+  "category": "sharpening_enhancement",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "VeraLux",
+    "contrast",
+    "texture",
+    "ATWT",
+    "post-processing"
+  ],
+  "dependencies": {
+    "dependency_context": "private",
+    "requirements_file": "requirements.lock",
+    "bundled_runtime_packages": [
+      "numpy"
+    ],
+    "pip": {
+      "require_hashes": true,
+      "no_deps": true,
+      "index_urls": [
+        "https://pypi.org/simple"
+      ]
+    }
+  },
+  "processes": [
+    {
+      "id_suffix": "revela",
+      "class": "VeraLuxRevelaExtension",
+      "display_name": "VeraLux Revela",
+      "category": "sharpening_enhancement",
+      "action_object_name": "actionVeraLux_Revela"
+    }
+  ]
+}

@@ -45,6 +45,14 @@ class PackageToolTests(unittest.TestCase):
                 "author": "AfterNight Tests",
                 "license": "MIT",
                 "publisher_id": "afternight.tests",
+                "attribution": (
+                    "AfterNight port of Example Extension, originally authored by "
+                    "Fixture Author."
+                ),
+                "original_author": "Fixture Author",
+                "original_project": "Fixture Suite",
+                "original_source_url": "https://example.invalid/upstream/example_ext.py",
+                "upstream_commit": "0123456789abcdef",
                 "type": "python",
                 "entry_point": "example_ext",
                 "process_class": "ExampleExtension",
@@ -145,6 +153,17 @@ class PackageToolTests(unittest.TestCase):
             package = index["extensions"][0]
             self.assertEqual(package["id"], "example_ext")
             self.assertEqual(package["latest_version"], "1.0.0")
+            self.assertEqual(
+                package["attribution"],
+                "AfterNight port of Example Extension, originally authored by Fixture Author.",
+            )
+            self.assertEqual(package["original_author"], "Fixture Author")
+            self.assertEqual(package["original_project"], "Fixture Suite")
+            self.assertEqual(
+                package["original_source_url"],
+                "https://example.invalid/upstream/example_ext.py",
+            )
+            self.assertEqual(package["upstream_commit"], "0123456789abcdef")
             release = package["releases"][0]
             self.assertEqual(release["runtime_targets"], ["linux-clang-x86_64"])
             self.assertEqual(release["min_app_version"], "2.0.0")
@@ -211,6 +230,33 @@ class RepositoryPackageTests(unittest.TestCase):
 
                 self.assertIn(manifest["version"], versions)
                 self.assertIn(repository_metadata.get("latest_version", manifest["version"]), versions)
+
+    def test_veralux_package_declares_suite_processes_and_port_provenance(self):
+        package_dir = REPO_ROOT / "packages" / "veralux" / "package"
+        self.assertTrue(package_dir.is_dir())
+
+        required_fields = (
+            "attribution",
+            "original_author",
+            "original_project",
+            "original_source_url",
+            "upstream_commit",
+        )
+        manifest = load_valid_manifest(package_dir)
+        self.assertEqual(manifest["id"], "veralux")
+        self.assertNotIn("process_class", manifest)
+        self.assertEqual(manifest["entry_point"], "veralux_extension")
+        self.assertEqual(manifest["dependencies"]["dependency_context"], "private")
+        self.assertEqual(len(manifest["processes"]), 1)
+        self.assertEqual(manifest["processes"][0]["id_suffix"], "revela")
+        self.assertEqual(manifest["processes"][0]["class"], "VeraLuxRevelaExtension")
+
+        for field in required_fields:
+            self.assertTrue(manifest.get(field), f"{field} is required")
+        self.assertEqual(manifest["original_author"], "Riccardo Paterniti")
+        self.assertEqual(manifest["original_project"], "VeraLux")
+        self.assertTrue((package_dir / "UPSTREAM.md").is_file())
+        self.assertTrue((package_dir / "UPSTREAM.json").is_file())
 
 
 if __name__ == "__main__":

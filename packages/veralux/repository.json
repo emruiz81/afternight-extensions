@@ -1,0 +1,13 @@
+{
+  "publish": false,
+  "latest_version": "0.1.0",
+  "releases": [
+    {
+      "version": "0.1.0",
+      "min_app_version": "2.0.0",
+      "changelog": "Initial source-staged VeraLux suite package with Revela as the first port. Release assets remain unpublished until image-quality validation and the full suite dependency policy are complete.",
+      "published_at": "2026-04-29T00:00:00Z",
+      "signature_state": "unsigned"
+    }
+  ]
+}

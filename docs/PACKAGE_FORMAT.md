@@ -46,6 +46,20 @@ Repository-ready packages must declare:
 
 For v1, `package_format_version`, `protocol_version`, and `sdk_version` are integers and currently must be `1`.
 
+Derived works and ports should also declare user-visible provenance fields so
+AfterNight can render attribution in the Extension Manager before and after
+installation:
+
+- `attribution`
+- `original_author`
+- `original_project`
+- `original_source_url`
+- `upstream_commit`
+
+VeraLux-derived packages must include all five fields and package-local
+`UPSTREAM.md` / `UPSTREAM.json` files with the captured source hash and
+intentional port divergences.
+
 ## Runtime Targets
 
 Use `runtime_targets` when the package ships target-specific artifacts.

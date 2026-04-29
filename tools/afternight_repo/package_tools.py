@@ -13,6 +13,14 @@ SUPPORTED_RUNTIME_TARGETS = (
     "windows-msvc-x86_64",
 )
 
+PROVENANCE_FIELDS = (
+    "attribution",
+    "original_author",
+    "original_project",
+    "original_source_url",
+    "upstream_commit",
+)
+
 SCHEMA_VERSION = 1
 PACKAGE_FORMAT_VERSION = 1
 PROTOCOL_VERSION = 1
@@ -237,7 +245,7 @@ def _generate_package_index_entry(package_source, assets_dir, base_url):
         "tags": manifest.get("tags", []),
         "releases": releases,
     }
-    for key in ("homepage_url", "repository_url", "support_url", "icon_url"):
+    for key in (*PROVENANCE_FIELDS, "homepage_url", "repository_url", "support_url", "icon_url"):
         if manifest.get(key):
             package[key] = manifest[key]
     return package
