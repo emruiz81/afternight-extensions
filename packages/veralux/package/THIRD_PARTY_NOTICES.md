@@ -13,6 +13,7 @@ Included ports:
 
 - `VeraLux_Revela.py`
 - `VeraLux_Alchemy.py`
+- `VeraLux_HyperMetric_Stretch.py`
 
 Runtime dependencies are resolved by AfterNight from official package indexes
 using `requirements.lock`; public PyPI wheels are not redistributed in this

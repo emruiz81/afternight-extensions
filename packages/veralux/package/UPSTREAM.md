@@ -30,6 +30,16 @@ suite by Riccardo Paterniti.
 - Port modules: `veralux_alchemy_core.py`, `veralux_alchemy_adapter.py`,
   `veralux_alchemy_ui.py`
 
+### HyperMetric Stretch
+
+- Original file: `VeraLux/VeraLux_HyperMetric_Stretch.py`
+- Latest file-specific commit in the local checkout: `730814465d3c742a3e99a192083fc9d7b1bd0e59`
+- Original file SHA-256 at captured checkout: `5b9704c0dac81dac71fb0be4b5c0efae7276cf68a7285f777f341b62fb90c571`
+- Original VeraLux version constant: `1.5.2`
+- Port modules: `veralux_hypermetric_stretch_core.py`,
+  `veralux_hypermetric_stretch_adapter.py`,
+  `veralux_hypermetric_stretch_ui.py`
+
 ## Port Structure
 
 - `veralux_extension.py` is the suite entry point and exports all process
@@ -52,5 +62,7 @@ suite by Riccardo Paterniti.
   OpenCV is unavailable.
 - Alchemy is array-based in this port, so it does not require astropy for the
   first native process implementation.
+- HyperMetric Stretch keeps the core tone-mapping path NumPy-only and preserves
+  the source image layout when returning through the AfterNight SDK boundary.
 - Preview-specific zoom, compare, and live auto-stretched preview behavior are
   deferred to a later native-preview polish slice.

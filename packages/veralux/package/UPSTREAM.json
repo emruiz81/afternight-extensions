@@ -43,6 +43,25 @@
         "Keep Alchemy strictly array-based so the package does not need astropy for this first native process port.",
         "Defer live auto-stretched preview parity to a later native-preview polish slice."
       ]
+    },
+    {
+      "tool": "HyperMetric Stretch",
+      "port_modules": [
+        "veralux_hypermetric_stretch_core.py",
+        "veralux_hypermetric_stretch_adapter.py",
+        "veralux_hypermetric_stretch_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_HyperMetric_Stretch.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_HyperMetric_Stretch.py",
+      "original_file_sha256": "5b9704c0dac81dac71fb0be4b5c0efae7276cf68a7285f777f341b62fb90c571",
+      "original_file_last_commit": "730814465d3c742a3e99a192083fc9d7b1bd0e59",
+      "original_version": "1.5.2",
+      "intentional_divergences": [
+        "Replace sirilpy shared-memory image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 live preview windows with native AfterNight parameter definitions for the first process port.",
+        "Keep the core processing path NumPy-only and preserve input array layout at the SDK boundary.",
+        "Defer live preview, histogram overlay, and re-entrant solver UI parity to a later native-preview polish slice."
+      ]
     }
   ]
 }

@@ -4,10 +4,12 @@
 """Suite-level entry point for VeraLux process classes."""
 
 from veralux_alchemy_adapter import VeraLuxAlchemyExtension
+from veralux_hypermetric_stretch_adapter import VeraLuxHyperMetricStretchExtension
 from veralux_revela_adapter import VeraLuxRevelaExtension
 
 
 __all__ = [
     "VeraLuxAlchemyExtension",
+    "VeraLuxHyperMetricStretchExtension",
     "VeraLuxRevelaExtension",
 ]
