@@ -74,14 +74,14 @@
       "id_suffix": "curves",
       "class": "VeraLuxCurvesExtension",
       "display_name": "VeraLux Curves",
-      "category": "tone_brightness",
+      "category": "transforms",
       "action_object_name": "actionVeraLux_Curves"
     },
     {
       "id_suffix": "hypermetric_stretch",
       "class": "VeraLuxHyperMetricStretchExtension",
       "display_name": "VeraLux HyperMetric Stretch",
-      "category": "tone_brightness",
+      "category": "transforms",
       "action_object_name": "actionVeraLux_HyperMetric_Stretch"
     },
     {

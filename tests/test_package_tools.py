@@ -252,12 +252,12 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertEqual(processes["alchemy"]["class"], "VeraLuxAlchemyExtension")
         self.assertEqual(processes["alchemy"]["category"], "color")
         self.assertEqual(processes["curves"]["class"], "VeraLuxCurvesExtension")
-        self.assertEqual(processes["curves"]["category"], "tone_brightness")
+        self.assertEqual(processes["curves"]["category"], "transforms")
         self.assertEqual(
             processes["hypermetric_stretch"]["class"],
             "VeraLuxHyperMetricStretchExtension",
         )
-        self.assertEqual(processes["hypermetric_stretch"]["category"], "tone_brightness")
+        self.assertEqual(processes["hypermetric_stretch"]["category"], "transforms")
         self.assertEqual(processes["nox"]["class"], "VeraLuxNoxExtension")
         self.assertEqual(processes["nox"]["category"], "background_extraction")
         self.assertEqual(processes["starcomposer"]["class"], "VeraLuxStarComposerExtension")
