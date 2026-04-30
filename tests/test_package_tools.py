@@ -295,6 +295,22 @@ class RepositoryPackageTests(unittest.TestCase):
             ],
         )
 
+    def test_veralux_publication_readiness_keeps_visual_qa_gate_closed(self):
+        package_root = REPO_ROOT / "packages" / "veralux"
+        repository_metadata = read_json(package_root / "repository.json")
+        readiness = (package_root / "packaging" / "PUBLICATION_READINESS.md").read_text(
+            encoding="utf-8"
+        )
+        packaging_notes = (package_root / "packaging" / "README.md").read_text(encoding="utf-8")
+
+        self.assertFalse(repository_metadata.get("publish", True))
+        self.assertIn("Status: source-staged, not publishable yet.", readiness)
+        self.assertIn('"publish": false', readiness)
+        self.assertIn("Representative real-image visual QA and release signoff", readiness)
+        self.assertIn("- [ ] Representative real-image visual QA", readiness)
+        self.assertIn("PUBLICATION_READINESS.md", packaging_notes)
+        self.assertIn("visual QA signoff", packaging_notes)
+
     def test_veralux_package_asset_smoke_contains_one_suite_and_all_processes(self):
         if shutil.which("zstd") is None:
             self.skipTest("zstd CLI is required for VeraLux package smoke test")
