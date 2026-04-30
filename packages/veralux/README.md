@@ -41,8 +41,10 @@ Recommended order:
 Nox -> Silentium -> Alchemy -> HyperMetric Stretch -> Curves -> Revela -> Vectra -> StarComposer
 ```
 
-The package remains source-staged with `publish: false` until release assets,
-image-quality comparisons, and the full suite dependency policy are complete.
+The package remains source-staged with `publish: false` until release assets and
+the final publication-readiness review are complete. Automated upstream quality
+coverage and known first-pass parity limits are documented in
+`package/QUALITY_VALIDATION.md`.
 
 ## Attribution
 

@@ -274,6 +274,11 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertEqual(manifest["original_author"], "Riccardo Paterniti")
         self.assertEqual(manifest["original_project"], "VeraLux")
         self.assertTrue((package_dir / "UPSTREAM.md").is_file())
+        quality_notes = (package_dir / "QUALITY_VALIDATION.md").read_text(encoding="utf-8")
+        self.assertIn("Automated Upstream Checks", quality_notes)
+        self.assertIn("Alchemy", quality_notes)
+        self.assertIn("HyperMetric Stretch", quality_notes)
+        self.assertIn("First-Pass Intentional Divergences", quality_notes)
         upstream = read_json(package_dir / "UPSTREAM.json")
         self.assertEqual(
             sorted(source["tool"] for source in upstream["sources"]),
@@ -321,6 +326,7 @@ class RepositoryPackageTests(unittest.TestCase):
                 self.assertIn("veralux/requirements.lock", names)
                 self.assertIn("veralux/STARTING_POINT.md", names)
                 self.assertIn("veralux/UPSTREAM.json", names)
+                self.assertIn("veralux/QUALITY_VALIDATION.md", names)
                 self.assertIn("veralux/THIRD_PARTY_NOTICES.md", names)
 
                 for split_root in (
