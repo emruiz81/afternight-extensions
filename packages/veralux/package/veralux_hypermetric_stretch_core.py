@@ -237,7 +237,7 @@ def _from_channels_first(data, layout, extras):
 
 def calculate_anchor(data_norm):
     data = np.asarray(data_norm, dtype=np.float32)
-    if data.ndim == 3 and data.shape[0] == 3:
+    if (data.ndim == 3 and data.shape[0] == 3) or (data.ndim == 2 and data.shape[0] == 3):
         stride = max(1, data.size // 500_000)
         floors = [np.percentile(data[channel].reshape(-1)[::stride], 0.5) for channel in range(3)]
         return max(0.0, float(min(floors)) - 0.00025)
@@ -252,7 +252,7 @@ def calculate_anchor(data_norm):
 def calculate_anchor_adaptive(data_norm, weights=None):
     data = np.asarray(data_norm, dtype=np.float32)
     weights = weights or _profile_weights(DEFAULT_PROFILE)
-    if data.ndim == 3 and data.shape[0] == 3:
+    if (data.ndim == 3 and data.shape[0] == 3) or (data.ndim == 2 and data.shape[0] == 3):
         r_w, g_w, b_w = weights
         base = (r_w * data[0]) + (g_w * data[1]) + (b_w * data[2])
     elif data.ndim == 3 and data.shape[0] == 1:
@@ -281,7 +281,7 @@ def calculate_anchor_adaptive(data_norm, weights=None):
 def extract_luminance(data_norm, anchor, weights):
     data = np.asarray(data_norm, dtype=np.float32)
     img_anchored = np.maximum(data - float(anchor), 0.0)
-    if data.ndim == 3 and data.shape[0] == 3:
+    if (data.ndim == 3 and data.shape[0] == 3) or (data.ndim == 2 and data.shape[0] == 3):
         r_w, g_w, b_w = weights
         luminance = (r_w * img_anchored[0]) + (g_w * img_anchored[1]) + (b_w * img_anchored[2])
         return luminance, img_anchored
@@ -325,19 +325,88 @@ def solve_log_d(luminance_sample, target_median, protect_b):
     return float(best_log_d)
 
 
+def estimate_star_pressure(luminance):
+    signal = np.asarray(luminance, dtype=np.float32)
+    if signal.size == 0:
+        return 0.0
+
+    stride = max(1, signal.size // 300_000)
+    sample = signal.reshape(-1)[::stride]
+    sample = sample[sample > 1e-7]
+    if sample.size < 100:
+        return 0.0
+
+    p999 = float(np.percentile(sample, 99.9))
+    p9999 = float(np.percentile(sample, 99.99))
+    bright_fraction = float(np.count_nonzero(sample > p999)) / float(sample.size)
+
+    percentile_term = float(np.clip(p9999 / (p999 + 1e-9), 1.0, 5.0))
+    percentile_term = (percentile_term - 1.0) / 4.0
+    fraction_term = float(np.clip(bright_fraction * 200.0, 0.0, 1.0))
+    return float(np.clip((0.7 * percentile_term) + (0.3 * fraction_term), 0.0, 1.0))
+
+
+def _auto_solver_subsample(data):
+    if data.ndim == 3 and data.shape[0] == 3:
+        height, width = data.shape[1], data.shape[2]
+        step = max(1, (height * width) // 100_000)
+        return np.vstack(
+            (
+                data[0].reshape(-1)[::step],
+                data[1].reshape(-1)[::step],
+                data[2].reshape(-1)[::step],
+            )
+        )
+
+    if data.ndim == 3 and data.shape[0] == 1:
+        data = data[0]
+
+    step = max(1, data.size // 100_000)
+    return data.reshape(-1)[::step]
+
+
 def solve_log_d_for_image(image, target_median=0.2, protect_b=6.0, working_space=DEFAULT_PROFILE,
-                          use_adaptive_anchor=True):
+                          use_adaptive_anchor=True, processing_mode="ready_to_use"):
     data, _layout, _extras = _to_channels_first(image)
     weights = _profile_weights(working_space)
+    sub_data = _auto_solver_subsample(data)
     anchor = (
-        calculate_anchor_adaptive(data, weights=weights)
+        calculate_anchor_adaptive(sub_data, weights=weights)
         if use_adaptive_anchor
-        else calculate_anchor(data)
+        else calculate_anchor(sub_data)
     )
-    luminance, _anchored = extract_luminance(data, anchor, weights)
+    luminance, _anchored = extract_luminance(sub_data, anchor, weights)
+    star_pressure = estimate_star_pressure(luminance)
     valid = luminance.reshape(-1)
     valid = valid[valid > 1e-7]
-    return solve_log_d(valid, float(target_median), float(protect_b))
+    if valid.size == 0:
+        return 2.0
+
+    target = float(target_median)
+    best_log_d = 2.0
+    ready_mode = str(processing_mode) == "ready_to_use"
+    for _ in range(15):
+        best_log_d = solve_log_d(valid, target, float(protect_b))
+
+        if star_pressure > 0.6:
+            target *= 1.0 - (0.15 * star_pressure)
+
+        if not ready_mode:
+            break
+
+        stretched = hyperbolic_stretch(valid, 10.0**best_log_d, float(protect_b))
+        median = float(np.median(stretched))
+        std = float(np.std(stretched))
+        minimum = float(np.min(stretched))
+        global_floor = max(minimum, median - (2.7 * std))
+        if global_floor <= 0.001:
+            break
+
+        target -= 0.015
+        if target < 0.05:
+            break
+
+    return float(best_log_d)
 
 
 def apply_mtf(data, midtones):
@@ -521,7 +590,7 @@ def process_hypermetric_stretch(
     )
 
     if auto_log_d:
-        log_d = solve_log_d_for_image(data, target_bg, protect_b, working_space, use_adaptive_anchor)
+        log_d = solve_log_d_for_image(data, target_bg, protect_b, working_space, use_adaptive_anchor, mode)
 
     anchor = (
         calculate_anchor_adaptive(data, weights=weights)

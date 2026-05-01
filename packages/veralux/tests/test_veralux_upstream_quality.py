@@ -167,6 +167,65 @@ def _max_and_mean_delta(actual, expected):
     return float(np.max(delta)), float(np.mean(delta))
 
 
+def _upstream_hms_auto_log_d(upstream_hms, image_chw, target, protect_b, working_space, adaptive, mode):
+    img_norm = upstream_hms.VeraLuxCore.normalize_input(image_chw)
+    if img_norm.ndim == 3 and img_norm.shape[0] != 3 and img_norm.shape[2] == 3:
+        img_norm = img_norm.transpose(2, 0, 1)
+
+    if img_norm.ndim == 3 and img_norm.shape[0] == 3:
+        height, width = img_norm.shape[1], img_norm.shape[2]
+        step = max(1, (height * width) // 100000)
+        sub_data = np.vstack(
+            (
+                img_norm[0].flatten()[::step],
+                img_norm[1].flatten()[::step],
+                img_norm[2].flatten()[::step],
+            )
+        )
+    else:
+        height, width = img_norm.shape
+        step = max(1, (height * width) // 100000)
+        sub_data = img_norm.flatten()[::step]
+
+    weights = upstream_hms.SENSOR_PROFILES[working_space]["weights"]
+    anchor = (
+        upstream_hms.VeraLuxCore.calculate_anchor_adaptive(sub_data, weights=weights)
+        if adaptive
+        else upstream_hms.VeraLuxCore.calculate_anchor(sub_data)
+    )
+    luminance, _anchored = upstream_hms.VeraLuxCore.extract_luminance(sub_data, anchor, weights)
+    star_pressure = upstream_hms.VeraLuxCore.estimate_star_pressure(luminance)
+    valid = luminance[luminance > 1e-7]
+    if len(valid) == 0:
+        return 2.0
+
+    target_temp = float(target)
+    best_log_d = 2.0
+    for _ in range(15):
+        best_log_d = upstream_hms.VeraLuxCore.solve_log_d(valid, target_temp, protect_b)
+
+        if star_pressure > 0.6:
+            target_temp *= 1.0 - (0.15 * star_pressure)
+
+        if mode != "ready_to_use":
+            break
+
+        stretch_d = 10.0**best_log_d
+        valid_stretched = upstream_hms.VeraLuxCore.hyperbolic_stretch(valid, stretch_d, protect_b)
+        median = float(np.median(valid_stretched))
+        std = float(np.std(valid_stretched))
+        minimum = float(np.min(valid_stretched))
+        global_floor = max(minimum, median - (2.7 * std))
+        if global_floor <= 0.001:
+            break
+
+        target_temp -= 0.015
+        if target_temp < 0.05:
+            break
+
+    return best_log_d
+
+
 class VeraLuxUpstreamQualityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -281,6 +340,30 @@ class VeraLuxUpstreamQualityTests(unittest.TestCase):
         max_delta, mean_delta = _max_and_mean_delta(actual, expected)
         self.assertLessEqual(max_delta, 1e-7)
         self.assertLessEqual(mean_delta, 1e-8)
+
+    def test_hypermetric_auto_log_d_matches_upstream_solver(self):
+        source_hwc = synthetic_suite_rgb(64)
+        source_chw = np.moveaxis(source_hwc, -1, 0)
+
+        actual = hms_core.solve_log_d_for_image(
+            source_hwc,
+            target_median=0.22,
+            protect_b=5.0,
+            working_space=hms_core.DEFAULT_PROFILE,
+            use_adaptive_anchor=True,
+            processing_mode="ready_to_use",
+        )
+        expected = _upstream_hms_auto_log_d(
+            self.upstream["hms"],
+            source_chw,
+            target=0.22,
+            protect_b=5.0,
+            working_space=hms_core.DEFAULT_PROFILE,
+            adaptive=True,
+            mode="ready_to_use",
+        )
+
+        self.assertLessEqual(abs(actual - expected), 1e-12)
 
     def test_vectra_matches_upstream_lch_core_with_local_filter_tolerance(self):
         source = synthetic_suite_rgb(64)

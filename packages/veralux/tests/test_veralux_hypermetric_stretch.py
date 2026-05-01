@@ -98,13 +98,25 @@ class VeraLuxHyperMetricStretchCoreTests(unittest.TestCase):
         self.assertGreater(float(np.mean(result)), float(np.mean(source)))
         self.assertGreater(core.LAST_LINEAR_EXPANSION_DIAG["high"], core.LAST_LINEAR_EXPANSION_DIAG["low"])
 
-    def test_auto_log_d_solver_returns_useful_range(self):
+    def test_auto_log_d_solver_uses_ready_to_use_floating_sky_check(self):
         source = synthetic_linear_rgb()
 
-        log_d = core.solve_log_d_for_image(source, target_median=0.20, protect_b=6.0)
+        log_d = core.solve_log_d_for_image(
+            source,
+            target_median=0.20,
+            protect_b=6.0,
+            processing_mode="ready_to_use",
+        )
+        scientific_log_d = core.solve_log_d_for_image(
+            source,
+            target_median=0.20,
+            protect_b=6.0,
+            processing_mode="scientific",
+        )
 
-        self.assertGreater(log_d, 0.0)
-        self.assertLess(log_d, 7.0)
+        self.assertAlmostEqual(log_d, 2.16357421875)
+        self.assertAlmostEqual(scientific_log_d, 3.0650634765625)
+        self.assertLess(log_d, scientific_log_d)
 
     def test_mono_input_is_supported(self):
         source = synthetic_linear_rgb()[..., 0]
@@ -132,6 +144,7 @@ class VeraLuxHyperMetricStretchAdapterTests(unittest.TestCase):
         self.assertIs(by_id["window_meta"]["header_progress"], False)
         self.assertEqual(by_id["auto_log_d"]["label"], "Auto-Calc Log D")
         self.assertEqual(by_id["auto_log_d"]["type"], "button")
+        self.assertEqual(by_id["auto_log_d"]["button_role"], "primary")
         self.assertEqual(by_id["working_space"]["label"], "Sensor Profile")
         self.assertEqual(by_id["convergence_power"]["label"], "Convergence Power")
         self.assertEqual(

@@ -69,6 +69,7 @@ class VeraLuxHyperMetricStretchExtension(ui.RTPreviewProcess):
             protect_b=float(params.get("protect_b", 6.0)),
             working_space=str(params.get("working_space", core.DEFAULT_PROFILE)),
             use_adaptive_anchor=bool(params.get("use_adaptive_anchor", True)),
+            processing_mode=str(params.get("processing_mode", "ready_to_use")),
         )
         return {"log_d": float(log_d)}
 

@@ -89,6 +89,7 @@ def parameter_defs():
             "id": "auto_log_d",
             "type": "button",
             "label": "Auto-Calc Log D",
+            "button_role": "primary",
             "tooltip": "Compute the Log D value from the current image, Target Background, Sensor Profile, Protect b, and Adaptive Anchor settings.",
         },
         {
