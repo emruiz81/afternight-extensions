@@ -16,7 +16,7 @@ import veralux_starcomposer_core as core
 
 ATTRIBUTION_TEXT = (
     "AfterNight port of VeraLux StarComposer, originally authored by Riccardo "
-    "Paterniti for the VeraLux Siril script suite."
+    "Paterniti for the VeraLux script suite."
 )
 
 

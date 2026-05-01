@@ -16,7 +16,7 @@ import veralux_hypermetric_stretch_core as core
 
 ATTRIBUTION_TEXT = (
     "AfterNight port of VeraLux HyperMetric Stretch, originally authored by "
-    "Riccardo Paterniti for the VeraLux Siril script suite."
+    "Riccardo Paterniti for the VeraLux script suite."
 )
 
 
@@ -28,8 +28,15 @@ def parameter_defs():
     return [
         ui.process_window_meta(
             panel_variant="native",
-            size=[720, 680],
+            size=[1260, 760],
             resizable=True,
+            sub_area=True,
+            sub_area_default_enabled=False,
+            sub_area_size=[800, 600],
+            sub_area_label="Preview: HyperMetric Stretch",
+            controls_panel_width=520,
+            preview_hq_default=True,
+            header_progress=False,
             target_selector=True,
             target_channel_filter=[1, 3],
         ),
@@ -46,21 +53,21 @@ def parameter_defs():
         {
             "id": "processing_mode",
             "type": "choice",
-            "label": "Mode",
+            "label": "Processing Mode",
             "default": "ready_to_use",
             "options": [
                 ["Ready to Use", "ready_to_use"],
                 ["Scientific", "scientific"],
             ],
-            "tooltip": "Ready to Use applies final output scaling; Scientific keeps manual control.",
+            "tooltip": "Ready to Use applies final output scaling. Scientific exposes the color reconstruction controls.",
         },
         {
             "id": "working_space",
             "type": "choice",
-            "label": "Working Space",
+            "label": "Sensor Profile",
             "default": core.DEFAULT_PROFILE,
             "options": _working_space_options(),
-            "tooltip": "Luminance weights used for the vector stretch.",
+            "tooltip": "Luminance weights used to derive the stretch vector from RGB data.",
         },
         {
             "id": "target_bg",
@@ -70,26 +77,19 @@ def parameter_defs():
             "min": 0.05,
             "max": 0.50,
             "step": 0.01,
-            "tooltip": "Ready-to-use median background target.",
-        },
-        {
-            "id": "use_adaptive_anchor",
-            "type": "bool",
-            "label": "Adaptive Anchor",
-            "default": True,
-            "tooltip": "Analyze histogram shape to estimate the signal start.",
-        },
-        {
-            "id": "auto_log_d",
-            "type": "bool",
-            "label": "Auto Log D",
-            "default": False,
-            "tooltip": "Solve Log D from the current image and target background.",
+            "tracking": False,
+            "tooltip": "Median background target used when Auto-Calc Log D solves the stretch intensity.",
         },
         {
             "id": "stretch",
             "type": "section",
-            "label": "Stretch",
+            "label": "HyperMetric Stretch",
+        },
+        {
+            "id": "auto_log_d",
+            "type": "button",
+            "label": "Auto-Calc Log D",
+            "tooltip": "Compute the Log D value from the current image, Target Background, Sensor Profile, Protect b, and Adaptive Anchor settings.",
         },
         {
             "id": "log_d",
@@ -99,7 +99,8 @@ def parameter_defs():
             "min": 0.0,
             "max": 7.0,
             "step": 0.01,
-            "tooltip": "Hyperbolic stretch intensity. Ignored when Auto Log D is enabled.",
+            "tracking": False,
+            "tooltip": "Hyperbolic stretch intensity. Use Auto-Calc Log D to solve this value from the current image.",
         },
         {
             "id": "protect_b",
@@ -109,32 +110,49 @@ def parameter_defs():
             "min": 0.1,
             "max": 15.0,
             "step": 0.1,
-            "tooltip": "Highlight protection knee for stellar cores and bright structures.",
+            "tracking": False,
+            "tooltip": "Highlight protection knee for stellar cores and bright structures. Higher values preserve more headroom.",
+        },
+        {
+            "id": "use_adaptive_anchor",
+            "type": "bool",
+            "label": "Adaptive Anchor",
+            "default": True,
+            "tooltip": "Estimate the signal anchor from the histogram instead of using a fixed black point.",
         },
         {
             "id": "convergence_power",
             "type": "float",
-            "label": "Star Core Recovery",
+            "label": "Convergence Power",
             "default": 3.5,
             "min": 1.0,
             "max": 10.0,
             "step": 0.1,
-            "tooltip": "Controls transition speed from saturated color to white cores.",
+            "tracking": False,
+            "tooltip": "Controls how quickly saturated star color converges toward white in the highlights.",
         },
         {
             "id": "color",
             "type": "section",
-            "label": "Color Engine",
+            "label": "Ready Mode Color",
+            "enabled_when": {"param": "processing_mode", "equals": "ready_to_use"},
         },
         {
             "id": "color_strategy",
             "type": "float",
-            "label": "Ready Color Strategy",
+            "label": "Color Strategy",
             "default": 0.0,
             "min": -1.0,
             "max": 1.0,
             "step": 0.01,
-            "tooltip": "Ready mode: negative cleans color noise, positive softens highlight color.",
+            "tracking": False,
+            "tooltip": "Ready mode color bias: negative values clean color noise, positive values soften highlight color.",
+        },
+        {
+            "id": "scientific_color",
+            "type": "section",
+            "label": "Scientific Color Reconstruction",
+            "enabled_when": {"param": "processing_mode", "equals": "scientific"},
         },
         {
             "id": "linear_expansion",
@@ -144,7 +162,8 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
-            "tooltip": "Scientific mode dynamic-range expansion before color reconstruction.",
+            "tracking": False,
+            "tooltip": "Scientific mode dynamic-range expansion applied before color reconstruction.",
         },
         {
             "id": "color_grip",
@@ -154,6 +173,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Scientific mode color-vector preservation strength.",
         },
         {
@@ -164,6 +184,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 3.0,
             "step": 0.1,
-            "tooltip": "Scientific mode damping of vector preservation in shadows.",
+            "tracking": False,
+            "tooltip": "Scientific mode damping of color-vector preservation in shadows.",
         },
     ]
