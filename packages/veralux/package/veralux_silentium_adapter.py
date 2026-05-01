@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-import afternight
 from afternight import ui
 
 import veralux_silentium_core as core
 import veralux_silentium_ui as silentium_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxSilentiumExtension(ui.ProcessWindow):
@@ -40,7 +38,7 @@ class VeraLuxSilentiumExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Silentium processing was cancelled.")
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         result = core.process_noise_reduction(
             source,
             intensity=float(params.get("noise_intensity", 25.0)),
@@ -55,10 +53,13 @@ class VeraLuxSilentiumExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Silentium processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_silentium")
-        dst_image.set_metadata("veralux.tool", "Silentium")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", silentium_ui.ATTRIBUTION_TEXT)
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_silentium",
+            tool_name="Silentium",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=silentium_ui.ATTRIBUTION_TEXT,
+        )
         progress.set_value(100.0)
-        afternight.log_info("VeraLux Silentium applied successfully.", component=self.component)
+        sdk.log_info("VeraLux Silentium applied successfully.", component=self.component)

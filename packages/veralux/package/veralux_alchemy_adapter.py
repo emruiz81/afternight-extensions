@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-import afternight
 from afternight import ui
 
 import veralux_alchemy_core as core
 import veralux_alchemy_ui as alchemy_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxAlchemyExtension(ui.ProcessWindow):
@@ -40,7 +38,7 @@ class VeraLuxAlchemyExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Alchemy processing was cancelled.")
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         result = core.process_narrowband(
             source,
             bg_align=bool(params.get("bg_align", True)),
@@ -56,10 +54,13 @@ class VeraLuxAlchemyExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Alchemy processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_alchemy")
-        dst_image.set_metadata("veralux.tool", "Alchemy")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", alchemy_ui.ATTRIBUTION_TEXT)
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_alchemy",
+            tool_name="Alchemy",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=alchemy_ui.ATTRIBUTION_TEXT,
+        )
         progress.set_value(100.0)
-        afternight.log_info("VeraLux Alchemy applied successfully.", component=self.component)
+        sdk.log_info("VeraLux Alchemy applied successfully.", component=self.component)

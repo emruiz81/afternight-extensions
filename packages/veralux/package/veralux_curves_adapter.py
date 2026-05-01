@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-import afternight
 from afternight import ui
 
 import veralux_curves_core as core
 import veralux_curves_ui as curves_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxCurvesExtension(ui.ProcessWindow):
@@ -57,16 +55,19 @@ class VeraLuxCurvesExtension(ui.ProcessWindow):
             feather=float(params.get("feather", 0.25)),
         )
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         result = core.process_curves(source, [operation])
 
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Curves processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_curves")
-        dst_image.set_metadata("veralux.tool", "Curves")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", curves_ui.ATTRIBUTION_TEXT)
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_curves",
+            tool_name="Curves",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=curves_ui.ATTRIBUTION_TEXT,
+        )
         progress.set_value(100.0)
-        afternight.log_info("VeraLux Curves applied successfully.", component=self.component)
+        sdk.log_info("VeraLux Curves applied successfully.", component=self.component)

@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-import afternight
 from afternight import ui
 
 import veralux_hypermetric_stretch_core as core
 import veralux_hypermetric_stretch_ui as hms_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxHyperMetricStretchExtension(ui.ProcessWindow):
@@ -40,7 +38,7 @@ class VeraLuxHyperMetricStretchExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux HyperMetric Stretch processing was cancelled.")
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         result = core.process_hypermetric_stretch(
             source,
             log_d=float(params.get("log_d", 2.0)),
@@ -60,13 +58,16 @@ class VeraLuxHyperMetricStretchExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux HyperMetric Stretch processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_hypermetric_stretch")
-        dst_image.set_metadata("veralux.tool", "HyperMetric Stretch")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", hms_ui.ATTRIBUTION_TEXT)
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_hypermetric_stretch",
+            tool_name="HyperMetric Stretch",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=hms_ui.ATTRIBUTION_TEXT,
+        )
         progress.set_value(100.0)
-        afternight.log_info(
+        sdk.log_info(
             "VeraLux HyperMetric Stretch applied successfully.",
             component=self.component,
         )

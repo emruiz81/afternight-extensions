@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-import afternight
 from afternight import ui
 
 import veralux_vectra_core as core
 import veralux_vectra_ui as vectra_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxVectraExtension(ui.ProcessWindow):
@@ -49,7 +47,7 @@ class VeraLuxVectraExtension(ui.ProcessWindow):
             "Y": (float(params.get("yellow_hue", 0.0)), float(params.get("yellow_saturation", 0.0))),
         }
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         result = core.process_vectors(
             source,
             vectors,
@@ -60,10 +58,13 @@ class VeraLuxVectraExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Vectra processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_vectra")
-        dst_image.set_metadata("veralux.tool", "Vectra")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", vectra_ui.ATTRIBUTION_TEXT)
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_vectra",
+            tool_name="Vectra",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=vectra_ui.ATTRIBUTION_TEXT,
+        )
         progress.set_value(100.0)
-        afternight.log_info("VeraLux Vectra applied successfully.", component=self.component)
+        sdk.log_info("VeraLux Vectra applied successfully.", component=self.component)

@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-import afternight
 from afternight import ui
 
 import veralux_nox_core as core
 import veralux_nox_ui as nox_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxNoxExtension(ui.ProcessWindow):
@@ -40,7 +38,7 @@ class VeraLuxNoxExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Nox processing was cancelled.")
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         auto_tune = bool(params.get("auto_tune", True))
         if auto_tune:
             stiffness, rejection_power = core.calculate_heuristics(source)
@@ -48,13 +46,7 @@ class VeraLuxNoxExtension(ui.ProcessWindow):
             stiffness = float(params.get("stiffness", 2.0))
             rejection_power = float(params.get("rejection_power", 55.0))
 
-        user_mask = None
-        if masks:
-            first_mask = masks[0]
-            if hasattr(first_mask, "to_numpy"):
-                user_mask = np.asarray(first_mask.to_numpy(), dtype=np.float32)
-            else:
-                user_mask = np.asarray(first_mask, dtype=np.float32)
+        user_mask = sdk.first_mask_array(masks)
 
         result = core.process_gradient_reduction(
             source,
@@ -72,12 +64,17 @@ class VeraLuxNoxExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Nox processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_nox")
-        dst_image.set_metadata("veralux.tool", "Nox")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", nox_ui.ATTRIBUTION_TEXT)
-        dst_image.set_metadata("veralux.nox.stiffness", f"{stiffness:.3f}")
-        dst_image.set_metadata("veralux.nox.rejection_power", f"{rejection_power:.3f}")
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_nox",
+            tool_name="Nox",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=nox_ui.ATTRIBUTION_TEXT,
+            extra_metadata={
+                "veralux.nox.stiffness": f"{stiffness:.3f}",
+                "veralux.nox.rejection_power": f"{rejection_power:.3f}",
+            },
+        )
         progress.set_value(100.0)
-        afternight.log_info("VeraLux Nox applied successfully.", component=self.component)
+        sdk.log_info("VeraLux Nox applied successfully.", component=self.component)

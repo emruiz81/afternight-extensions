@@ -47,6 +47,9 @@ signoff checklist are documented in `packaging/PUBLICATION_READINESS.md`.
 Automated upstream quality coverage and known first-pass parity limits are
 documented in `package/QUALITY_VALIDATION.md`.
 
+The broader extension-author porting notes for this suite are captured in
+`../../docs/VERALUX_PORTING_CASE_STUDY.md`.
+
 ## Attribution
 
 Original VeraLux scripts Copyright (c) 2025 Riccardo Paterniti.

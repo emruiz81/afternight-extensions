@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import numpy as np
 
-import afternight
 from afternight import ui
 
 import veralux_revela_core as core
 import veralux_revela_ui as revela_ui
+import veralux_sdk as sdk
 
 
 class VeraLuxRevelaExtension(ui.ProcessWindow):
@@ -40,7 +40,7 @@ class VeraLuxRevelaExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Revela processing was cancelled.")
 
-        source = np.asarray(src_image.to_numpy())
+        source = sdk.read_image(src_image)
         result = core.process_structure(
             source,
             texture_amt=float(params.get("texture", 0.0)),
@@ -59,10 +59,13 @@ class VeraLuxRevelaExtension(ui.ProcessWindow):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Revela processing was cancelled.")
 
-        dst_image.from_numpy(np.asarray(result, dtype=np.float32))
-        dst_image.set_metadata("afternight.extension", "veralux_revela")
-        dst_image.set_metadata("veralux.tool", "Revela")
-        dst_image.set_metadata("veralux.upstream_version", core.UPSTREAM_VERSION)
-        dst_image.set_metadata("veralux.attribution", revela_ui.ATTRIBUTION_TEXT)
+        sdk.write_image(dst_image, result)
+        sdk.stamp_result(
+            dst_image,
+            extension_id="veralux_revela",
+            tool_name="Revela",
+            upstream_version=core.UPSTREAM_VERSION,
+            attribution=revela_ui.ATTRIBUTION_TEXT,
+        )
         progress.set_value(100.0)
-        afternight.log_info("VeraLux Revela applied successfully.", component=self.component)
+        sdk.log_info("VeraLux Revela applied successfully.", component=self.component)
