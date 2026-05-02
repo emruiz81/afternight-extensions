@@ -282,8 +282,16 @@ def compute_luminance_mask(rgb, lum_min, lum_max, feather=0.25):
 
 
 def _apply_lut(values, lut):
-    x_lut = np.linspace(0.0, 1.0, len(lut), dtype=np.float32)
-    return np.interp(np.asarray(values, dtype=np.float32).ravel(), x_lut, lut).reshape(values.shape)
+    table = np.asarray(lut, dtype=np.float32)
+    if table.size < 2:
+        return np.zeros_like(values, dtype=np.float32)
+
+    clipped = np.clip(np.asarray(values, dtype=np.float32), 0.0, 1.0)
+    scaled = clipped * float(table.size - 1)
+    lower = np.floor(scaled).astype(np.int32)
+    lower = np.minimum(lower, table.size - 2)
+    fraction = (scaled - lower).astype(np.float32, copy=False)
+    return (table[lower] * (1.0 - fraction)) + (table[lower + 1] * fraction)
 
 
 def _apply_lut_with_mask(values, lut, mask):
@@ -439,11 +447,11 @@ def apply_operation(rgb, operation, lut_size=65536):
     return result
 
 
-def process_curves(image, operations):
+def process_curves(image, operations, *, lut_size=65536):
     """Apply a stage list of VeraLux Curves operations and preserve source layout."""
 
     rgb, layout, extras = _to_hwc_rgb(image)
     result = np.asarray(rgb, dtype=np.float32)
     for operation in list(operations or []):
-        result = apply_operation(result, operation)
+        result = apply_operation(result, operation, lut_size=lut_size)
     return _from_hwc_rgb(result, layout, extras)

@@ -100,7 +100,11 @@ class VeraLuxCurvesExtension(ui.RTPreviewProcess):
             raise RuntimeError("VeraLux Curves processing was cancelled.")
 
         source = sdk.read_image(src_image)
-        result = core.process_curves(source, [self._operation_from_params(params)])
+        result = core.process_curves(
+            source,
+            [self._operation_from_params(params)],
+            lut_size=4096 if preview else 65536,
+        )
 
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Curves processing was cancelled.")
