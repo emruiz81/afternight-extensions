@@ -147,9 +147,17 @@ modules need review before updating the baseline.
   of requiring SciPy sparse solvers for this first native slice. Manual mask
   painting, BVI dialog parity, and preview overlays are deferred to later host
   integration.
-- Silentium uses a package-local NumPy multiscale detail-thresholding path
-  instead of requiring PyWavelets and SciPy for the first native slice. PSF-list
-  masking and loupe UI parity are deferred to later host integration.
+- Silentium uses the upstream PyWavelets SWT/db2 coefficient-thresholding path
+  and SciPy edge morphology when runtime dependencies are installed, with a
+  NumPy fallback for minimal test environments. The native slice follows the
+  upstream parameter scales, LAB chroma path, signal gating, shadow authority,
+  and star-protection controls. AfterNight star profiling feeds the protection
+  mask, while the wavelet FWHM map uses the uniform fallback rather than the
+  generated local map because the local map collapses most preview ROIs toward
+  a near no-op. Loupe UI parity is deferred to later host integration.
+  Silentium is exposed as an AfterNight RT-preview process with native sub-area
+  preview and host Linear/Autostretch display controls that open in
+  Autostretch mode to match the original Siril preview display.
 - Vectra uses a package-local NumPy reflect-convolution helper instead of
   adding SciPy for its small blur/filter needs.
 - StarComposer is exposed first as active star-mask shaping because the native

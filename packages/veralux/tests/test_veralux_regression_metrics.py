@@ -113,18 +113,18 @@ GOLDEN_METRICS = {
     },
     "silentium": {
         "shape": (72, 72, 3),
-        "min": 0.06610754877328873,
-        "max": 0.6729746460914612,
-        "mean": 0.12074855715036392,
-        "std": 0.04168442264199257,
-        "p05": 0.08133438974618912,
-        "p50": 0.10715988278388977,
-        "p95": 0.20375065505504608,
-        "sample_0": 0.08327057957649231,
-        "sample_1": 0.23248156905174255,
-        "sample_2": 0.08649206906557083,
-        "sample_3": 0.15459971129894257,
-        "mean_abs_delta": 0.015253758057951927,
+        "min": 0.06460791081190109,
+        "max": 0.6847045421600342,
+        "mean": 0.11723337322473526,
+        "std": 0.0411762073636055,
+        "p05": 0.07999811321496964,
+        "p50": 0.10365767776966095,
+        "p95": 0.201273113489151,
+        "sample_0": 0.08189757168292999,
+        "sample_1": 0.23043255507946014,
+        "sample_2": 0.08572079986333847,
+        "sample_3": 0.138265922665596,
+        "mean_abs_delta": 0.01431744173169136,
     },
     "starcomposer": {
         "shape": (64, 64, 3),
@@ -156,6 +156,22 @@ GOLDEN_METRICS = {
         "sample_3": 0.3443865180015564,
         "mean_abs_delta": 0.006691101472824812,
     },
+}
+
+SILENTIUM_SWT_GOLDEN_METRICS = {
+    "shape": (72, 72, 3),
+    "min": 0.06364411115646362,
+    "max": 0.5028602480888367,
+    "mean": 0.11706825345754623,
+    "std": 0.04806059971451759,
+    "p05": 0.07589477300643921,
+    "p50": 0.0976279154419899,
+    "p95": 0.2270796000957489,
+    "sample_0": 0.08850722014904022,
+    "sample_1": 0.27369827032089233,
+    "sample_2": 0.08255227655172348,
+    "sample_3": 0.1329507827758789,
+    "mean_abs_delta": 0.011148948222398758,
 }
 
 
@@ -318,13 +334,13 @@ def process_outputs():
         "silentium": (
             silentium_core.process_noise_reduction(
                 noisy,
-                intensity=70.0,
+                intensity=1.4,
                 adaptive_noise=False,
                 detail_guard=20.0,
                 shadow_smoothness=35.0,
                 enable_chroma=True,
                 chroma_strength=45.0,
-                protect_highlights=False,
+                use_stars=False,
             ),
             noisy,
         ),
@@ -385,6 +401,8 @@ class VeraLuxRegressionMetricTests(unittest.TestCase):
             with self.subTest(process=name):
                 metrics = output_metrics(output, source)
                 expected = GOLDEN_METRICS[name]
+                if name == "silentium" and silentium_core._pywt is not None:
+                    expected = SILENTIUM_SWT_GOLDEN_METRICS
                 self.assertEqual(metrics["shape"], expected["shape"])
                 self.assertGreater(metrics["mean_abs_delta"], 1e-5)
                 for key in NUMERIC_METRIC_KEYS:

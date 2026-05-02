@@ -114,10 +114,12 @@
       "original_file_last_commit": "f70698e25f7c00d32593ba7ad3f1eb68ffe6a218",
       "original_version": "1.0.3",
       "intentional_divergences": [
-        "Replace sirilpy image retrieval, undo, findstar side effects, and logging with AfterNight SDK image handles and metadata.",
-        "Replace PyQt6 loupe/progress UI with native AfterNight parameter definitions for the first process port.",
-        "Use a package-local NumPy multiscale detail-thresholding path instead of requiring PyWavelets and SciPy for this first native slice.",
-        "Preserve the linear signal-probability, detail-guard, shadow-smoothness, chroma-denoise, and highlight-protection controls while deferring PSF-list masking and loupe UI parity to later host integration."
+        "Replace sirilpy image retrieval, undo, Siril findstar side effects, and logging with AfterNight SDK image handles, metadata, and star profiling.",
+        "Replace PyQt6 loupe/progress UI with native AfterNight RT-preview parameter definitions.",
+        "Expose host-side Linear/Autostretch preview display controls, default the native preview to Autostretch like the original Siril preview, and keep applied Silentium output linear.",
+        "Use the upstream PyWavelets SWT/db2 coefficient-thresholding path and SciPy edge morphology when runtime dependencies are installed, with a NumPy fallback for minimal test environments.",
+        "Use AfterNight star profiling for the stellar protection mask, but do not thread the generated local FWHM map into the wavelet threshold path because it collapses most preview ROIs toward a near no-op; this mirrors the original script's common fallback to a uniform wavelet FWHM map when list.lst is not in the process cwd.",
+        "Preserve the original noise-intensity, linear signal-probability, detail-guard, shadow-smoothness, LAB chroma-denoise, star-protection, and auto-starless controls while deferring loupe UI parity to later host integration."
       ]
     },
     {

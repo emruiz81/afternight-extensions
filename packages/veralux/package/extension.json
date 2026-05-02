@@ -137,7 +137,12 @@
       "class": "VeraLuxSilentiumExtension",
       "display_name": "VeraLux Silentium",
       "category": "denoising",
-      "action_object_name": "actionVeraLux_Silentium"
+      "action_object_name": "actionVeraLux_Silentium",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true
+      }
     }
   ]
 }

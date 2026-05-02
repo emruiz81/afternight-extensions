@@ -66,14 +66,16 @@ controls such as Curves' histogram-backed curve editor.
 
 ## Dependency Choices
 
-The first-pass package uses one private dependency environment and one lockfile
-for the suite. It keeps `numpy` as the common numerical dependency and includes
-`opencv-python-headless` for the supported Revela path. The port deliberately
-avoids adding SciPy, PyWavelets, Astropy, and PyQt6 to the baseline lockfile:
+The package uses one private dependency environment and one lockfile for the
+suite. It keeps `numpy` as the common numerical dependency, includes
+`opencv-python-headless` for the supported Revela path, and includes SciPy plus
+PyWavelets for Silentium's upstream SWT/db2 denoise path. The port deliberately
+avoids adding Astropy and PyQt6 to the baseline lockfile:
 
 - Curves uses package-local Akima-style interpolation.
 - Nox uses package-local membrane-style background modeling.
-- Silentium uses package-local multiscale denoising.
+- Silentium uses PyWavelets/SciPy when installed and keeps a NumPy fallback for
+  minimal test environments.
 - StarComposer uses package-local blur and morphology helpers.
 
 Those choices reduce install size and remove dependencies that were only needed

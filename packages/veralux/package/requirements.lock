@@ -1,4 +1,6 @@
-# Initial VeraLux suite dependency slice for Revela, Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, and StarComposer.
+# VeraLux suite dependency slice for Revela, Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, and StarComposer.
 # Public PyPI wheels are downloaded by the host during install.
 
 opencv-python-headless==4.13.0.92 --hash=sha256:0bd48544f77c68b2941392fcdf9bcd2b9cdf00e98cb8c29b2455d194763cf99e --hash=sha256:77a82fe35ddcec0f62c15f2ba8a12ecc2ed4207c17b0902c7a3151ae29f37fb6
+PyWavelets==1.9.0 --hash=sha256:4ee1ee7d80f88c64b8ec3b5021dd1e94545cc97f0cd479fb51aa7b10f6def08e --hash=sha256:7e57792bde40e331d6cc65458e5970fd814dba18cfc4e9add9d051e901a7b7c7
+scipy==1.17.1 --hash=sha256:eee2cfda04c00a857206a4330f0c5e3e56535494e30ca445eb19ec624ae75118 --hash=sha256:3877ac408e14da24a6196de0ddcace62092bfc12a83823e92e49e40747e52c19

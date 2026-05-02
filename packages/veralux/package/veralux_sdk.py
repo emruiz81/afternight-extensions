@@ -121,6 +121,8 @@ def _image_plane_shape(image_handle):
     data = read_image(image_handle)
     if data.ndim < 2:
         raise ValueError("VeraLux star-mask construction requires at least a 2D image")
+    if data.ndim == 3 and data.shape[0] in (1, 3) and data.shape[-1] not in (1, 3):
+        return int(data.shape[1]), int(data.shape[2])
     return int(data.shape[0]), int(data.shape[1])
 
 
@@ -162,3 +164,55 @@ def star_mask_from_find_stars(
         star_mask = np.exp(-(((xx - x) ** 2) + ((yy - y) ** 2)) / (2.0 * sigma * sigma))
         mask = np.maximum(mask, star_mask.astype(np.float32, copy=False))
     return np.clip(mask, 0.0, 1.0).astype(np.float32, copy=False)
+
+
+def star_mask_and_fwhm_map_from_find_stars(
+    image_handle,
+    *,
+    finder=None,
+    max_stars=512,
+    radius_scale=1.8,
+    min_radius=3.0,
+    max_radius=24.0,
+    params=None,
+):
+    """Build Silentium's PSF-style star mask plus local FWHM modulation map."""
+
+    if finder is None:
+        from afternight import registration
+
+        finder = registration.find_stars
+
+    height, width = _image_plane_shape(image_handle)
+    mask = np.zeros((height, width), dtype=np.float32)
+    fwhm_map = np.ones((height, width), dtype=np.float32) * 4.0
+    stars = finder(image_handle, max_stars=int(max_stars), params=dict(params or {}))
+    if not stars:
+        return mask, fwhm_map
+
+    yy, xx = np.mgrid[0:height, 0:width].astype(np.float32)
+    radius_scale = float(radius_scale)
+    min_radius = float(min_radius)
+    max_radius = float(max_radius)
+    for star in stars:
+        x = float(_star_value(star, "x", -1.0))
+        y = float(_star_value(star, "y", -1.0))
+        if x < 0.0 or y < 0.0 or x >= width or y >= height:
+            continue
+        fwhm = float(_star_value(star, "fwhm", min_radius))
+        mask_fwhm = float(np.clip(fwhm * (radius_scale / 1.8), min_radius, max_radius))
+        sigma = max(mask_fwhm / 2.355, 1e-3)
+        star_mask = np.exp(-(((xx - x) ** 2) + ((yy - y) ** 2)) / (2.0 * sigma * sigma))
+        mask = np.maximum(mask, star_mask.astype(np.float32, copy=False))
+
+        influence_radius = max(1.5 * fwhm, 1e-3)
+        distance = np.sqrt(((xx - x) ** 2) + ((yy - y) ** 2))
+        weight = np.exp(-0.5 * (distance / influence_radius) ** 2)
+        fwhm_map = np.minimum(fwhm_map, (fwhm * weight) + (0.1 * (1.0 - weight)))
+
+    if np.max(mask) > 0.0:
+        mask /= np.max(mask)
+    return (
+        np.clip(mask, 0.0, 1.0).astype(np.float32, copy=False),
+        np.clip(fwhm_map, 0.1, 64.0).astype(np.float32, copy=False),
+    )

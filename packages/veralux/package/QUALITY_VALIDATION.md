@@ -40,7 +40,7 @@ Siril output parity yet:
 |---|---|
 | Revela | Upstream exact comparison requires the OpenCV Lab/filter path; the package keeps OpenCV as the preferred runtime path and a NumPy fallback for diagnostics. |
 | Nox | The first native process uses a package-local membrane background model instead of the upstream SciPy sparse solver and manual mask workflow. |
-| Silentium | The first native process uses a package-local multiscale denoise path instead of the upstream PyWavelets/SciPy SWT implementation and PSF-list masking workflow. |
+| Silentium | The native process uses the upstream PyWavelets SWT/db2 thresholding path and SciPy edge morphology when runtime dependencies are installed; remaining exact-output drift can come from AfterNight star profiling versus Siril `findstar` list generation and the deliberate uniform wavelet-FWHM fallback used to keep native previews visibly responsive. |
 | StarComposer | The first native process exposes active star-mask shaping; full upstream parity also requires the multi-input starless + starmask workflow and OpenCV post-processing path. |
 
 These divergences are also listed in `UPSTREAM.md`. They are deliberate v1
