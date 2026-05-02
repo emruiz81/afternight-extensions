@@ -22,7 +22,7 @@
         "Replace sirilpy host operations with AfterNight SDK image handles and metadata.",
         "Replace PyQt6 process window with native AfterNight parameter schema.",
         "Keep OpenCV as the preferred runtime while retaining a NumPy fallback for tests and diagnostics.",
-        "Defer full preview compare and zoom parity to a later UI polish slice."
+        "Expose Revela as an AfterNight RT-preview process with native sub-area preview; host autostretch display controls are intentionally not enabled for this process."
       ]
     },
     {

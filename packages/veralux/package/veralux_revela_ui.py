@@ -22,8 +22,15 @@ def parameter_defs():
     return [
         ui.process_window_meta(
             panel_variant="native",
-            size=[640, 520],
+            size=[1260, 760],
             resizable=True,
+            sub_area=True,
+            sub_area_default_enabled=False,
+            sub_area_size=[800, 600],
+            sub_area_label="Preview: Revela",
+            controls_panel_width=520,
+            preview_hq_default=True,
+            header_progress=False,
             target_selector=True,
             target_channel_filter=[1, 3],
         ),
@@ -45,6 +52,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Enhances fine high-frequency details.",
         },
         {
@@ -55,6 +63,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Enhances medium-frequency volume and body.",
         },
         {
@@ -70,6 +79,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 100.0,
             "step": 1.0,
+            "tracking": False,
             "tooltip": "Adaptive luminance gate used to avoid lifting the noise floor.",
         },
         {

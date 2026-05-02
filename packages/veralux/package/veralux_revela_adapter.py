@@ -18,25 +18,13 @@ import veralux_revela_ui as revela_ui
 import veralux_sdk as sdk
 
 
-class VeraLuxRevelaExtension(ui.ProcessWindow):
+class VeraLuxRevelaExtension(ui.RTPreviewProcess):
     component = "extension.veralux_revela"
 
     def get_params(self):
         return revela_ui.parameter_defs()
 
-    def execute(
-        self,
-        target,
-        src_image,
-        dst_image,
-        params,
-        progress,
-        masks=None,
-        weights=None,
-        output_masks=None,
-    ):
-        del target, masks, weights, output_masks
-        progress.set_text("Applying VeraLux Revela...")
+    def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Revela processing was cancelled.")
 
@@ -60,12 +48,42 @@ class VeraLuxRevelaExtension(ui.ProcessWindow):
             raise RuntimeError("VeraLux Revela processing was cancelled.")
 
         sdk.write_image(dst_image, result)
-        sdk.stamp_result(
-            dst_image,
-            extension_id="veralux_revela",
-            tool_name="Revela",
-            upstream_version=core.UPSTREAM_VERSION,
-            attribution=revela_ui.ATTRIBUTION_TEXT,
-        )
+        if not preview:
+            sdk.stamp_result(
+                dst_image,
+                extension_id="veralux_revela",
+                tool_name="Revela",
+                upstream_version=core.UPSTREAM_VERSION,
+                attribution=revela_ui.ATTRIBUTION_TEXT,
+            )
         progress.set_value(100.0)
+
+    def execute_preview(
+        self,
+        target,
+        src_image,
+        preview_image,
+        params,
+        progress,
+        masks=None,
+        weights=None,
+    ):
+        del target, masks, weights
+        progress.set_text("Rendering VeraLux Revela preview...")
+        self._process(src_image, preview_image, params, progress, preview=True)
+
+    def execute(
+        self,
+        target,
+        src_image,
+        dst_image,
+        params,
+        progress,
+        masks=None,
+        weights=None,
+        output_masks=None,
+    ):
+        del target, masks, weights, output_masks
+        progress.set_text("Applying VeraLux Revela...")
+        self._process(src_image, dst_image, params, progress, preview=False)
         sdk.log_info("VeraLux Revela applied successfully.", component=self.component)

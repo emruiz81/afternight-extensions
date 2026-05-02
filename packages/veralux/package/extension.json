@@ -125,7 +125,12 @@
       "class": "VeraLuxRevelaExtension",
       "display_name": "VeraLux Revela",
       "category": "sharpening_enhancement",
-      "action_object_name": "actionVeraLux_Revela"
+      "action_object_name": "actionVeraLux_Revela",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true
+      }
     },
     {
       "id_suffix": "silentium",

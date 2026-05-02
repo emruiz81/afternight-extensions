@@ -132,6 +132,9 @@ modules need review before updating the baseline.
 - Revela keeps OpenCV as the preferred runtime for Lab conversion and fast
   filters, with a small NumPy fallback for package tests and diagnostics when
   OpenCV is unavailable.
+- Revela is exposed as an AfterNight RT-preview process with native sub-area
+  preview. Host autostretch display controls are intentionally not enabled for
+  this process.
 - Alchemy is array-based in this port, so it does not require astropy for the
   first native process implementation.
 - HyperMetric Stretch keeps the core tone-mapping path NumPy-only and preserves
