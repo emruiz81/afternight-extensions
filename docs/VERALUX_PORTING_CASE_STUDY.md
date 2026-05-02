@@ -61,8 +61,8 @@ The port replaces Siril process-host services with AfterNight SDK concepts:
 - PyQt6 process dialogs become native AfterNight parameter schemas.
 
 The first release intentionally avoids launch-time custom PySide6 widgets. That
-keeps the package fast to cache and lets one multi-process package expose stable
-schemas for every process class.
+keeps the package fast to cache while still allowing richer host-native schema
+controls such as Curves' histogram-backed curve editor.
 
 ## Dependency Choices
 
@@ -102,7 +102,6 @@ is representative real-image visual QA and release signoff, tracked in
 Several upstream UI workflows are intentionally deferred from the initial
 AfterNight-native release:
 
-- Curves interactive curve editor.
 - Vectra vector-scope HUD.
 - Nox manual mask painting and BVI preview overlays.
 - Silentium loupe preview and PSF-list masking.

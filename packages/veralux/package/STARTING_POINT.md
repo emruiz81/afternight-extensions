@@ -56,10 +56,10 @@ the eight native VeraLux process entries in this suite package.
    Stage: Non-linear
 
    Use after stretching for tone and color sculpting. The AfterNight first pass
-   exposes parameter-based curve controls for RGB/K, channel, luminance,
-   chrominance, saturation, and luminance-range limited adjustments. The full
-   interactive point-curve editor, pipette, histogram overlay, and stage-stack
-   UI are deferred to a later native UI parity pass.
+   exposes a native point-curve editor with histogram overlay for RGB/K,
+   channel, luminance, chrominance, saturation, and luminance-range limited
+   adjustments. The pipette and applied-stage stack UI are deferred to a later
+   native UI parity pass.
 
 6. VeraLux Revela
 

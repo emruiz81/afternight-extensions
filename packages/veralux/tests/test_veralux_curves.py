@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -10,7 +11,9 @@ APP_REPO = Path(__file__).resolve().parents[4] / "afternight"
 sys.path.insert(0, str(PACKAGE_ROOT))
 sys.path.insert(0, str(APP_REPO / "python" / "modules"))
 
+from afternight import ui  # noqa: E402
 import veralux_curves_core as core  # noqa: E402
+import veralux_curves_ui as curves_ui  # noqa: E402
 from veralux_curves_adapter import VeraLuxCurvesExtension  # noqa: E402
 from veralux_extension import VeraLuxCurvesExtension as SuiteCurvesExtension  # noqa: E402
 
@@ -105,6 +108,67 @@ class VeraLuxCurvesCoreTests(unittest.TestCase):
 
 
 class VeraLuxCurvesAdapterTests(unittest.TestCase):
+    def test_process_is_rt_preview_based_with_native_preview_defaults(self):
+        self.assertTrue(issubclass(VeraLuxCurvesExtension, ui.RTPreviewProcess))
+
+        defs = curves_ui.parameter_defs()
+        by_id = {param["id"]: param for param in defs if "id" in param}
+
+        self.assertTrue(by_id["window_meta"]["sub_area"])
+        self.assertIs(by_id["window_meta"]["sub_area_default_enabled"], False)
+        self.assertEqual(by_id["window_meta"]["sub_area_label"], "Preview: Curves")
+        self.assertEqual(by_id["window_meta"]["window_size"], [1260, 760])
+        self.assertEqual(by_id["window_meta"]["controls_panel_width"], 520)
+        self.assertIs(by_id["window_meta"]["preview_hq_default"], True)
+        self.assertIs(by_id["window_meta"]["header_progress"], False)
+
+        section_labels = [param["label"] for param in defs if param.get("type") == "section"]
+        self.assertEqual(
+            section_labels,
+            [
+                "Curve Domain",
+                "Curve",
+                "Luminance Range",
+            ],
+        )
+
+        self.assertEqual(by_id["curve_points"]["type"], "curve_editor")
+        self.assertEqual(by_id["curve_points"]["default"], [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]])
+        self.assertEqual(by_id["curve_points"]["interpolation"], "akima")
+        self.assertIs(by_id["curve_points"]["histogram"], True)
+        self.assertIs(by_id["curve_points"]["grid"], True)
+        self.assertIs(by_id["curve_points"]["guide"], True)
+
+        for removed_id in (
+            "black_point",
+            "shadow_lift",
+            "midtone_input",
+            "midtone_output",
+            "highlight_compression",
+            "white_point",
+        ):
+            self.assertNotIn(removed_id, by_id)
+
+        for param_id in (
+            "lum_min",
+            "lum_max",
+            "feather",
+        ):
+            self.assertIs(by_id[param_id]["tracking"], False, param_id)
+
+        for param in defs:
+            if param.get("type") in {"float", "double", "int", "bool", "choice", "string"}:
+                self.assertTrue(param.get("tooltip"), param["id"])
+
+    def test_manifest_declares_curves_preview_capabilities(self):
+        manifest = json.loads((PACKAGE_ROOT / "extension.json").read_text(encoding="utf-8"))
+        processes = {process["id_suffix"]: process for process in manifest["processes"]}
+
+        self.assertEqual(
+            processes["curves"]["capabilities"],
+            {"execute": True, "preview": True, "keep_open": True},
+        )
+
     def test_execute_writes_processed_image_and_provenance_metadata(self):
         src = FakeImage(synthetic_rgb_gradient())
         dst = FakeImage(np.zeros_like(src.array))
@@ -117,12 +181,7 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
             dst,
             {
                 "domain": "RGB/K",
-                "black_point": 0.0,
-                "shadow_lift": 0.0,
-                "midtone_input": 0.50,
-                "midtone_output": 0.70,
-                "highlight_compression": 0.0,
-                "white_point": 1.0,
+                "curve_points": [[0.0, 0.0], [0.50, 0.70], [1.0, 1.0]],
                 "range_enabled": False,
             },
             progress,
@@ -133,6 +192,29 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["afternight.extension"], "veralux_curves")
         self.assertEqual(dst.metadata["veralux.tool"], "Curves")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(progress.value, 100.0)
+
+    def test_execute_preview_writes_preview_image_without_provenance_metadata(self):
+        src = FakeImage(synthetic_rgb_gradient())
+        preview = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxCurvesExtension(None)
+
+        extension.execute_preview(
+            None,
+            src,
+            preview,
+            {
+                "domain": "RGB/K",
+                "curve_points": [[0.0, 0.0], [0.50, 0.70], [1.0, 1.0]],
+                "range_enabled": False,
+            },
+            progress,
+        )
+
+        self.assertEqual(preview.array.shape, src.array.shape)
+        self.assertGreater(float(np.mean(preview.array)), float(np.mean(src.array)))
+        self.assertEqual(preview.metadata, {})
         self.assertEqual(progress.value, 100.0)
 
     def test_suite_entry_point_exports_curves_process(self):

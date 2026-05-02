@@ -137,8 +137,8 @@ modules need review before updating the baseline.
 - HyperMetric Stretch keeps the core tone-mapping path NumPy-only and preserves
   the source image layout when returning through the AfterNight SDK boundary.
 - Curves uses a package-local NumPy Akima-style Hermite interpolator instead of
-  adding SciPy only for this process. The first native UI exposes a parametric
-  curve operation; arbitrary point editing, histograms, and applied-stage stack
+  adding SciPy only for this process. The native UI exposes an AfterNight
+  point-curve editor with histogram overlay; pipette and applied-stage stack
   parity are deferred to a later native UI slice.
 - Nox uses a package-local NumPy membrane-smoothing background estimator instead
   of requiring SciPy sparse solvers for this first native slice. Manual mask

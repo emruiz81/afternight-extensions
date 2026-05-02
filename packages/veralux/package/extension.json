@@ -75,7 +75,12 @@
       "class": "VeraLuxCurvesExtension",
       "display_name": "VeraLux Curves",
       "category": "transforms",
-      "action_object_name": "actionVeraLux_Curves"
+      "action_object_name": "actionVeraLux_Curves",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true
+      }
     },
     {
       "id_suffix": "hypermetric_stretch",

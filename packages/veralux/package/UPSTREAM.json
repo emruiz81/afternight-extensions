@@ -77,9 +77,9 @@
       "original_version": "1.0.1",
       "intentional_divergences": [
         "Replace sirilpy image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
-        "Replace PyQt6 arbitrary point-curve editor and histogram preview with native AfterNight parameter definitions for the first process port.",
+        "Replace PyQt6 arbitrary point-curve editor and histogram preview with an AfterNight native curve editor parameter.",
         "Use a package-local NumPy Akima-style Hermite interpolator instead of adding SciPy only for Curves.",
-        "Preserve RGB/K, channel, luminance, chrominance, saturation, and luminance-range behavior while deferring applied-stage stack UI parity to a later native UI slice."
+        "Preserve RGB/K, channel, luminance, chrominance, saturation, and luminance-range behavior while deferring pipette and applied-stage stack UI parity to a later native UI slice."
       ]
     },
     {

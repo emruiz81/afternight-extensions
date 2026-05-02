@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from afternight import ui
 
-import veralux_curves_core as core
-
 
 ATTRIBUTION_TEXT = (
     "AfterNight port of VeraLux Curves, originally authored by Riccardo "
@@ -36,8 +34,15 @@ def parameter_defs():
     return [
         ui.process_window_meta(
             panel_variant="native",
-            size=[720, 700],
+            size=[1260, 760],
             resizable=True,
+            sub_area=True,
+            sub_area_default_enabled=False,
+            sub_area_size=[800, 600],
+            sub_area_label="Preview: Curves",
+            controls_panel_width=520,
+            preview_hq_default=True,
+            header_progress=False,
             target_selector=True,
             target_channel_filter=[1, 3],
         ),
@@ -62,67 +67,19 @@ def parameter_defs():
         {
             "id": "curve_section",
             "type": "section",
-            "label": "Native Curve",
+            "label": "Curve",
         },
         {
-            "id": "black_point",
-            "type": "float",
-            "label": "Black Point",
-            "default": 0.0,
-            "min": 0.0,
-            "max": 0.98,
-            "step": 0.001,
-            "tooltip": "Horizontal black-point clip. Values below this input map to the black endpoint.",
-        },
-        {
-            "id": "shadow_lift",
-            "type": "float",
-            "label": "Shadow Lift",
-            "default": 0.0,
-            "min": 0.0,
-            "max": 0.5,
-            "step": 0.001,
-            "tooltip": "Vertical black endpoint lift for matte or pedestal-preserving curves.",
-        },
-        {
-            "id": "midtone_input",
-            "type": "float",
-            "label": "Midtone Input",
-            "default": 0.5,
-            "min": 0.01,
-            "max": 0.99,
-            "step": 0.001,
-            "tooltip": "Input position of the middle curve control point.",
-        },
-        {
-            "id": "midtone_output",
-            "type": "float",
-            "label": "Midtone Output",
-            "default": 0.5,
-            "min": 0.0,
-            "max": 1.0,
-            "step": 0.001,
-            "tooltip": "Output value of the middle curve control point.",
-        },
-        {
-            "id": "highlight_compression",
-            "type": "float",
-            "label": "Highlight Compression",
-            "default": 0.0,
-            "min": 0.0,
-            "max": 0.5,
-            "step": 0.001,
-            "tooltip": "Vertical white endpoint reduction for gentle highlight damping.",
-        },
-        {
-            "id": "white_point",
-            "type": "float",
-            "label": "White Point",
-            "default": 1.0,
-            "min": 0.01,
-            "max": 1.0,
-            "step": 0.001,
-            "tooltip": "Horizontal white-point clip. Values above this input map to the white endpoint.",
+            "id": "curve_points",
+            "type": "curve_editor",
+            "label": "Curve",
+            "default": [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]],
+            "interpolation": "akima",
+            "histogram": True,
+            "grid": True,
+            "guide": True,
+            "histogram_areas": False,
+            "tooltip": "Drag the curve to add or move points. Right-click an interior point to remove it.",
         },
         {
             "id": "range_section",
@@ -144,6 +101,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.001,
+            "tracking": False,
             "tooltip": "Minimum luminance included in the curve mask.",
         },
         {
@@ -154,6 +112,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.001,
+            "tracking": False,
             "tooltip": "Maximum luminance included in the curve mask.",
         },
         {
@@ -164,11 +123,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.001,
+            "tracking": False,
             "tooltip": "Soft roll-off width at luminance-range boundaries.",
-        },
-        {
-            "id": "upstream_version",
-            "type": "info",
-            "text": f"Ported from VeraLux Curves {core.UPSTREAM_VERSION}.",
         },
     ]
