@@ -155,5 +155,6 @@ modules need review before updating the baseline.
 - Starting Point is adapted from a PyQt6 interactive guide into
   `STARTING_POINT.md`, preserving the workflow order and attribution while
   avoiding a non-processing extension entry.
-- Preview-specific zoom, compare, and live auto-stretched preview behavior are
-  deferred to a later native-preview polish slice.
+- Preview-specific zoom and compare behavior are deferred to a later
+  native-preview polish slice. Alchemy opts into the host RT-preview
+  Linear/Autostretch display controls; applied output remains linear.

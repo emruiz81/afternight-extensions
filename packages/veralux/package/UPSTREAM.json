@@ -41,7 +41,7 @@
         "Replace sirilpy image loading, image locking, save/load, and logging with AfterNight SDK image handles and metadata.",
         "Replace the PyQt6 workstation with native AfterNight parameter definitions.",
         "Keep Alchemy strictly array-based so the package does not need astropy for this first native process port.",
-        "Defer live auto-stretched preview parity to a later native-preview polish slice."
+        "Expose Alchemy as an AfterNight RT-preview process with native sub-area preview and host-side autostretch display controls."
       ]
     },
     {

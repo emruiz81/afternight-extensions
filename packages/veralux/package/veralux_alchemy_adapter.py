@@ -16,25 +16,18 @@ import veralux_alchemy_ui as alchemy_ui
 import veralux_sdk as sdk
 
 
-class VeraLuxAlchemyExtension(ui.ProcessWindow):
+class VeraLuxAlchemyExtension(ui.RTPreviewProcess):
     component = "extension.veralux_alchemy"
 
     def get_params(self):
         return alchemy_ui.parameter_defs()
 
-    def execute(
-        self,
-        target,
-        src_image,
-        dst_image,
-        params,
-        progress,
-        masks=None,
-        weights=None,
-        output_masks=None,
-    ):
-        del target, masks, weights, output_masks
-        progress.set_text("Applying VeraLux Alchemy...")
+    def handle_param_action(self, action_id, target, src_image, params):
+        del target, src_image, params
+        preset = core.PALETTE_PRESETS.get(str(action_id))
+        return dict(preset) if preset is not None else {}
+
+    def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Alchemy processing was cancelled.")
 
@@ -55,12 +48,42 @@ class VeraLuxAlchemyExtension(ui.ProcessWindow):
             raise RuntimeError("VeraLux Alchemy processing was cancelled.")
 
         sdk.write_image(dst_image, result)
-        sdk.stamp_result(
-            dst_image,
-            extension_id="veralux_alchemy",
-            tool_name="Alchemy",
-            upstream_version=core.UPSTREAM_VERSION,
-            attribution=alchemy_ui.ATTRIBUTION_TEXT,
-        )
+        if not preview:
+            sdk.stamp_result(
+                dst_image,
+                extension_id="veralux_alchemy",
+                tool_name="Alchemy",
+                upstream_version=core.UPSTREAM_VERSION,
+                attribution=alchemy_ui.ATTRIBUTION_TEXT,
+            )
         progress.set_value(100.0)
+
+    def execute_preview(
+        self,
+        target,
+        src_image,
+        preview_image,
+        params,
+        progress,
+        masks=None,
+        weights=None,
+    ):
+        del target, masks, weights
+        progress.set_text("Rendering VeraLux Alchemy preview...")
+        self._process(src_image, preview_image, params, progress, preview=True)
+
+    def execute(
+        self,
+        target,
+        src_image,
+        dst_image,
+        params,
+        progress,
+        masks=None,
+        weights=None,
+        output_masks=None,
+    ):
+        del target, masks, weights, output_masks
+        progress.set_text("Applying VeraLux Alchemy...")
+        self._process(src_image, dst_image, params, progress, preview=False)
         sdk.log_info("VeraLux Alchemy applied successfully.", component=self.component)

@@ -24,12 +24,31 @@ def _sensor_options():
     return [[name, name] for name in core.sensor_profile_names()]
 
 
+def _mix_readout(param_id, source, text):
+    return {
+        "id": param_id,
+        "type": "percentage_mix_label",
+        "source": source,
+        "left_label": "Ha",
+        "right_label": "OIII",
+        "text": text,
+    }
+
+
 def parameter_defs():
     return [
         ui.process_window_meta(
             panel_variant="native",
-            size=[700, 640],
+            size=[1260, 760],
             resizable=True,
+            sub_area=True,
+            sub_area_default_enabled=False,
+            sub_area_size=[800, 600],
+            sub_area_label="Preview: Alchemy",
+            controls_panel_width=520,
+            preview_hq_default=True,
+            preview_autostretch=True,
+            header_progress=False,
             target_selector=True,
             target_channel_filter=[3],
         ),
@@ -85,6 +104,7 @@ def parameter_defs():
             "min": 0.5,
             "max": 5.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Manual gain applied to normalized OIII channels.",
         },
         {
@@ -100,8 +120,10 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "0.0 is pure Ha, 1.0 is pure OIII.",
         },
+        _mix_readout("mix_r_readout", "mix_r", "100% Ha, 0% OIII"),
         {
             "id": "mix_g",
             "type": "float",
@@ -110,8 +132,10 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "0.0 is pure Ha, 1.0 is pure OIII.",
         },
+        _mix_readout("mix_g_readout", "mix_g", "0% Ha, 100% OIII"),
         {
             "id": "mix_b",
             "type": "float",
@@ -120,6 +144,26 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "0.0 is pure Ha, 1.0 is pure OIII.",
+        },
+        _mix_readout("mix_b_readout", "mix_b", "0% Ha, 100% OIII"),
+        {
+            "id": "preset_hoo",
+            "type": "button",
+            "label": "HOO",
+            "tooltip": "Classic bi-color preset: R=Ha, G=OIII, B=OIII.",
+        },
+        {
+            "id": "preset_pseudo_sho",
+            "type": "button",
+            "label": "Pseudo-SHO",
+            "tooltip": "Gold/blue preset: R=Ha, G=50% Ha and 50% OIII, B=OIII.",
+        },
+        {
+            "id": "preset_hso",
+            "type": "button",
+            "label": "HSO",
+            "tooltip": "HSO-style preset: R=Ha, G=Ha, B=OIII.",
         },
     ]

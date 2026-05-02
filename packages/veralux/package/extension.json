@@ -68,7 +68,12 @@
       "class": "VeraLuxAlchemyExtension",
       "display_name": "VeraLux Alchemy",
       "category": "color",
-      "action_object_name": "actionVeraLux_Alchemy"
+      "action_object_name": "actionVeraLux_Alchemy",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true
+      }
     },
     {
       "id_suffix": "curves",

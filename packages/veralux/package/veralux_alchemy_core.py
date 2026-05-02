@@ -14,6 +14,12 @@ import numpy as np
 
 UPSTREAM_VERSION = "1.0.3"
 
+PALETTE_PRESETS = {
+    "preset_hoo": {"mix_r": 0.0, "mix_g": 1.0, "mix_b": 1.0},
+    "preset_pseudo_sho": {"mix_r": 0.0, "mix_g": 0.5, "mix_b": 1.0},
+    "preset_hso": {"mix_r": 0.0, "mix_g": 0.0, "mix_b": 1.0},
+}
+
 
 QUANTUM_COEFFS = {
     "Generic OSC": {
