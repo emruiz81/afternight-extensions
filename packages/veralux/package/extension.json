@@ -72,7 +72,8 @@
       "capabilities": {
         "execute": true,
         "preview": true,
-        "keep_open": true
+        "keep_open": true,
+        "source_channel_filter": [3]
       }
     },
     {
@@ -118,7 +119,10 @@
       "class": "VeraLuxVectraExtension",
       "display_name": "VeraLux Vectra",
       "category": "color",
-      "action_object_name": "actionVeraLux_Vectra"
+      "action_object_name": "actionVeraLux_Vectra",
+      "capabilities": {
+        "source_channel_filter": [3]
+      }
     },
     {
       "id_suffix": "revela",
