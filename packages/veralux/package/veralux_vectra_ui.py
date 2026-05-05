@@ -11,11 +11,11 @@ from __future__ import annotations
 
 from afternight import ui
 
+from veralux_attribution import attribution_text
+import veralux_vectra_core as core
 
-ATTRIBUTION_TEXT = (
-    "AfterNight port of VeraLux Vectra, originally authored by Riccardo "
-    "Paterniti for the VeraLux script suite."
-)
+
+ATTRIBUTION_TEXT = attribution_text("Vectra", core.UPSTREAM_VERSION)
 
 
 def _vector_section(prefix, label, hue_degrees):

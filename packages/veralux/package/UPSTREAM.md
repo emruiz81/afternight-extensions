@@ -26,6 +26,10 @@ baseline is internally consistent. Passing `--ref HEAD` against a refreshed
 upstream checkout shows which VeraLux sources changed and which local port
 modules need review before updating the baseline.
 
+When rebasing a VeraLux port, update the matching `original_version` entry in
+`UPSTREAM.json` and the port module's `UPSTREAM_VERSION` constant. UI header
+attribution is generated from those constants through `veralux_attribution.py`.
+
 ## Included Sources
 
 ### Revela
@@ -143,10 +147,14 @@ modules need review before updating the baseline.
   adding SciPy only for this process. The native UI exposes an AfterNight
   point-curve editor with histogram overlay; pipette and applied-stage stack
   parity are deferred to a later native UI slice.
-- Nox uses a package-local NumPy membrane-smoothing background estimator instead
-  of requiring SciPy sparse solvers for this first native slice. Manual mask
-  painting, BVI dialog parity, and preview overlays are deferred to later host
-  integration.
+- Nox uses the upstream Zenith sparse membrane solver, dual-scale variance
+  protection, PSF veto, iterative positive-residual rejection, and smart
+  pedestal path when the packaged SciPy/OpenCV runtime dependencies are
+  installed. A NumPy fallback remains only for minimal local diagnostics.
+  AfterNight mask input replaces the original PyQt brush/lasso mask image, and
+  the native RT-preview surface is gated by an explicit Update Preview action
+  with displays for input protection, corrected output, and extracted gradient
+  model.
 - Silentium uses the upstream PyWavelets SWT/db2 coefficient-thresholding path
   and SciPy edge morphology when runtime dependencies are installed, with a
   NumPy fallback for minimal test environments. The native slice follows the

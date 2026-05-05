@@ -11,13 +11,11 @@ from __future__ import annotations
 
 from afternight import ui
 
+from veralux_attribution import attribution_text
 import veralux_hypermetric_stretch_core as core
 
 
-ATTRIBUTION_TEXT = (
-    "AfterNight port of VeraLux HyperMetric Stretch, originally authored by "
-    "Riccardo Paterniti for the VeraLux script suite."
-)
+ATTRIBUTION_TEXT = attribution_text("HyperMetric Stretch", core.UPSTREAM_VERSION)
 
 
 def _working_space_options():

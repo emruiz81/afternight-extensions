@@ -11,13 +11,11 @@ from __future__ import annotations
 
 from afternight import ui
 
+from veralux_attribution import attribution_text
 import veralux_starcomposer_core as core
 
 
-ATTRIBUTION_TEXT = (
-    "AfterNight port of VeraLux StarComposer, originally authored by Riccardo "
-    "Paterniti for the VeraLux script suite."
-)
+ATTRIBUTION_TEXT = attribution_text("StarComposer", core.UPSTREAM_VERSION)
 
 
 def _working_space_options():

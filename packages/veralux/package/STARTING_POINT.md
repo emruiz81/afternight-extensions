@@ -17,10 +17,12 @@ the eight native VeraLux process entries in this suite package.
 
    Use first on cropped linear data to reduce broad additive gradients from
    light pollution, vignetting, or uneven background illumination. The
-   AfterNight first pass keeps automatic signal protection, stiffness,
-   rejection power, correction strength, model grid, and optional input-mask
-   support. Manual mask painting, BVI preview overlays, and PSF-list star
-   masking are deferred to a later host UI parity pass.
+   AfterNight process keeps the original PSF auto-masking, signal-rejection,
+   membrane-stiffness, automatic calculation, and optional manual protection
+   mask workflow. Press Update Preview to render the selected Nox display:
+   input with protection overlay, corrected image, or extracted gradient
+   model. When Save Gradient Model is enabled, the model opens as a separate
+   image while the active image receives the gradient-removed result.
 
 2. VeraLux Silentium
 

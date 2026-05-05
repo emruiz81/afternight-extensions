@@ -179,6 +179,8 @@ class VeraLuxSilentiumAdapterTests(unittest.TestCase):
         self.assertIs(meta["preview_autostretch"], True)
         self.assertIs(meta["preview_autostretch_default"], True)
         self.assertIs(meta["header_progress"], False)
+        self.assertIn(f"source version {core.UPSTREAM_VERSION}", by_id["attribution"]["text"])
+        self.assertNotIn("upstream_version", by_id)
 
         section_labels = [item["label"] for item in defs if item.get("type") == "section"]
         self.assertEqual(

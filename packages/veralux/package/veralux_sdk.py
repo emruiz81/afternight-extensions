@@ -33,7 +33,12 @@ def first_mask_array(masks):
 
     if not masks:
         return None
-    first_mask = masks[0]
+    if isinstance(masks, dict):
+        first_mask = next(iter(masks.values()), None)
+    else:
+        first_mask = masks[0]
+    if first_mask is None:
+        return None
     if hasattr(first_mask, "to_numpy"):
         return np.asarray(first_mask.to_numpy(), dtype=np.float32)
     return np.asarray(first_mask, dtype=np.float32)
@@ -117,6 +122,14 @@ def _star_value(star, key, default):
     return getattr(star, key, default)
 
 
+def _star_value_any(star, keys, default):
+    for key in tuple(keys):
+        value = _star_value(star, key, None)
+        if value is not None:
+            return value
+    return default
+
+
 def _image_plane_shape(image_handle):
     data = read_image(image_handle)
     if data.ndim < 2:
@@ -164,6 +177,84 @@ def star_mask_from_find_stars(
         star_mask = np.exp(-(((xx - x) ** 2) + ((yy - y) ** 2)) / (2.0 * sigma * sigma))
         mask = np.maximum(mask, star_mask.astype(np.float32, copy=False))
     return np.clip(mask, 0.0, 1.0).astype(np.float32, copy=False)
+
+
+def star_mask_and_median_fwhm_from_find_stars(
+    image_handle,
+    *,
+    finder=None,
+    max_stars=512,
+    radius_scale=1.8,
+    min_radius=3.0,
+    max_radius=24.0,
+    params=None,
+):
+    """Build Nox's PSF-style star veto mask plus a median FWHM estimate."""
+
+    if finder is None:
+        from afternight import registration
+
+        finder = registration.find_stars
+
+    height, width = _image_plane_shape(image_handle)
+    mask = np.zeros((height, width), dtype=np.float32)
+    stars = finder(image_handle, max_stars=int(max_stars), params=dict(params or {}))
+    if not stars:
+        return mask, 4.0
+
+    yy, xx = np.mgrid[0:height, 0:width].astype(np.float32)
+    fwhm_values = []
+    radius_scale = float(radius_scale)
+    min_radius = float(min_radius)
+    max_radius = float(max_radius)
+    for star in stars:
+        x = float(_star_value_any(star, ("x", "X"), -1.0))
+        y = float(_star_value_any(star, ("y", "Y"), -1.0))
+        if x < 0.0 or y < 0.0 or x >= width or y >= height:
+            continue
+        fwhm_x = float(_star_value_any(star, ("FWHMx", "fwhm_x", "fwhmx", "fwhm"), min_radius))
+        fwhm_y = float(_star_value_any(star, ("FWHMy", "fwhm_y", "fwhmy", "fwhm"), fwhm_x))
+        fwhm_x = max(fwhm_x, 1.0)
+        fwhm_y = max(fwhm_y, 1.0)
+        fwhm = (fwhm_x + fwhm_y) * 0.5
+        fwhm_values.append(fwhm)
+        radius = fwhm * radius_scale
+        axis_a = float(_star_value_any(star, ("A", "a", "major_axis", "major"), fwhm))
+        axis_b = float(_star_value_any(star, ("B", "b", "minor_axis", "minor"), fwhm))
+        if max(axis_a, axis_b) > 0.0:
+            ba_ratio = min(axis_a, axis_b) / max(axis_a, axis_b)
+            if ba_ratio < 0.3:
+                radius *= 1.3
+        magnitude = float(_star_value_any(star, ("Mag", "mag", "magnitude"), 0.0))
+        if magnitude < -3.0:
+            radius *= 1.4
+        radius = float(np.clip(max(radius, min_radius), min_radius, max_radius))
+
+        cx = int(round(x))
+        cy = int(round(y))
+        rad = int(radius + 2.0)
+        y0 = max(0, cy - rad)
+        y1 = min(height, cy + rad + 1)
+        x0 = max(0, cx - rad)
+        x1 = min(width, cx + rad + 1)
+        if y0 >= y1 or x0 >= x1:
+            continue
+        local_y = yy[y0:y1, x0:x1]
+        local_x = xx[y0:y1, x0:x1]
+        theta = math.radians(float(_star_value_any(star, ("Angle", "angle"), 0.0)))
+        c = math.cos(theta)
+        sn = math.sin(theta)
+        xx_rot = (local_x - x) * c - (local_y - y) * sn
+        yy_rot = (local_x - x) * sn + (local_y - y) * c
+        sx = max(fwhm_x / 2.355, 1e-3)
+        sy = max(fwhm_y / 2.355, 1e-3)
+        star_mask = np.exp(-0.5 * ((xx_rot / sx) ** 2 + (yy_rot / sy) ** 2))
+        mask[y0:y1, x0:x1] = np.maximum(mask[y0:y1, x0:x1], star_mask.astype(np.float32, copy=False))
+
+    if np.max(mask) > 0.0:
+        mask /= np.max(mask)
+    median_fwhm = float(np.median(fwhm_values)) if fwhm_values else 4.0
+    return np.clip(mask, 0.0, 1.0).astype(np.float32, copy=False), max(median_fwhm, 1.0)
 
 
 def star_mask_and_fwhm_map_from_find_stars(

@@ -105,7 +105,15 @@
       "class": "VeraLuxNoxExtension",
       "display_name": "VeraLux Nox",
       "category": "background_extraction",
-      "action_object_name": "actionVeraLux_Nox"
+      "action_object_name": "actionVeraLux_Nox",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true,
+        "masks": {
+          "input": true
+        }
+      }
     },
     {
       "id_suffix": "starcomposer",

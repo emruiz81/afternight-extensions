@@ -11,13 +11,11 @@ from __future__ import annotations
 
 from afternight import ui
 
+from veralux_attribution import attribution_text
 import veralux_silentium_core as core
 
 
-ATTRIBUTION_TEXT = (
-    "AfterNight port of VeraLux Silentium, originally authored by Riccardo "
-    "Paterniti for the VeraLux script suite."
-)
+ATTRIBUTION_TEXT = attribution_text("Silentium", core.UPSTREAM_VERSION)
 
 
 def parameter_defs():
@@ -136,10 +134,5 @@ def parameter_defs():
             "label": "Auto Starless Detection",
             "default": True,
             "tooltip": "Disable the star-protection mask automatically when too few stars are detected.",
-        },
-        {
-            "id": "upstream_version",
-            "type": "info",
-            "text": f"Ported from VeraLux Silentium {core.UPSTREAM_VERSION}.",
         },
     ]

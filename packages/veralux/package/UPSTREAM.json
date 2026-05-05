@@ -96,9 +96,10 @@
       "original_version": "1.0.1",
       "intentional_divergences": [
         "Replace sirilpy image retrieval, undo, user dialogs, and logging with AfterNight SDK image handles and metadata.",
-        "Replace PyQt6 BVI/manual-mask UI with native AfterNight parameter definitions for the first process port.",
-        "Use a package-local NumPy membrane-smoothing background estimator instead of requiring SciPy sparse solvers for this first native slice.",
-        "Preserve automatic signal protection, stiffness, rejection-power, and correction-strength controls while deferring manual mask painting and preview overlays to later host integration."
+        "Replace PyQt6 BVI/manual-mask UI with native AfterNight parameter definitions and host mask input.",
+        "Use the upstream Zenith sparse membrane solver, dual-scale variance protection, PSF veto, iterative positive-residual rejection, and smart pedestal path when SciPy/OpenCV runtime dependencies are installed, with a NumPy fallback only for minimal diagnostics.",
+        "Expose Nox as an AfterNight RT-preview process gated by an explicit Update Preview action, with display choices for input protection, corrected output, and extracted gradient model.",
+        "Save the extracted gradient model as a separate AfterNight image while always applying the corrected gradient-removed image to the source."
       ]
     },
     {

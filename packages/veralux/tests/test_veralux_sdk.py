@@ -37,6 +37,7 @@ class VeraLuxSdkTests(unittest.TestCase):
         read = sdk.read_image(source)
         sdk.write_image(destination, read * 0.5)
         mask = sdk.first_mask_array([mask_handle])
+        dict_mask = sdk.first_mask_array({"protection": mask_handle})
         sdk.stamp_result(
             destination,
             extension_id="veralux_test",
@@ -50,6 +51,7 @@ class VeraLuxSdkTests(unittest.TestCase):
         self.assertEqual(destination.array.dtype, np.float32)
         self.assertTrue(np.allclose(destination.array, read * 0.5))
         self.assertTrue(np.allclose(mask, 0.75))
+        self.assertTrue(np.allclose(dict_mask, 0.75))
         self.assertEqual(destination.metadata["afternight.extension"], "veralux_test")
         self.assertEqual(destination.metadata["veralux.tool"], "Test Tool")
         self.assertEqual(destination.metadata["veralux.upstream_version"], "1.2.3")
@@ -100,6 +102,36 @@ class VeraLuxSdkTests(unittest.TestCase):
         self.assertEqual(calls[0][0], image)
         self.assertEqual(calls[0][1]["max_stars"], 7)
         self.assertEqual(calls[0][1]["params"], {"sensitivity": 0.7})
+        self.assertGreater(float(mask[16, 12]), 0.9)
+        self.assertGreater(float(mask[26, 35]), 0.9)
+        self.assertLess(float(mask[0, 0]), 0.05)
+
+    def test_nox_star_mask_helper_returns_mask_and_median_fwhm(self):
+        image = FakeImage(np.zeros((40, 48, 3), dtype=np.float32))
+        calls = []
+
+        def fake_find_stars(handle, **kwargs):
+            calls.append((handle, kwargs))
+            return [
+                {"x": 12.0, "y": 16.0, "fwhm": 4.0},
+                {"x": 35.0, "y": 26.0, "fwhm": 5.5},
+            ]
+
+        mask, median_fwhm = sdk.star_mask_and_median_fwhm_from_find_stars(
+            image,
+            finder=fake_find_stars,
+            max_stars=9,
+            radius_scale=1.8,
+            min_radius=3.0,
+            max_radius=24.0,
+            params={"sensitivity": 0.5},
+        )
+
+        self.assertEqual(mask.shape, (40, 48))
+        self.assertAlmostEqual(median_fwhm, 4.75)
+        self.assertEqual(calls[0][0], image)
+        self.assertEqual(calls[0][1]["max_stars"], 9)
+        self.assertEqual(calls[0][1]["params"], {"sensitivity": 0.5})
         self.assertGreater(float(mask[16, 12]), 0.9)
         self.assertGreater(float(mask[26, 35]), 0.9)
         self.assertLess(float(mask[0, 0]), 0.05)

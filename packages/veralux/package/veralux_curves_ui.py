@@ -11,11 +11,11 @@ from __future__ import annotations
 
 from afternight import ui
 
+from veralux_attribution import attribution_text
+import veralux_curves_core as core
 
-ATTRIBUTION_TEXT = (
-    "AfterNight port of VeraLux Curves, originally authored by Riccardo "
-    "Paterniti for the VeraLux script suite."
-)
+
+ATTRIBUTION_TEXT = attribution_text("Curves", core.UPSTREAM_VERSION)
 
 
 def _domain_options():

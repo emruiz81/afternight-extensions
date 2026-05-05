@@ -11,13 +11,11 @@ from __future__ import annotations
 
 from afternight import ui
 
+from veralux_attribution import attribution_text
 import veralux_alchemy_core as core
 
 
-ATTRIBUTION_TEXT = (
-    "AfterNight port of VeraLux Alchemy, originally authored by Riccardo "
-    "Paterniti for the VeraLux script suite."
-)
+ATTRIBUTION_TEXT = attribution_text("Alchemy", core.UPSTREAM_VERSION)
 
 
 def _sensor_options():
