@@ -16,35 +16,27 @@ import veralux_vectra_ui as vectra_ui
 import veralux_sdk as sdk
 
 
-class VeraLuxVectraExtension(ui.ProcessWindow):
+class VeraLuxVectraExtension(ui.RTPreviewProcess):
     component = "extension.veralux_vectra"
 
     def get_params(self):
         return vectra_ui.parameter_defs()
 
-    def execute(
-        self,
-        target,
-        src_image,
-        dst_image,
-        params,
-        progress,
-        masks=None,
-        weights=None,
-        output_masks=None,
-    ):
-        del target, masks, weights, output_masks
-        progress.set_text("Applying VeraLux Vectra...")
+    @staticmethod
+    def _saturation_from_ui(params, key):
+        return float(params.get(key, 0.0)) / 100.0
+
+    def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Vectra processing was cancelled.")
 
         vectors = {
-            "R": (float(params.get("red_hue", 0.0)), float(params.get("red_saturation", 0.0))),
-            "G": (float(params.get("green_hue", 0.0)), float(params.get("green_saturation", 0.0))),
-            "B": (float(params.get("blue_hue", 0.0)), float(params.get("blue_saturation", 0.0))),
-            "C": (float(params.get("cyan_hue", 0.0)), float(params.get("cyan_saturation", 0.0))),
-            "M": (float(params.get("magenta_hue", 0.0)), float(params.get("magenta_saturation", 0.0))),
-            "Y": (float(params.get("yellow_hue", 0.0)), float(params.get("yellow_saturation", 0.0))),
+            "R": (float(params.get("red_hue", 0.0)), self._saturation_from_ui(params, "red_saturation")),
+            "G": (float(params.get("green_hue", 0.0)), self._saturation_from_ui(params, "green_saturation")),
+            "B": (float(params.get("blue_hue", 0.0)), self._saturation_from_ui(params, "blue_saturation")),
+            "Y": (float(params.get("yellow_hue", 0.0)), self._saturation_from_ui(params, "yellow_saturation")),
+            "C": (float(params.get("cyan_hue", 0.0)), self._saturation_from_ui(params, "cyan_saturation")),
+            "M": (float(params.get("magenta_hue", 0.0)), self._saturation_from_ui(params, "magenta_saturation")),
         }
 
         source = sdk.read_image(src_image)
@@ -59,12 +51,42 @@ class VeraLuxVectraExtension(ui.ProcessWindow):
             raise RuntimeError("VeraLux Vectra processing was cancelled.")
 
         sdk.write_image(dst_image, result)
-        sdk.stamp_result(
-            dst_image,
-            extension_id="veralux_vectra",
-            tool_name="Vectra",
-            upstream_version=core.UPSTREAM_VERSION,
-            attribution=vectra_ui.ATTRIBUTION_TEXT,
-        )
+        if not preview:
+            sdk.stamp_result(
+                dst_image,
+                extension_id="veralux_vectra",
+                tool_name="Vectra",
+                upstream_version=core.UPSTREAM_VERSION,
+                attribution=vectra_ui.ATTRIBUTION_TEXT,
+            )
         progress.set_value(100.0)
+
+    def execute_preview(
+        self,
+        target,
+        src_image,
+        preview_image,
+        params,
+        progress,
+        masks=None,
+        weights=None,
+    ):
+        del target, masks, weights
+        progress.set_text("Rendering VeraLux Vectra preview...")
+        self._process(src_image, preview_image, params, progress, preview=True)
+
+    def execute(
+        self,
+        target,
+        src_image,
+        dst_image,
+        params,
+        progress,
+        masks=None,
+        weights=None,
+        output_masks=None,
+    ):
+        del target, masks, weights, output_masks
+        progress.set_text("Applying VeraLux Vectra...")
+        self._process(src_image, dst_image, params, progress, preview=False)
         sdk.log_info("VeraLux Vectra applied successfully.", component=self.component)

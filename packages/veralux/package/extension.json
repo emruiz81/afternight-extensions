@@ -121,6 +121,9 @@
       "category": "color",
       "action_object_name": "actionVeraLux_Vectra",
       "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true,
         "source_channel_filter": [3]
       }
     },

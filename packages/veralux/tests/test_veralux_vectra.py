@@ -10,6 +10,7 @@ APP_REPO = Path(__file__).resolve().parents[4] / "afternight"
 sys.path.insert(0, str(PACKAGE_ROOT))
 sys.path.insert(0, str(APP_REPO / "python" / "modules"))
 
+from afternight import ui  # noqa: E402
 import veralux_vectra_core as core  # noqa: E402
 from veralux_extension import VeraLuxVectraExtension as SuiteVectraExtension  # noqa: E402
 from veralux_vectra_adapter import VeraLuxVectraExtension  # noqa: E402
@@ -98,6 +99,55 @@ class VeraLuxVectraCoreTests(unittest.TestCase):
 
 
 class VeraLuxVectraAdapterTests(unittest.TestCase):
+    def test_vectra_uses_rt_preview_native_window_with_upstream_tabs(self):
+        extension = VeraLuxVectraExtension(None)
+
+        self.assertTrue(issubclass(VeraLuxVectraExtension, ui.RTPreviewProcess))
+        params = extension.get_params()
+        meta = params[0]
+
+        self.assertEqual(meta["type"], "meta")
+        self.assertEqual(meta["window_size"], [1260, 760])
+        self.assertTrue(meta["sub_area"])
+        self.assertFalse(meta["sub_area_default_enabled"])
+        self.assertEqual(meta["sub_area_label"], "Preview: Vectra")
+        self.assertEqual(meta["controls_panel_width"], 520)
+        self.assertTrue(meta["target_selector"])
+        self.assertEqual(meta["target_channel_filter"], [3])
+        self.assertFalse(meta["header_progress"])
+
+        ids_by_type = [(param.get("id"), param.get("type"), param.get("label")) for param in params]
+        self.assertIn(("vector_tabs", "tabs", None), ids_by_type)
+        self.assertIn(("primary_vectors", "tab", "Primary Vectors"), ids_by_type)
+        self.assertIn(("secondary_vectors", "tab", "Secondary Vectors"), ids_by_type)
+        self.assertIn(("end_vector_tabs", "end_tabs", None), ids_by_type)
+
+        primary_index = next(i for i, param in enumerate(params) if param.get("id") == "primary_vectors")
+        secondary_index = next(i for i, param in enumerate(params) if param.get("id") == "secondary_vectors")
+        protection_index = next(i for i, param in enumerate(params) if param.get("id") == "protection")
+        self.assertLess(primary_index, secondary_index)
+        self.assertLess(secondary_index, protection_index)
+
+        saturation_params = {
+            param["id"]: param
+            for param in params
+            if str(param.get("id", "")).endswith("_saturation")
+        }
+        self.assertEqual(set(saturation_params), {
+            "red_saturation",
+            "green_saturation",
+            "blue_saturation",
+            "yellow_saturation",
+            "cyan_saturation",
+            "magenta_saturation",
+        })
+        for param in saturation_params.values():
+            self.assertEqual(param["label"], "Saturation")
+            self.assertEqual(param["min"], -100.0)
+            self.assertEqual(param["max"], 100.0)
+            self.assertEqual(param["step"], 1.0)
+            self.assertFalse(param["tracking"])
+
     def test_execute_writes_processed_image_and_provenance_metadata(self):
         src = FakeImage(synthetic_stretched_rgb())
         dst = FakeImage(np.zeros_like(src.array))
@@ -110,9 +160,9 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
             dst,
             {
                 "red_hue": 22.0,
-                "red_saturation": 0.35,
+                "red_saturation": 35.0,
                 "blue_hue": -15.0,
-                "blue_saturation": 0.20,
+                "blue_saturation": 20.0,
                 "shadow_authority": 0.0,
                 "protect_stars": True,
             },
@@ -124,6 +174,30 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["afternight.extension"], "veralux_vectra")
         self.assertEqual(dst.metadata["veralux.tool"], "Vectra")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(progress.value, 100.0)
+
+    def test_execute_preview_writes_result_without_provenance_metadata(self):
+        src = FakeImage(synthetic_stretched_rgb())
+        preview = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxVectraExtension(None)
+
+        extension.execute_preview(
+            None,
+            src,
+            preview,
+            {
+                "yellow_hue": 18.0,
+                "yellow_saturation": 45.0,
+                "shadow_authority": 0.0,
+                "protect_stars": True,
+            },
+            progress,
+        )
+
+        self.assertEqual(preview.array.shape, src.array.shape)
+        self.assertGreater(float(np.mean(np.abs(preview.array - src.array))), 1e-3)
+        self.assertNotIn("afternight.extension", preview.metadata)
         self.assertEqual(progress.value, 100.0)
 
     def test_suite_entry_point_exports_vectra_process(self):

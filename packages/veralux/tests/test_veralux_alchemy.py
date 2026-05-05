@@ -156,7 +156,7 @@ class VeraLuxAlchemyAdapterTests(unittest.TestCase):
 
         self.assertEqual(
             processes["alchemy"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True},
+            {"execute": True, "preview": True, "keep_open": True, "source_channel_filter": [3]},
         )
 
     def test_execute_writes_processed_image_and_provenance_metadata(self):
