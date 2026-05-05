@@ -57,17 +57,30 @@ def parameter_defs():
             "default": PREVIEW_CORRECTED,
             "options": [
                 ["Protected Source", PREVIEW_SOURCE_MASK],
-                ["Corrected Result", PREVIEW_CORRECTED],
+                ["Processed Image", PREVIEW_CORRECTED],
                 ["Extracted Gradient", PREVIEW_BACKGROUND],
             ],
             "tooltip": "Select what the next preview refresh renders.",
+            "inline_actions": [
+                {
+                    "id": "refresh_preview",
+                    "type": "button",
+                    "label": "Update Preview",
+                    "button_role": "primary",
+                    "preview_refresh_role": True,
+                    "tooltip": "Recompute the processed image and extracted gradient for the current parameters.",
+                },
+            ],
         },
         {
-            "id": "refresh_preview",
-            "type": "button",
-            "label": "Update Preview",
-            "button_role": "primary",
-            "tooltip": "Render the selected Nox preview display.",
+            "id": "preview_status",
+            "type": "info",
+            "tone": "warning",
+            "preview_status": True,
+            "text": "Preview update needed.",
+            "stale_text": "Preview update needed.",
+            "ready_text": "Preview is up to date.",
+            "updating_text": "Updating preview...",
         },
         {
             "id": "physics",
@@ -79,6 +92,7 @@ def parameter_defs():
             "type": "bool",
             "label": "Use PSF Auto-Masking",
             "default": True,
+            "preview_invalidates": True,
             "tooltip": "Use AfterNight star profiling and Nox topology weights to protect stars and faint signal.",
         },
         {
@@ -97,6 +111,7 @@ def parameter_defs():
             "max": 100,
             "step": 1,
             "tracking": False,
+            "preview_invalidates": True,
             "tooltip": "Original Nox aggression scale. Higher values prioritize signal preservation.",
         },
         {
@@ -122,6 +137,7 @@ def parameter_defs():
             "max": 4.0,
             "step": 0.1,
             "tracking": False,
+            "preview_invalidates": True,
             "tooltip": "Tension of the Zenith background membrane.",
         },
         {

@@ -107,9 +107,6 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
                 return np.clip(model, 0.0, 1.0).astype(np.float32, copy=False)
             return np.zeros_like(np.asarray(source), dtype=np.float32)
 
-        if not self._preview_cache:
-            return core.source_with_protection_overlay(source, user_mask)
-
         if preview_mode == nox_ui.PREVIEW_SOURCE_MASK:
             return self._preview_cache.get(
                 nox_ui.PREVIEW_SOURCE_MASK,
@@ -118,7 +115,7 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
 
         return self._preview_cache.get(
             nox_ui.PREVIEW_CORRECTED,
-            core.source_with_protection_overlay(source, user_mask),
+            np.asarray(source, dtype=np.float32),
         )
 
     def execute_preview(

@@ -155,22 +155,30 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
             by_id["preview_mode"]["options"],
             [
                 ["Protected Source", nox_ui.PREVIEW_SOURCE_MASK],
-                ["Corrected Result", nox_ui.PREVIEW_CORRECTED],
+                ["Processed Image", nox_ui.PREVIEW_CORRECTED],
                 ["Extracted Gradient", nox_ui.PREVIEW_BACKGROUND],
             ],
         )
-        self.assertEqual(by_id["refresh_preview"]["type"], "button")
-        self.assertEqual(by_id["refresh_preview"]["button_role"], "primary")
+        self.assertEqual(by_id["preview_mode"]["inline_actions"][0]["id"], "refresh_preview")
+        self.assertEqual(by_id["preview_mode"]["inline_actions"][0]["type"], "button")
+        self.assertEqual(by_id["preview_mode"]["inline_actions"][0]["button_role"], "primary")
+        self.assertIs(by_id["preview_mode"]["inline_actions"][0]["preview_refresh_role"], True)
+        self.assertEqual(by_id["preview_status"]["type"], "info")
+        self.assertIs(by_id["preview_status"]["preview_status"], True)
+        self.assertEqual(by_id["preview_status"]["tone"], "warning")
         self.assertNotIn("preview_generation", by_id)
         self.assertIs(by_id["auto_mask"]["default"], True)
+        self.assertIs(by_id["auto_mask"]["preview_invalidates"], True)
         self.assertEqual(by_id["rejection_power"]["type"], "int")
         self.assertEqual(by_id["rejection_power"]["label"], "Signal Rejection Power")
         self.assertEqual(by_id["rejection_power"]["min"], 0)
         self.assertEqual(by_id["rejection_power"]["max"], 100)
+        self.assertIs(by_id["rejection_power"]["preview_invalidates"], True)
         self.assertEqual(by_id["rejection_power_readout"]["type"], "value_description_label")
         self.assertEqual(by_id["rejection_power_readout"]["text"], "50% - Balanced")
         self.assertEqual(by_id["stiffness"]["min"], 1.0)
         self.assertEqual(by_id["stiffness"]["max"], 4.0)
+        self.assertIs(by_id["stiffness"]["preview_invalidates"], True)
         self.assertEqual(by_id["stiffness_readout"]["type"], "value_description_label")
         self.assertEqual(by_id["stiffness_readout"]["text"], "2.0")
         self.assertIs(by_id["save_gradient_model"]["default"], False)
@@ -289,7 +297,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         extension.execute_preview(None, src, preview, params, progress, masks=[mask])
 
         self.assertEqual(calls, [])
-        self.assertGreater(float(preview.array[8, 8, 0]), float(src.array[8, 8, 0]))
+        self.assertTrue(np.allclose(preview.array, src.array))
 
         params.update(extension.handle_param_action("refresh_preview", None, src, params))
         extension.execute_preview(None, src, preview, params, progress, masks=[mask])
