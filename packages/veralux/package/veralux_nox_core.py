@@ -21,23 +21,14 @@ import math
 
 import numpy as np
 
-try:  # pragma: no cover - exercised in the packaged runtime.
-    import cv2 as _cv2
-except Exception:  # pragma: no cover - local test environments may omit OpenCV.
-    _cv2 = None
-
-try:  # pragma: no cover - exercised in the packaged runtime.
-    from scipy import sparse as _sparse
-    from scipy.ndimage import uniform_filter as _scipy_uniform_filter
-    from scipy.sparse.linalg import cg as _scipy_cg
-    from scipy.sparse.linalg import spsolve as _scipy_spsolve
-    from scipy.special import expit as _scipy_expit
-except Exception:  # pragma: no cover - local test environments may omit SciPy.
-    _sparse = None
-    _scipy_cg = None
-    _scipy_expit = None
-    _scipy_spsolve = None
-    _scipy_uniform_filter = None
+_cv2 = None
+_cv2_import_attempted = False
+_sparse = None
+_scipy_cg = None
+_scipy_expit = None
+_scipy_import_attempted = False
+_scipy_spsolve = None
+_scipy_uniform_filter = None
 
 
 UPSTREAM_VERSION = "1.0.1"
@@ -45,7 +36,57 @@ ORIGINAL_MAX_GRID = 50
 ORIGINAL_TARGET_FLOOR = 0.001
 
 
+def _load_cv2():
+    """Return cv2 when available, importing it only once on first algorithm use."""
+
+    global _cv2, _cv2_import_attempted
+    if not _cv2_import_attempted:
+        _cv2_import_attempted = True
+        try:  # pragma: no cover - exercised in the packaged runtime.
+            import cv2
+
+            _cv2 = cv2
+        except Exception:  # pragma: no cover - local test environments may omit OpenCV.
+            _cv2 = None
+    return _cv2
+
+
+def _load_scipy():
+    """Return True when SciPy solver helpers are available, importing lazily."""
+
+    global _sparse, _scipy_cg, _scipy_expit, _scipy_import_attempted
+    global _scipy_spsolve, _scipy_uniform_filter
+    if not _scipy_import_attempted:
+        _scipy_import_attempted = True
+        try:  # pragma: no cover - exercised in the packaged runtime.
+            from scipy import sparse
+            from scipy.ndimage import uniform_filter
+            from scipy.sparse.linalg import cg, spsolve
+            from scipy.special import expit
+
+            _sparse = sparse
+            _scipy_cg = cg
+            _scipy_expit = expit
+            _scipy_spsolve = spsolve
+            _scipy_uniform_filter = uniform_filter
+        except Exception:  # pragma: no cover - local test environments may omit SciPy.
+            _sparse = None
+            _scipy_cg = None
+            _scipy_expit = None
+            _scipy_spsolve = None
+            _scipy_uniform_filter = None
+    return (
+        _sparse is not None
+        and _scipy_cg is not None
+        and _scipy_spsolve is not None
+        and _scipy_uniform_filter is not None
+        and _scipy_expit is not None
+    )
+
+
 def _exact_solver_available():
+    _load_cv2()
+    _load_scipy()
     return (
         _cv2 is not None
         and _sparse is not None
@@ -164,14 +205,15 @@ def _resize_nearest(image, out_h, out_w):
 def _resize(image, size, interpolation="linear"):
     out_w, out_h = int(size[0]), int(size[1])
     values = np.asarray(image)
-    if _cv2 is not None:
+    cv2 = _load_cv2()
+    if cv2 is not None:
         flag = {
-            "area": _cv2.INTER_AREA,
-            "cubic": _cv2.INTER_CUBIC,
-            "nearest": _cv2.INTER_NEAREST,
-            "linear": _cv2.INTER_LINEAR,
-        }.get(interpolation, _cv2.INTER_LINEAR)
-        return _cv2.resize(values, (out_w, out_h), interpolation=flag)
+            "area": cv2.INTER_AREA,
+            "cubic": cv2.INTER_CUBIC,
+            "nearest": cv2.INTER_NEAREST,
+            "linear": cv2.INTER_LINEAR,
+        }.get(interpolation, cv2.INTER_LINEAR)
+        return cv2.resize(values, (out_w, out_h), interpolation=flag)
 
     if interpolation == "nearest":
         return _resize_nearest(values, out_h, out_w).astype(values.dtype, copy=False)
@@ -203,6 +245,7 @@ def _box_blur_reflect(image, radius):
 
 
 def _uniform_filter(image, size):
+    _load_scipy()
     if _scipy_uniform_filter is not None:
         return _scipy_uniform_filter(image, size, mode="reflect")
     radius = max(0, int(size) // 2)
@@ -210,6 +253,7 @@ def _uniform_filter(image, size):
 
 
 def _expit(values):
+    _load_scipy()
     if _scipy_expit is not None:
         return _scipy_expit(values)
     clipped = np.clip(values, -60.0, 60.0)
@@ -223,8 +267,9 @@ def _ellipse_kernel(size):
         h = w = int(size)
     h = max(1, h)
     w = max(1, w)
-    if _cv2 is not None:
-        return _cv2.getStructuringElement(_cv2.MORPH_ELLIPSE, (w, h))
+    cv2 = _load_cv2()
+    if cv2 is not None:
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (w, h))
     y, x = np.ogrid[:h, :w]
     cy = (h - 1) / 2.0
     cx = (w - 1) / 2.0
@@ -235,10 +280,11 @@ def _ellipse_kernel(size):
 
 def _morph(values, kernel, op):
     data = np.asarray(values)
-    if _cv2 is not None:
+    cv2 = _load_cv2()
+    if cv2 is not None:
         if op == "erode":
-            return _cv2.erode(data, kernel, iterations=1)
-        return _cv2.dilate(data, kernel, iterations=1)
+            return cv2.erode(data, kernel, iterations=1)
+        return cv2.dilate(data, kernel, iterations=1)
 
     mask = np.asarray(kernel).astype(bool)
     pad_y = mask.shape[0] // 2
@@ -256,8 +302,9 @@ def _morph(values, kernel, op):
 
 
 def _copy_make_border_replicate(values, pad_y, pad_x):
-    if _cv2 is not None:
-        return _cv2.copyMakeBorder(values, pad_y, pad_y, pad_x, pad_x, _cv2.BORDER_REPLICATE)
+    cv2 = _load_cv2()
+    if cv2 is not None:
+        return cv2.copyMakeBorder(values, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_REPLICATE)
     return np.pad(values, ((pad_y, pad_y), (pad_x, pad_x)), mode="edge")
 
 
@@ -345,6 +392,7 @@ def apply_autostretch(image):
 
 
 def construct_difference_matrix_1d(n, order=2):
+    _load_scipy()
     if _sparse is None:
         return None
     if order == 1:
@@ -357,6 +405,7 @@ def construct_difference_matrix_1d(n, order=2):
 
 
 def construct_regularizer_kron(h, w):
+    _load_scipy()
     if _sparse is None:
         return None
     i_h = _sparse.eye(h)
@@ -533,8 +582,9 @@ def membrane_solve_channel(img_2d, mask_2d, precomputed_variance, stiffness_val,
     w_grid = int(w_orig * scale)
     if h_grid < 5 or w_grid < 5:
         kernel = (max(1, h_orig // 2), max(1, w_orig // 2))
-        if _cv2 is not None:
-            return _cv2.blur(img_2d, kernel)
+        cv2 = _load_cv2()
+        if cv2 is not None:
+            return cv2.blur(img_2d, kernel)
         return _box_blur_reflect(img_2d, max(kernel) // 2)
 
     if not _exact_solver_available():

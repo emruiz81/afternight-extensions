@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -77,6 +78,26 @@ def corner_medians(image):
 
 
 class VeraLuxNoxCoreTests(unittest.TestCase):
+    def test_core_import_does_not_eagerly_import_solver_modules(self):
+        script = (
+            "import json, sys; "
+            f"sys.path.insert(0, {str(PACKAGE_ROOT)!r}); "
+            "import veralux_nox_core as core; "
+            "print(json.dumps({"
+            "'cv2_attempted': core._cv2_import_attempted, "
+            "'scipy_attempted': core._scipy_import_attempted"
+            "}))"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        state = json.loads(result.stdout.strip().splitlines()[-1])
+        self.assertFalse(state["cv2_attempted"])
+        self.assertFalse(state["scipy_attempted"])
+
     def test_gradient_reduction_flattens_background_and_preserves_signal(self):
         source = synthetic_gradient_field()
 
