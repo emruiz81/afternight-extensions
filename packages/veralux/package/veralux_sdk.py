@@ -38,7 +38,9 @@ def write_image(image_handle, array):
         info = np.iinfo(destination_dtype)
         data_float = np.nan_to_num(data.astype(np.float32, copy=False), nan=0.0, posinf=1.0, neginf=0.0)
         if np.issubdtype(destination_dtype, np.unsignedinteger):
-            data = np.rint(np.clip(data_float, 0.0, 1.0) * float(info.max)).astype(destination_dtype)
+            # Match AfterNight's native float-to-integer converters and the
+            # original VeraLux preview display path, both of which truncate.
+            data = (np.clip(data_float, 0.0, 1.0) * float(info.max)).astype(destination_dtype)
         else:
             data = np.rint(np.clip(data_float, float(info.min), float(info.max))).astype(destination_dtype)
     else:

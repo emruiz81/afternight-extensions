@@ -75,10 +75,10 @@ class VeraLuxSdkTests(unittest.TestCase):
 
         self.assertEqual(destination.array.dtype, np.uint16)
         self.assertEqual(int(destination.array[0, 0]), 0)
-        self.assertAlmostEqual(int(destination.array[0, 1]), 32768, delta=1)
+        self.assertEqual(int(destination.array[0, 1]), 32767)
         self.assertEqual(int(destination.array[0, 2]), 65535)
-        self.assertAlmostEqual(int(destination.array[1, 0]), 16384, delta=1)
-        self.assertAlmostEqual(int(destination.array[1, 1]), 49151, delta=1)
+        self.assertEqual(int(destination.array[1, 0]), 16383)
+        self.assertEqual(int(destination.array[1, 1]), 49151)
         self.assertEqual(int(destination.array[1, 2]), 65535)
 
     def test_settings_migration_and_preview_helpers_are_deterministic(self):
