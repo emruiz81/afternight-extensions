@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2025 Riccardo Paterniti
-# AfterNight port Copyright (c) 2026 AfterNight contributors
+# AfterNight port Copyright (c) 2026 Ezequiel Ruiz
 # Ported from VeraLux HyperMetric Stretch by Riccardo Paterniti.
 # Original source: https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_HyperMetric_Stretch.py
 # Upstream baseline: 4ce0af52926e071caef55f4d17ac17ae8d8b4aac; local port notes: see UPSTREAM.md.

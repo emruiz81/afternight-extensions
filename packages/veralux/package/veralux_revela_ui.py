@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2025 Riccardo Paterniti
-# AfterNight port Copyright (c) 2026 AfterNight contributors
-# Ported from VeraLux Revela by Riccardo Paterniti.
+# AfterNight port Copyright (c) 2026 Ezequiel Ruiz
+# Original work (VeraLux Revela) by Riccardo Paterniti. AfterNight port by Ezequiel Ruiz.
 # Original source: https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Revela.py
 # Upstream baseline: 4ce0af52926e071caef55f4d17ac17ae8d8b4aac; local port notes: see UPSTREAM.md.
 

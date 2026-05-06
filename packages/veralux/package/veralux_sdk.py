@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# AfterNight port Copyright (c) 2026 AfterNight contributors
+# AfterNight port Copyright (c) 2026 Ezequiel Ruiz
 
 """Shared AfterNight SDK helpers for the VeraLux suite adapters."""
 
