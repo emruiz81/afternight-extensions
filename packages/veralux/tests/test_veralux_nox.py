@@ -124,6 +124,16 @@ class VeraLuxNoxCoreTests(unittest.TestCase):
         self.assertGreaterEqual(rejection_power, 25.0)
         self.assertLessEqual(rejection_power, 72.0)
 
+    def test_manual_protection_mask_matches_original_micro_seal(self):
+        mask = np.zeros((7, 7), dtype=np.float32)
+        mask[3, 3] = 1.0
+
+        sky = core._protection_to_sky_mask(mask, mask.shape)
+
+        self.assertTrue(sky.dtype == bool)
+        self.assertFalse(np.any(sky[2:5, 2:5]))
+        self.assertTrue(sky[0, 0])
+
 
 class VeraLuxNoxAdapterTests(unittest.TestCase):
     def test_process_is_rt_preview_based_with_manual_refresh_controls(self):
@@ -154,9 +164,9 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         self.assertEqual(
             by_id["preview_mode"]["options"],
             [
-                ["Protected Source", nox_ui.PREVIEW_SOURCE_MASK],
                 ["Processed Image", nox_ui.PREVIEW_CORRECTED],
                 ["Extracted Gradient", nox_ui.PREVIEW_BACKGROUND],
+                ["Protection Mask", nox_ui.PREVIEW_PROTECTION_MASK],
             ],
         )
         self.assertEqual(by_id["preview_mode"]["inline_actions"][0]["id"], "refresh_preview")
@@ -166,6 +176,17 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["preview_status"]["type"], "info")
         self.assertIs(by_id["preview_status"]["preview_status"], True)
         self.assertEqual(by_id["preview_status"]["tone"], "warning")
+        self.assertEqual(by_id["manual_mask"]["type"], "manual_mask_editor")
+        self.assertEqual(by_id["manual_mask"]["label"], "Manual Protection Mask")
+        self.assertEqual(by_id["manual_mask"]["use_param"], "use_manual_mask")
+        self.assertEqual(by_id["manual_mask"]["use_label"], "Use manual protection mask")
+        self.assertIs(by_id["manual_mask"]["use_default"], False)
+        self.assertEqual(by_id["manual_mask"]["display_param"], "preview_mode")
+        self.assertEqual(by_id["manual_mask"]["display_value"], nox_ui.PREVIEW_PROTECTION_MASK)
+        self.assertEqual(by_id["manual_mask"]["brush_size"], 50)
+        self.assertEqual(by_id["manual_mask"]["min_brush_size"], 10)
+        self.assertEqual(by_id["manual_mask"]["max_brush_size"], 200)
+        self.assertIs(by_id["manual_mask"]["preview_invalidates"], True)
         self.assertNotIn("preview_generation", by_id)
         self.assertIs(by_id["auto_mask"]["default"], True)
         self.assertIs(by_id["auto_mask"]["preview_invalidates"], True)
@@ -221,6 +242,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
             "auto_mask": False,
             "stiffness": 2.0,
             "rejection_power": 50.0,
+            "use_manual_mask": True,
         }
 
         extension.handle_param_action("refresh_preview", None, src, params)
@@ -285,6 +307,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
             "auto_mask": False,
             "stiffness": 2.0,
             "rejection_power": 50.0,
+            "use_manual_mask": True,
         }
 
         extension.execute_preview(None, src, preview, params, progress, masks=[mask])
@@ -311,7 +334,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertTrue(np.allclose(preview.array, model))
 
-        params["preview_mode"] = nox_ui.PREVIEW_SOURCE_MASK
+        params["preview_mode"] = nox_ui.PREVIEW_PROTECTION_MASK
         extension.execute_preview(None, src, preview, params, progress, masks=[mask])
 
         self.assertEqual(len(calls), 1)
@@ -324,6 +347,83 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertTrue(np.allclose(preview.array, model))
         self.assertEqual(progress.value, 100.0)
+
+    def test_manual_mask_is_ignored_until_enabled(self):
+        src = FakeImage(synthetic_gradient_field(size=18))
+        preview = FakeImage(np.zeros_like(src.array))
+        mask_array = np.zeros(src.array.shape[:2], dtype=np.float32)
+        mask_array[5:10, 5:10] = 1.0
+        mask = FakeImage(mask_array)
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+
+        params = {
+            "preview_mode": nox_ui.PREVIEW_PROTECTION_MASK,
+            "auto_mask": False,
+            "stiffness": 2.0,
+            "rejection_power": 50.0,
+            "use_manual_mask": False,
+        }
+
+        extension.execute_preview(None, src, preview, params, progress, masks=[mask])
+        self.assertTrue(np.allclose(preview.array, src.array))
+
+        params["use_manual_mask"] = True
+        extension.execute_preview(None, src, preview, params, progress, masks=[mask])
+        self.assertGreater(float(preview.array[7, 7, 0]), float(src.array[7, 7, 0]))
+
+    def test_protection_mask_view_reflects_current_mask_without_preview_refresh(self):
+        src = FakeImage(synthetic_gradient_field(size=18))
+        preview = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+
+        params = {
+            "preview_mode": nox_ui.PREVIEW_PROTECTION_MASK,
+            "auto_mask": False,
+            "stiffness": 2.0,
+            "rejection_power": 50.0,
+            "use_manual_mask": True,
+        }
+
+        empty_mask = FakeImage(np.zeros(src.array.shape[:2], dtype=np.float32))
+        extension.execute_preview(None, src, preview, params, progress, masks=[empty_mask])
+        self.assertTrue(np.allclose(preview.array, src.array))
+
+        painted_mask_array = np.zeros(src.array.shape[:2], dtype=np.float32)
+        painted_mask_array[5:10, 5:10] = 1.0
+        painted_mask = FakeImage(painted_mask_array)
+        extension.execute_preview(None, src, preview, params, progress, masks=[painted_mask])
+
+        self.assertGreater(float(preview.array[7, 7, 0]), float(src.array[7, 7, 0]))
+
+    def test_protection_mask_view_preserves_mono_source_shape(self):
+        source_array = core.luminance(synthetic_gradient_field(size=18))
+        src = FakeImage(source_array)
+        preview = FakeImage(np.zeros_like(src.array))
+        mask_array = np.zeros(src.array.shape[:2], dtype=np.float32)
+        mask_array[5:10, 5:10] = 1.0
+        mask = FakeImage(mask_array)
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+
+        extension.execute_preview(
+            None,
+            src,
+            preview,
+            {
+                "preview_mode": nox_ui.PREVIEW_PROTECTION_MASK,
+                "auto_mask": False,
+                "stiffness": 2.0,
+                "rejection_power": 50.0,
+                "use_manual_mask": True,
+            },
+            progress,
+            masks=[mask],
+        )
+
+        self.assertEqual(preview.array.shape, src.array.shape)
+        self.assertGreater(float(preview.array[7, 7]), float(src.array[7, 7]))
 
     def test_execute_writes_processed_image_and_provenance_metadata(self):
         src = FakeImage(synthetic_gradient_field())

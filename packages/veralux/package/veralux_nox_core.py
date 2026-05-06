@@ -634,7 +634,11 @@ def _protection_to_sky_mask(mask, shape, *, user_mask_is_sky=False):
         return None
     if user_mask_is_sky:
         return values > 0.5
-    return values <= 0.5
+    sky = values <= 0.5
+    # The original Nox GUI applies a one-pixel "micro seal" to painted
+    # protection masks before the Zenith membrane solver receives them.
+    kernel = np.ones((3, 3), dtype=np.uint8)
+    return _morph(sky.astype(np.uint8), kernel, "erode").astype(bool, copy=False)
 
 
 def _process_work_image(
@@ -799,19 +803,20 @@ def process_gradient_reduction(
 
 
 def source_with_protection_overlay(image, user_mask=None, *, alpha=0.48):
-    """Return an RGB preview of the source with the optional protection mask overlaid."""
+    """Return a source-shaped preview with the optional protection mask overlaid."""
 
-    work, _layout, _extras = _to_work_image(image)
-    if work.ndim == 2:
-        rgb = np.repeat(work[..., np.newaxis], 3, axis=-1)
-    else:
-        rgb = np.asarray(work[..., :3], dtype=np.float32)
+    work, layout, extras = _to_work_image(image)
+    display = np.asarray(work, dtype=np.float32)
 
-    mask = _coerce_mask_plane(user_mask, rgb.shape[:2]) if user_mask is not None else None
+    mask = _coerce_mask_plane(user_mask, display.shape[:2]) if user_mask is not None else None
     if mask is None or float(np.max(mask, initial=0.0)) <= 0.0:
-        return np.clip(rgb, 0.0, 1.0).astype(np.float32, copy=False)
+        return _from_work_image(display, layout, extras, clip=True)
+
+    blend = np.clip(mask, 0.0, 1.0) * float(np.clip(alpha, 0.0, 1.0))
+    if display.ndim == 2:
+        out = display * (1.0 - blend) + blend
+        return _from_work_image(out, layout, extras, clip=True)
 
     overlay_color = np.array([1.0, 0.69, 0.0], dtype=np.float32)
-    blend = np.clip(mask, 0.0, 1.0)[..., np.newaxis] * float(np.clip(alpha, 0.0, 1.0))
-    out = rgb * (1.0 - blend) + overlay_color * blend
-    return np.clip(out, 0.0, 1.0).astype(np.float32, copy=False)
+    out = display * (1.0 - blend[..., np.newaxis]) + overlay_color * blend[..., np.newaxis]
+    return _from_work_image(out, layout, extras, clip=True)

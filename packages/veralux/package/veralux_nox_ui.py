@@ -18,7 +18,7 @@ import veralux_nox_core as core
 ATTRIBUTION_TEXT = attribution_text("Nox", core.UPSTREAM_VERSION)
 
 
-PREVIEW_SOURCE_MASK = "source_mask"
+PREVIEW_PROTECTION_MASK = "protection_mask"
 PREVIEW_CORRECTED = "corrected"
 PREVIEW_BACKGROUND = "background_model"
 
@@ -56,9 +56,9 @@ def parameter_defs():
             "label": "Display",
             "default": PREVIEW_CORRECTED,
             "options": [
-                ["Protected Source", PREVIEW_SOURCE_MASK],
                 ["Processed Image", PREVIEW_CORRECTED],
                 ["Extracted Gradient", PREVIEW_BACKGROUND],
+                ["Protection Mask", PREVIEW_PROTECTION_MASK],
             ],
             "tooltip": "Select what the next preview refresh renders.",
             "inline_actions": [
@@ -81,6 +81,21 @@ def parameter_defs():
             "stale_text": "Preview update needed.",
             "ready_text": "Preview is up to date.",
             "updating_text": "Updating preview...",
+        },
+        {
+            "id": "manual_mask",
+            "type": "manual_mask_editor",
+            "label": "Manual Protection Mask",
+            "use_param": "use_manual_mask",
+            "use_label": "Use manual protection mask",
+            "use_default": False,
+            "display_param": "preview_mode",
+            "display_value": PREVIEW_PROTECTION_MASK,
+            "brush_size": 50,
+            "min_brush_size": 10,
+            "max_brush_size": 200,
+            "preview_invalidates": True,
+            "tooltip": "Paint protected signal regions before updating the Nox preview.",
         },
         {
             "id": "physics",

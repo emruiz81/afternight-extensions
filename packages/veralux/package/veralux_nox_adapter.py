@@ -54,7 +54,7 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
             raise RuntimeError("VeraLux Nox processing was cancelled.")
 
         source = sdk.read_image(src_image)
-        user_mask = sdk.first_mask_array(masks)
+        user_mask = sdk.first_mask_array(masks) if bool(params.get("use_manual_mask", False)) else None
         star_mask, fwhm_val = self._star_physics(src_image, params)
 
         result, model = core.process_gradient_reduction(
@@ -107,11 +107,8 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
                 return np.clip(model, 0.0, 1.0).astype(np.float32, copy=False)
             return np.zeros_like(np.asarray(source), dtype=np.float32)
 
-        if preview_mode == nox_ui.PREVIEW_SOURCE_MASK:
-            return self._preview_cache.get(
-                nox_ui.PREVIEW_SOURCE_MASK,
-                core.source_with_protection_overlay(source, user_mask),
-            )
+        if preview_mode == nox_ui.PREVIEW_PROTECTION_MASK:
+            return core.source_with_protection_overlay(source, user_mask)
 
         return self._preview_cache.get(
             nox_ui.PREVIEW_CORRECTED,
@@ -135,7 +132,7 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
             self._reset_preview_cache(source_shape)
 
         preview_mode = str(params.get("preview_mode", nox_ui.PREVIEW_CORRECTED))
-        user_mask = sdk.first_mask_array(masks)
+        user_mask = sdk.first_mask_array(masks) if bool(params.get("use_manual_mask", False)) else None
         if not self._preview_refresh_requested:
             output = self._cached_preview_for_mode(source, user_mask, preview_mode)
             sdk.write_image(preview_image, output)
@@ -145,7 +142,6 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         progress.set_text("Rendering VeraLux Nox preview...")
         result, model, _star_mask, _fwhm_val = self._process(src_image, params, progress, masks=masks)
         self._preview_cache = {
-            nox_ui.PREVIEW_SOURCE_MASK: core.source_with_protection_overlay(source, user_mask),
             nox_ui.PREVIEW_CORRECTED: np.asarray(result, dtype=np.float32),
             nox_ui.PREVIEW_BACKGROUND: np.asarray(model, dtype=np.float32),
         }
