@@ -194,6 +194,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["preview_mode"]["inline_actions"][0]["type"], "button")
         self.assertEqual(by_id["preview_mode"]["inline_actions"][0]["button_role"], "primary")
         self.assertIs(by_id["preview_mode"]["inline_actions"][0]["preview_refresh_role"], True)
+        self.assertIs(by_id["preview_mode"]["inline_actions"][0]["preview_refresh_on_open"], True)
         self.assertEqual(by_id["preview_status"]["type"], "info")
         self.assertIs(by_id["preview_status"]["preview_status"], True)
         self.assertEqual(by_id["preview_status"]["tone"], "warning")

@@ -68,6 +68,7 @@ def parameter_defs():
                     "label": "Update Preview",
                     "button_role": "primary",
                     "preview_refresh_role": True,
+                    "preview_refresh_on_open": True,
                     "tooltip": "Recompute the processed image and extracted gradient for the current parameters.",
                 },
             ],
