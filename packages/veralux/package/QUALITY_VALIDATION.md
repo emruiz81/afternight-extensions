@@ -22,7 +22,7 @@ the original core functions on deterministic synthetic RGB fixtures.
 |---|---|---|
 | Alchemy | Exact worker-core output for classic and Quantum Unmix paths | max abs <= 2e-6, mean abs <= 2e-7 |
 | HyperMetric Stretch | Exact `process_veralux_v6` ready-to-use output | max abs <= 1e-7, mean abs <= 1e-8 |
-| Vectra | LCH vector engine output with local convolution tolerance | max abs <= 2e-4, mean abs <= 1e-5 |
+| Vectra | LCH vector engine output, including Shadow Authority and star protection | exact within float tolerance when SciPy is installed; fallback max abs <= 2e-4, mean abs <= 1e-5 |
 | Curves | RGB/K curve output against upstream SciPy Akima LUT | mean abs <= 0.025, p95 <= 0.040, max abs <= 0.050 |
 
 Curves intentionally uses a package-local Hermite/Akima-style interpolator

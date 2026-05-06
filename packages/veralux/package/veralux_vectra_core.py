@@ -11,6 +11,11 @@ from __future__ import annotations
 
 import numpy as np
 
+try:
+    from scipy.ndimage import convolve as _nd_convolve
+except Exception:  # pragma: no cover - minimal diagnostic environments only.
+    _nd_convolve = None
+
 
 UPSTREAM_VERSION = "1.0.3"
 VECTOR_KEYS = ("R", "Y", "G", "C", "B", "M")
@@ -57,12 +62,12 @@ def _to_hwc_rgb(image):
     if img.ndim != 3:
         raise ValueError("VeraLux Vectra expects a 3-channel RGB image")
 
+    if img.shape[0] == 3 and img.shape[-1] not in (3, 4):
+        return np.moveaxis(img[:3], 0, -1), "chw", None
+
     if img.shape[-1] >= 3:
         extras = img[..., 3:] if img.shape[-1] > 3 else None
         return img[..., :3], "hwc", extras
-
-    if img.shape[0] == 3:
-        return np.moveaxis(img[:3], 0, -1), "chw", None
 
     raise ValueError("VeraLux Vectra expects a 3-channel RGB image")
 
@@ -162,7 +167,24 @@ def _separable_filter_reflect(image, kernel):
 
 
 def _box_blur_reflect(image, size):
+    if _nd_convolve is not None:
+        kernel = np.ones((int(size), int(size)), dtype=np.float32) / float(size * size)
+        return _nd_convolve(np.asarray(image, dtype=np.float32), kernel, mode="reflect").astype(
+            np.float32,
+            copy=False,
+        )
     kernel = np.ones((size,), dtype=np.float32) / float(size)
+    return _separable_filter_reflect(image, kernel)
+
+
+def _atrous_smooth_reflect(image, kernel):
+    if _nd_convolve is not None:
+        current = np.asarray(image, dtype=np.float32)
+        horizontal = _nd_convolve(current, kernel.reshape(1, -1), mode="reflect")
+        return _nd_convolve(horizontal, kernel.reshape(-1, 1), mode="reflect").astype(
+            np.float32,
+            copy=False,
+        )
     return _separable_filter_reflect(image, kernel)
 
 
@@ -177,7 +199,7 @@ def atrous_decomposition(image2d, n_scales=3):
         kernel_size = len(kernel) + (len(kernel) - 1) * (step - 1)
         dilated = np.zeros((kernel_size,), dtype=np.float32)
         dilated[0::step] = kernel
-        smooth = _separable_filter_reflect(current, dilated)
+        smooth = _atrous_smooth_reflect(current, dilated)
         planes.append(current - smooth)
         current = smooth
     return planes

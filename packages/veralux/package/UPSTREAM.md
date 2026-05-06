@@ -166,8 +166,9 @@ attribution is generated from those constants through `veralux_attribution.py`.
   Silentium is exposed as an AfterNight RT-preview process with native sub-area
   preview and host Linear/Autostretch display controls that open in
   Autostretch mode to match the original Siril preview display.
-- Vectra uses a package-local NumPy reflect-convolution helper instead of
-  adding SciPy for its small blur/filter needs.
+- Vectra uses the upstream SciPy reflect-convolution path when runtime
+  dependencies are installed, with a package-local NumPy helper only as a
+  minimal diagnostic fallback.
 - StarComposer uses the active AfterNight target as the starless base and a
   second selected open view as the stars/star-mask input. The extension reads
   that second view through the host snapshot API so RT preview target switching

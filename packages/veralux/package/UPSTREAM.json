@@ -138,7 +138,7 @@
       "intentional_divergences": [
         "Replace sirilpy image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
         "Replace PyQt6 tabs, vector scope, and preview widgets with native AfterNight parameter definitions for the first process port.",
-        "Use a package-local NumPy reflect-convolution helper instead of adding SciPy for Vectra's small blur/filter needs.",
+        "Use the upstream SciPy reflect-convolution path when runtime dependencies are installed, with a package-local NumPy helper only as a minimal diagnostic fallback.",
         "Preserve input array layout at the SDK boundary and defer live vector-scope preview parity to a later native-preview polish slice."
       ]
     },

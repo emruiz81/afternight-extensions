@@ -83,6 +83,19 @@ class VeraLuxVectraCoreTests(unittest.TestCase):
         out_l = core.rgb_luminance(result)
         self.assertLess(float(np.mean(np.abs(out_l - src_l))), 2.5e-2)
 
+    def test_chw_input_preserves_layout_and_matches_hwc_processing(self):
+        source_hwc = synthetic_stretched_rgb()
+        source_chw = np.moveaxis(source_hwc, -1, 0)
+        vectors = core.default_vectors()
+        vectors["R"] = (18.0, 0.35)
+        vectors["B"] = (-12.0, 0.20)
+
+        hwc_result = core.process_vectors(source_hwc, vectors, shadow_auth=20.0, protect_stars=True)
+        chw_result = core.process_vectors(source_chw, vectors, shadow_auth=20.0, protect_stars=True)
+
+        self.assertEqual(chw_result.shape, source_chw.shape)
+        self.assertLess(float(np.max(np.abs(np.moveaxis(chw_result, 0, -1) - hwc_result))), 1e-6)
+
     def test_shadow_authority_reduces_background_tinting(self):
         source = synthetic_stretched_rgb()
         source[:12, :12, 2] = np.clip(source[:12, :12, 2] + 0.12, 0.0, 1.0)
@@ -114,6 +127,7 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
         self.assertEqual(meta["controls_panel_width"], 520)
         self.assertTrue(meta["target_selector"])
         self.assertEqual(meta["target_channel_filter"], [3])
+        self.assertFalse(meta["preview_hq_default"])
         self.assertFalse(meta["header_progress"])
 
         ids_by_type = [(param.get("id"), param.get("type"), param.get("label")) for param in params]

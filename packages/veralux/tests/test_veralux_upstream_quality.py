@@ -365,7 +365,7 @@ class VeraLuxUpstreamQualityTests(unittest.TestCase):
 
         self.assertLessEqual(abs(actual - expected), 1e-12)
 
-    def test_vectra_matches_upstream_lch_core_with_local_filter_tolerance(self):
+    def test_vectra_matches_upstream_lch_core(self):
         source = synthetic_suite_rgb(64)
         vectors = vectra_core.default_vectors()
         vectors.update({
@@ -377,17 +377,34 @@ class VeraLuxUpstreamQualityTests(unittest.TestCase):
             "Y": (-14.0, 0.25),
         })
 
-        actual = vectra_core.process_vectors(source, vectors, shadow_auth=0.0, protect_stars=False)
-        expected = self.upstream["vectra"].VectraCore.process_vectors(
-            source,
-            vectors,
-            shadow_auth=0.0,
-            protect_stars=False,
+        cases = (
+            (0.0, False),
+            (50.0, True),
+            (100.0, True),
         )
 
-        max_delta, mean_delta = _max_and_mean_delta(actual, expected)
-        self.assertLessEqual(max_delta, 2e-4)
-        self.assertLessEqual(mean_delta, 1e-5)
+        for shadow_auth, protect_stars in cases:
+            with self.subTest(shadow_auth=shadow_auth, protect_stars=protect_stars):
+                actual = vectra_core.process_vectors(
+                    source,
+                    vectors,
+                    shadow_auth=shadow_auth,
+                    protect_stars=protect_stars,
+                )
+                expected = self.upstream["vectra"].VectraCore.process_vectors(
+                    source,
+                    vectors,
+                    shadow_auth=shadow_auth,
+                    protect_stars=protect_stars,
+                )
+
+                max_delta, mean_delta = _max_and_mean_delta(actual, expected)
+                if vectra_core._nd_convolve is not None:
+                    self.assertLessEqual(max_delta, 1e-7)
+                    self.assertLessEqual(mean_delta, 1e-8)
+                else:
+                    self.assertLessEqual(max_delta, 2e-4)
+                    self.assertLessEqual(mean_delta, 1e-5)
 
     def test_curves_tracks_upstream_akima_output_with_documented_local_interpolator_tolerance(self):
         source = synthetic_suite_rgb(64)
