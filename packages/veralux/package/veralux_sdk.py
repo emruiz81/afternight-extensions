@@ -25,7 +25,26 @@ def write_image(image_handle, array):
 
     if not hasattr(image_handle, "from_numpy"):
         raise TypeError("VeraLux expected an AfterNight ImageHandle with from_numpy()")
-    image_handle.from_numpy(np.asarray(array, dtype=np.float32))
+
+    data = np.asarray(array)
+    destination_dtype = None
+    if hasattr(image_handle, "to_numpy"):
+        try:
+            destination_dtype = np.asarray(image_handle.to_numpy()).dtype
+        except Exception:
+            destination_dtype = None
+
+    if destination_dtype is not None and np.issubdtype(destination_dtype, np.integer):
+        info = np.iinfo(destination_dtype)
+        data_float = np.nan_to_num(data.astype(np.float32, copy=False), nan=0.0, posinf=1.0, neginf=0.0)
+        if np.issubdtype(destination_dtype, np.unsignedinteger):
+            data = np.rint(np.clip(data_float, 0.0, 1.0) * float(info.max)).astype(destination_dtype)
+        else:
+            data = np.rint(np.clip(data_float, float(info.min), float(info.max))).astype(destination_dtype)
+    else:
+        data = np.asarray(data, dtype=np.float32)
+
+    image_handle.from_numpy(data)
 
 
 def first_mask_array(masks):

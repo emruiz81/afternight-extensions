@@ -107,12 +107,12 @@ AfterNight-native release:
 - Vectra vector-scope HUD.
 - Nox manual mask painting and BVI preview overlays.
 - Silentium loupe preview and PSF-list masking.
-- StarComposer multi-input starless plus starmask composition UI.
 
 The core and helper layers leave a path for those future slices. Nox and
 Silentium can use `veralux_sdk.star_mask_from_find_stars()` when PSF-list parity
-is promoted, and StarComposer already exposes `compose_with_starless()` in its
-core for a future multi-input adapter/UI path.
+is promoted. StarComposer now uses the active target as the starless base and a
+second open view as the stars/starmask input through the AfterNight view
+snapshot API.
 
 ## Upstream Refresh Workflow
 

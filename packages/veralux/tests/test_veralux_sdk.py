@@ -28,6 +28,17 @@ class FakeImage:
         self.metadata[str(key)] = str(value)
 
 
+class PreservingFakeImage:
+    def __init__(self, array):
+        self.array = np.asarray(array)
+
+    def to_numpy(self):
+        return self.array
+
+    def from_numpy(self, array):
+        self.array = np.asarray(array)
+
+
 class VeraLuxSdkTests(unittest.TestCase):
     def test_image_io_metadata_and_masks_use_shared_sdk_helpers(self):
         source = FakeImage(np.arange(27, dtype=np.float32).reshape(3, 3, 3))
@@ -56,6 +67,19 @@ class VeraLuxSdkTests(unittest.TestCase):
         self.assertEqual(destination.metadata["veralux.tool"], "Test Tool")
         self.assertEqual(destination.metadata["veralux.upstream_version"], "1.2.3")
         self.assertEqual(destination.metadata["veralux.test.value"], "4.25")
+
+    def test_write_image_scales_normalized_float_to_integer_destination(self):
+        destination = PreservingFakeImage(np.zeros((2, 3), dtype=np.uint16))
+
+        sdk.write_image(destination, np.asarray([[0.0, 0.5, 1.0], [0.25, 0.75, 2.0]], dtype=np.float32))
+
+        self.assertEqual(destination.array.dtype, np.uint16)
+        self.assertEqual(int(destination.array[0, 0]), 0)
+        self.assertAlmostEqual(int(destination.array[0, 1]), 32768, delta=1)
+        self.assertEqual(int(destination.array[0, 2]), 65535)
+        self.assertAlmostEqual(int(destination.array[1, 0]), 16384, delta=1)
+        self.assertAlmostEqual(int(destination.array[1, 1]), 49151, delta=1)
+        self.assertEqual(int(destination.array[1, 2]), 65535)
 
     def test_settings_migration_and_preview_helpers_are_deterministic(self):
         params = {"old_gain": 0.8, "enabled": False}

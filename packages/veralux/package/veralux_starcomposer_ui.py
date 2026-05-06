@@ -26,10 +26,18 @@ def parameter_defs():
     return [
         ui.process_window_meta(
             panel_variant="native",
-            size=[700, 680],
+            size=[1260, 760],
             resizable=True,
+            preview_area=False,
+            controls_panel_width=520,
+            preview_hq_default=True,
+            preview_autostretch=False,
+            preview_autostretch_default=False,
+            header_progress=False,
             target_selector=True,
             target_channel_filter=[1, 3],
+            target_selector_label="Starless (stretched)",
+            target_selector_position="params",
         ),
         {
             "id": "attribution",
@@ -37,9 +45,27 @@ def parameter_defs():
             "text": ATTRIBUTION_TEXT,
         },
         {
-            "id": "input_note",
-            "type": "info",
-            "text": "This native slice shapes the active star mask. Starless-image compositing is in the core and will be exposed when the host supports multi-input process UI.",
+            "id": "inputs",
+            "type": "section",
+            "label": "Inputs",
+        },
+        {
+            "id": "starless_view",
+            "type": "target_selector",
+            "label": "Starless (stretched)",
+            "tooltip": "Target starless base image used for output recomposition.",
+        },
+        {
+            "id": "stars_view",
+            "type": "view_selector",
+            "label": "Stars (linear)",
+            "default": "",
+            "placeholder": "Select stars image",
+            "channel_filter": [1, 3],
+            "match_target_geometry": True,
+            "match_target_channels": True,
+            "exclude_target": True,
+            "tooltip": "Second open image used as the shaped stars layer.",
         },
         {
             "id": "sensor",
@@ -49,7 +75,7 @@ def parameter_defs():
         {
             "id": "working_space",
             "type": "choice",
-            "label": "Working Space",
+            "label": "Sensor Profile",
             "default": core.DEFAULT_PROFILE,
             "options": _working_space_options(),
             "tooltip": "Luminance weights used for hybrid color-vector reconstruction.",
@@ -74,6 +100,7 @@ def parameter_defs():
             "min": 1.0,
             "max": 21.0,
             "step": 0.1,
+            "tracking": False,
             "tooltip": "LogD-controlled rational stretch intensity.",
         },
         {
@@ -84,6 +111,7 @@ def parameter_defs():
             "min": 1.0,
             "max": 100.0,
             "step": 1.0,
+            "tracking": False,
             "tooltip": "Toe-based PSF shaping control. Higher values tighten star profiles.",
         },
         {
@@ -99,6 +127,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Blends scalar sharpness with vector color-ratio preservation.",
         },
         {
@@ -109,6 +138,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 3.0,
             "step": 0.1,
+            "tracking": False,
             "tooltip": "Suppresses chromatic artifacts in low-signal star-mask shadows.",
         },
         {
@@ -124,6 +154,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Removes broad residual non-stellar structures from the mask.",
         },
         {
@@ -134,6 +165,7 @@ def parameter_defs():
             "min": 0.0,
             "max": 1.0,
             "step": 0.01,
+            "tracking": False,
             "tooltip": "Applies morphological reduction to shrink star diameters.",
         },
         {
@@ -144,6 +176,20 @@ def parameter_defs():
             "min": 0.0,
             "max": 20.0,
             "step": 1.0,
+            "tracking": False,
             "tooltip": "Smooths chroma residuals while preserving luminance.",
+        },
+        {
+            "id": "composition",
+            "type": "section",
+            "label": "Output Composition",
+        },
+        {
+            "id": "blend_mode",
+            "type": "choice",
+            "label": "Blend Mode",
+            "default": "screen",
+            "options": [["Screen (Safe)", "screen"], ["Linear Add (Physical)", "linear_add"]],
+            "tooltip": "Blend operation used when recomposing stars onto the active target.",
         },
     ]

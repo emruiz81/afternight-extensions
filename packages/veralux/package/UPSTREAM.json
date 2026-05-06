@@ -156,8 +156,7 @@
       "original_version": "2.1.0",
       "intentional_divergences": [
         "Replace sirilpy FITS loading, save/reload, ICC cleanup, and logging with AfterNight SDK image handles and metadata.",
-        "Expose the current native slice as active star-mask shaping because the host process UI does not yet provide multi-input file selection.",
-        "Keep starless compositing available as a core helper for a future multi-input native UI slice.",
+        "Use the active AfterNight target as the starless base and a second selected open view as the stars/star-mask input via host view snapshots.",
         "Use package-local NumPy blur and morphology helpers instead of requiring OpenCV for this first native process port."
       ]
     },

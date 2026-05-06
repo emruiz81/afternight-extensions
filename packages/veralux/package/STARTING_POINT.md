@@ -85,10 +85,10 @@ the eight native VeraLux process entries in this suite package.
 
    Stage: Final
 
-   Use as the final star workflow slice. The current AfterNight process shapes
-   the active linear star mask with the upstream rational tone-mapping core.
-   Multi-input starless plus star-mask recomposition is available in the core
-   as future host UI work, but is not exposed by the first native process UI.
+   Use as the final star workflow slice. The Starless (stretched) target is the
+   starless base, and the Stars (linear) selector supplies the second compatible
+   open image that StarComposer shapes with the upstream rational tone-mapping
+   core before recomposition.
 
 ## Practical Flow
 

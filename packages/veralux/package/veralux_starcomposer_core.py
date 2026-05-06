@@ -14,6 +14,11 @@ import math
 import numpy as np
 
 try:
+    import cv2
+except Exception:  # pragma: no cover - optional runtime accelerator.
+    cv2 = None
+
+try:
     from veralux_hypermetric_stretch_core import DEFAULT_PROFILE, SENSOR_PROFILES
 except Exception:  # pragma: no cover - defensive for direct extraction.
     DEFAULT_PROFILE = "Rec.709 (Recommended)"
@@ -116,6 +121,16 @@ def _convolve_axis_reflect(image, kernel, axis):
 
 
 def _gaussian_blur_chw(chw, sigma):
+    if cv2 is not None and float(sigma) > 0.0:
+        data = np.asarray(chw, dtype=np.float32)
+        if data.ndim == 2:
+            return cv2.GaussianBlur(data, (0, 0), float(sigma)).astype(np.float32, copy=False)
+        hwc = np.moveaxis(data, 0, -1)
+        blurred = cv2.GaussianBlur(hwc, (0, 0), float(sigma))
+        if blurred.ndim == 2:
+            blurred = blurred[..., np.newaxis]
+        return np.moveaxis(blurred, -1, 0).astype(np.float32, copy=False)
+
     kernel = _gaussian_kernel_1d(sigma)
     out = np.asarray(chw, dtype=np.float32)
     if out.ndim == 2:
@@ -187,6 +202,18 @@ def rational_tonemap(data, stretch_d, profile_hardness):
 def apply_optical_healing(chw, strength, weights):
     if float(strength) <= 0.0:
         return chw
+    if cv2 is not None:
+        img_hwc = np.moveaxis(np.asarray(chw, dtype=np.float32), 0, -1)
+        ycrcb = cv2.cvtColor(img_hwc, cv2.COLOR_RGB2YCrCb)
+        y, cr, cb = cv2.split(ycrcb)
+        kernel_size = int(float(strength) * 2.0) + 1
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+        cr = cv2.GaussianBlur(cr, (kernel_size, kernel_size), 0)
+        cb = cv2.GaussianBlur(cb, (kernel_size, kernel_size), 0)
+        healed = cv2.cvtColor(cv2.merge([y, cr, cb]), cv2.COLOR_YCrCb2RGB)
+        return np.moveaxis(healed, -1, 0).astype(np.float32, copy=False)
+
     strength = float(np.clip(strength, 0.0, 20.0))
     sigma = max(0.4, strength * 0.25)
     r_w, g_w, b_w = weights
@@ -201,6 +228,15 @@ def apply_star_reduction(chw, intensity):
     if intensity <= 0.0:
         return chw
     size = 3 if intensity < 0.5 else 5
+    if cv2 is not None:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
+        img_hwc = np.moveaxis(np.asarray(chw, dtype=np.float32), 0, -1)
+        eroded = cv2.erode(img_hwc, kernel, iterations=1)
+        return np.moveaxis((img_hwc * (1.0 - intensity)) + (eroded * intensity), -1, 0).astype(
+            np.float32,
+            copy=False,
+        )
+
     eroded = np.stack([_min_filter_2d(channel, size) for channel in chw])
     return (chw * (1.0 - intensity) + eroded * intensity).astype(np.float32, copy=False)
 
@@ -210,6 +246,17 @@ def apply_large_structure_rejection(chw, intensity):
     if intensity <= 0.0:
         return chw
     h, w = chw.shape[1], chw.shape[2]
+    if cv2 is not None:
+        kernel_size = int(min(h, w) / 15.0)
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+        kernel_size = max(kernel_size, 3)
+        img_hwc = np.moveaxis(np.asarray(chw, dtype=np.float32), 0, -1)
+        low_pass = cv2.GaussianBlur(img_hwc, (kernel_size, kernel_size), 0)
+        high_pass = np.maximum(img_hwc - low_pass, 0.0)
+        result = (img_hwc * (1.0 - intensity)) + (high_pass * intensity)
+        return np.moveaxis(result, -1, 0).astype(np.float32, copy=False)
+
     sigma = max(1.0, min(h, w) / 30.0)
     low_pass = _gaussian_blur_chw(chw, sigma=sigma)
     high_pass = np.maximum(chw - low_pass, 0.0)
@@ -282,6 +329,19 @@ def process_star_mask(
     return _from_chw_rgb(np.clip(final, 0.0, 1.0), layout, extras)
 
 
+def normalize_blend_mode(blend_mode):
+    """Return the canonical VeraLux StarComposer blend mode id."""
+
+    mode = str(blend_mode or "screen").strip().lower()
+    mode = mode.replace("-", "_").replace(" ", "_")
+    if (
+        mode in {"add", "linear", "linear_add", "linearadd", "linear_add_physical"}
+        or ("linear" in mode and "add" in mode)
+    ):
+        return "linear_add"
+    return "screen"
+
+
 def compose_with_starless(starless, stars, blend_mode="screen"):
     """Composite shaped stars onto a starless base using StarComposer blend modes."""
 
@@ -291,7 +351,7 @@ def compose_with_starless(starless, stars, blend_mode="screen"):
     min_w = min(base_chw.shape[2], stars_chw.shape[2])
     base = base_chw[:, :min_h, :min_w]
     star = stars_chw[:, :min_h, :min_w]
-    if str(blend_mode).lower() == "add":
+    if normalize_blend_mode(blend_mode) == "linear_add":
         combined = np.clip(base + star, 0.0, 1.0)
     else:
         combined = 1.0 - (1.0 - base) * (1.0 - star)

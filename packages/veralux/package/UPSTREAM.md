@@ -168,9 +168,10 @@ attribution is generated from those constants through `veralux_attribution.py`.
   Autostretch mode to match the original Siril preview display.
 - Vectra uses a package-local NumPy reflect-convolution helper instead of
   adding SciPy for its small blur/filter needs.
-- StarComposer is exposed first as active star-mask shaping because the native
-  process UI does not yet provide multi-input file selection. Starless
-  compositing is available in the core for a later host UI slice.
+- StarComposer uses the active AfterNight target as the starless base and a
+  second selected open view as the stars/star-mask input. The extension reads
+  that second view through the host snapshot API so RT preview target switching
+  remains stable.
 - Starting Point is adapted from a PyQt6 interactive guide into
   `STARTING_POINT.md`, preserving the workflow order and attribution while
   avoiding a non-processing extension entry.

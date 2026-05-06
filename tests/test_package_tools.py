@@ -262,6 +262,10 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertEqual(processes["nox"]["category"], "background_extraction")
         self.assertEqual(processes["starcomposer"]["class"], "VeraLuxStarComposerExtension")
         self.assertEqual(processes["starcomposer"]["category"], "star_object")
+        self.assertEqual(
+            processes["starcomposer"]["capabilities"],
+            {"execute": True, "preview": True, "keep_open": True},
+        )
         self.assertEqual(processes["vectra"]["class"], "VeraLuxVectraExtension")
         self.assertEqual(processes["vectra"]["category"], "color")
         self.assertEqual(processes["revela"]["class"], "VeraLuxRevelaExtension")
