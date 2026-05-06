@@ -39,6 +39,17 @@ def parameter_defs():
             target_channel_filter=[1, 3],
         ),
         {
+            "id": "rt_histogram",
+            "type": "rt_histogram",
+            "label": "Histogram",
+            "height": 220,
+            "grid": True,
+            "clipping_info": True,
+            "histogram_areas": False,
+            "local_channel_normalization": False,
+            "tooltip": "Live histogram of the current HyperMetric Stretch preview image.",
+        },
+        {
             "id": "attribution",
             "type": "info",
             "text": ATTRIBUTION_TEXT,
