@@ -139,8 +139,16 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
         primary_index = next(i for i, param in enumerate(params) if param.get("id") == "primary_vectors")
         secondary_index = next(i for i, param in enumerate(params) if param.get("id") == "secondary_vectors")
         protection_index = next(i for i, param in enumerate(params) if param.get("id") == "protection")
+        protect_stars_index = next(i for i, param in enumerate(params) if param.get("id") == "protect_stars")
+        vector_slope_index = next(i for i, param in enumerate(params) if param.get("id") == "vector_slope")
         self.assertLess(primary_index, secondary_index)
         self.assertLess(secondary_index, protection_index)
+        self.assertLess(protect_stars_index, vector_slope_index)
+
+        vector_slope = params[vector_slope_index]
+        self.assertEqual(vector_slope["type"], "vector_slope")
+        self.assertEqual(vector_slope["label"], "Vector Slope")
+        self.assertEqual(vector_slope["height"], 220)
 
         saturation_params = {
             param["id"]: param

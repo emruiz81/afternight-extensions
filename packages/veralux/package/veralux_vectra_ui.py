@@ -118,4 +118,11 @@ def parameter_defs():
             "default": True,
             "tooltip": "Protects high-energy stellar cores from aggressive vector edits.",
         },
+        {
+            "id": "vector_slope",
+            "type": "vector_slope",
+            "label": "Vector Slope",
+            "height": 220,
+            "tooltip": "Live graph of the six Vectra hue and saturation vectors.",
+        },
     ]
