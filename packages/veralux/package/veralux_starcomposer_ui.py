@@ -30,7 +30,7 @@ def parameter_defs():
             resizable=True,
             preview_area=False,
             controls_panel_width=520,
-            preview_hq_default=True,
+            preview_hq_default=False,
             preview_autostretch=False,
             preview_autostretch_default=False,
             header_progress=False,

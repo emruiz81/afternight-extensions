@@ -28,7 +28,7 @@ def parameter_defs():
         sub_area_size=[800, 600],
         sub_area_label="Preview: Silentium",
         controls_panel_width=520,
-        preview_hq_default=True,
+        preview_hq_default=False,
         preview_autostretch=True,
         header_progress=False,
         target_selector=True,

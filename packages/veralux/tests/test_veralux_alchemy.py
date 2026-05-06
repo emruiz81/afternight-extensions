@@ -113,8 +113,8 @@ class VeraLuxAlchemyAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["window_meta"]["sub_area_label"], "Preview: Alchemy")
         self.assertEqual(by_id["window_meta"]["window_size"], [1260, 760])
         self.assertEqual(by_id["window_meta"]["controls_panel_width"], 520)
-        self.assertIs(by_id["window_meta"]["preview_hq_default"], True)
-        self.assertIs(by_id["window_meta"]["preview_autostretch"], True)
+        self.assertIs(by_id["window_meta"]["preview_hq_default"], False)
+        self.assertIs(by_id["window_meta"]["preview_autostretch"], False)
         self.assertIs(by_id["window_meta"]["header_progress"], False)
 
         section_labels = [param["label"] for param in defs if param.get("type") == "section"]
@@ -213,9 +213,42 @@ class VeraLuxAlchemyAdapterTests(unittest.TestCase):
         )
 
         self.assertEqual(preview.array.shape, src.array.shape)
-        self.assertGreater(float(np.mean(np.abs(preview.array - src.array))), 1e-4)
+        linear = core.process_narrowband(
+            src.array,
+            bg_align=True,
+            auto_fit=True,
+            boost=1.15,
+            mix_r=0.0,
+            mix_g=0.8,
+            mix_b=1.0,
+            quantum_unmix=True,
+            sensor_profile="Sony IMX571",
+        )
+        expected_preview = core.preview_autostretch(linear)
+        self.assertTrue(np.allclose(preview.array, expected_preview, rtol=1e-6, atol=1e-6))
+        self.assertGreater(float(np.mean(np.abs(preview.array - linear))), 1e-4)
         self.assertEqual(preview.metadata, {})
         self.assertEqual(progress.value, 100.0)
+
+    def test_oIII_boost_changes_preview_output(self):
+        source = synthetic_rgb_image()
+        extension = VeraLuxAlchemyExtension(None)
+        params = {
+            "bg_align": True,
+            "auto_fit": True,
+            "mix_r": 0.0,
+            "mix_g": 1.0,
+            "mix_b": 1.0,
+            "quantum_unmix": False,
+            "sensor_profile": "Generic OSC",
+        }
+        preview_low = FakeImage(np.zeros_like(source))
+        preview_high = FakeImage(np.zeros_like(source))
+
+        extension.execute_preview(None, FakeImage(source), preview_low, {**params, "boost": 1.0}, FakeProgress())
+        extension.execute_preview(None, FakeImage(source), preview_high, {**params, "boost": 2.0}, FakeProgress())
+
+        self.assertGreater(float(np.mean(np.abs(preview_high.array - preview_low.array))), 1e-4)
 
     def test_palette_preset_actions_match_original_buttons(self):
         extension = VeraLuxAlchemyExtension(None)

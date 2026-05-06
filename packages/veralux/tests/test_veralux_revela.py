@@ -119,7 +119,7 @@ class VeraLuxRevelaAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["window_meta"]["sub_area_label"], "Preview: Revela")
         self.assertEqual(by_id["window_meta"]["window_size"], [1260, 760])
         self.assertEqual(by_id["window_meta"]["controls_panel_width"], 520)
-        self.assertIs(by_id["window_meta"]["preview_hq_default"], True)
+        self.assertIs(by_id["window_meta"]["preview_hq_default"], False)
         self.assertNotIn("preview_autostretch", by_id["window_meta"])
         self.assertIs(by_id["window_meta"]["header_progress"], False)
 

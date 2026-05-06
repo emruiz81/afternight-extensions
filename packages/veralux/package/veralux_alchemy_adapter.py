@@ -47,7 +47,8 @@ class VeraLuxAlchemyExtension(ui.RTPreviewProcess):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Alchemy processing was cancelled.")
 
-        sdk.write_image(dst_image, result)
+        output = core.preview_autostretch(result) if preview else result
+        sdk.write_image(dst_image, output)
         if not preview:
             sdk.stamp_result(
                 dst_image,

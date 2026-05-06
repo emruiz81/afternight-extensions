@@ -175,7 +175,7 @@ class VeraLuxSilentiumAdapterTests(unittest.TestCase):
         self.assertEqual(meta["sub_area_size"], [800, 600])
         self.assertEqual(meta["sub_area_label"], "Preview: Silentium")
         self.assertEqual(meta["controls_panel_width"], 520)
-        self.assertIs(meta["preview_hq_default"], True)
+        self.assertIs(meta["preview_hq_default"], False)
         self.assertIs(meta["preview_autostretch"], True)
         self.assertIs(meta["preview_autostretch_default"], True)
         self.assertIs(meta["header_progress"], False)

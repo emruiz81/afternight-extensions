@@ -136,7 +136,7 @@ class VeraLuxStarComposerAdapterTests(unittest.TestCase):
         self.assertNotIn("sub_area_label", meta)
         self.assertEqual(meta["window_size"], [1260, 760])
         self.assertEqual(meta["controls_panel_width"], 520)
-        self.assertIs(meta["preview_hq_default"], True)
+        self.assertIs(meta["preview_hq_default"], False)
         self.assertIs(meta["preview_autostretch"], False)
         self.assertIs(meta["preview_autostretch_default"], False)
         self.assertIs(meta["header_progress"], False)

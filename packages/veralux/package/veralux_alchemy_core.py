@@ -313,6 +313,14 @@ def _from_channels_first_rgb(rgb_channels, layout, extras):
     return out.astype(np.float32, copy=False)
 
 
+def preview_autostretch(image):
+    """Return the original Alchemy linked-autostretched preview image."""
+
+    rgb, layout, extras = _to_channels_first_rgb(image)
+    preview = apply_siril_autostretch(rgb)
+    return _from_channels_first_rgb(preview, layout, extras)
+
+
 def process_narrowband(
     image,
     bg_align=True,

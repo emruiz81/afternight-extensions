@@ -158,6 +158,22 @@ GOLDEN_METRICS = {
     },
 }
 
+STARCOMPOSER_CV2_GOLDEN_METRICS = {
+    "shape": (64, 64, 3),
+    "min": 0.0,
+    "max": 0.6293957829475403,
+    "mean": 0.011932488530874252,
+    "std": 0.05097726359963417,
+    "p05": 0.0,
+    "p50": 8.362531644934279e-08,
+    "p95": 0.06857158988714218,
+    "sample_0": 8.362531644934279e-08,
+    "sample_1": 0.0010488444240763783,
+    "sample_2": 1.0567903530045442e-07,
+    "sample_3": 0.1321396827697754,
+    "mean_abs_delta": 0.003836367279291153,
+}
+
 SILENTIUM_SWT_GOLDEN_METRICS = {
     "shape": (72, 72, 3),
     "min": 0.06364411115646362,
@@ -401,6 +417,8 @@ class VeraLuxRegressionMetricTests(unittest.TestCase):
                 expected = GOLDEN_METRICS[name]
                 if name == "silentium" and silentium_core._pywt is not None:
                     expected = SILENTIUM_SWT_GOLDEN_METRICS
+                if name == "starcomposer" and starcomposer_core.cv2 is not None:
+                    expected = STARCOMPOSER_CV2_GOLDEN_METRICS
                 self.assertEqual(metrics["shape"], expected["shape"])
                 self.assertGreater(metrics["mean_abs_delta"], 1e-5)
                 for key in NUMERIC_METRIC_KEYS:

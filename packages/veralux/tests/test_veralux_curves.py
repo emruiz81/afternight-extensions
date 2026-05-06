@@ -119,7 +119,7 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["window_meta"]["sub_area_label"], "Preview: Curves")
         self.assertEqual(by_id["window_meta"]["window_size"], [1260, 760])
         self.assertEqual(by_id["window_meta"]["controls_panel_width"], 520)
-        self.assertIs(by_id["window_meta"]["preview_hq_default"], True)
+        self.assertIs(by_id["window_meta"]["preview_hq_default"], False)
         self.assertIs(by_id["window_meta"]["header_progress"], False)
 
         section_labels = [param["label"] for param in defs if param.get("type") == "section"]
