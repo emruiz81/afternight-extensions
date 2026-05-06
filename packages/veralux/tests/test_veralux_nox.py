@@ -397,7 +397,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
 
         self.assertGreater(float(preview.array[7, 7, 0]), float(src.array[7, 7, 0]))
 
-    def test_protection_mask_view_preserves_mono_source_shape(self):
+    def test_protection_mask_view_uses_colored_overlay_for_mono_source(self):
         source_array = core.luminance(synthetic_gradient_field(size=18))
         src = FakeImage(source_array)
         preview = FakeImage(np.zeros_like(src.array))
@@ -422,8 +422,12 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
             masks=[mask],
         )
 
-        self.assertEqual(preview.array.shape, src.array.shape)
-        self.assertGreater(float(preview.array[7, 7]), float(src.array[7, 7]))
+        self.assertEqual(preview.array.shape, src.array.shape + (3,))
+        self.assertGreater(float(preview.array[7, 7, 0]), float(preview.array[7, 7, 1]))
+        self.assertGreater(float(preview.array[7, 7, 1]), float(preview.array[7, 7, 2]))
+        self.assertAlmostEqual(float(preview.array[1, 1, 0]), float(src.array[1, 1]), places=6)
+        self.assertAlmostEqual(float(preview.array[1, 1, 1]), float(src.array[1, 1]), places=6)
+        self.assertAlmostEqual(float(preview.array[1, 1, 2]), float(src.array[1, 1]), places=6)
 
     def test_execute_writes_processed_image_and_provenance_metadata(self):
         src = FakeImage(synthetic_gradient_field())

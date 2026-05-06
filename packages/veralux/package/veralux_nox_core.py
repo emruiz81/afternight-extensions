@@ -812,11 +812,15 @@ def source_with_protection_overlay(image, user_mask=None, *, alpha=0.48):
     if mask is None or float(np.max(mask, initial=0.0)) <= 0.0:
         return _from_work_image(display, layout, extras, clip=True)
 
+    overlay_color = np.array([1.0, 0.69, 0.0], dtype=np.float32)
     blend = np.clip(mask, 0.0, 1.0) * float(np.clip(alpha, 0.0, 1.0))
     if display.ndim == 2:
-        out = display * (1.0 - blend) + blend
-        return _from_work_image(out, layout, extras, clip=True)
+        base = np.repeat(display[..., np.newaxis], 3, axis=-1)
+        out = base * (1.0 - blend[..., np.newaxis]) + overlay_color * blend[..., np.newaxis]
+        out = np.clip(out, 0.0, 1.0)
+        if layout == "chw_mono":
+            return np.moveaxis(out, -1, 0).astype(np.float32, copy=False)
+        return out.astype(np.float32, copy=False)
 
-    overlay_color = np.array([1.0, 0.69, 0.0], dtype=np.float32)
     out = display * (1.0 - blend[..., np.newaxis]) + overlay_color * blend[..., np.newaxis]
     return _from_work_image(out, layout, extras, clip=True)
