@@ -37,6 +37,8 @@ assets, verifies the checked-in index, creates the GitHub Release, and uploads
 the selected package `.tar.zst` plus metadata sidecar.
 
 This is the only workflow that publishes downloadable release assets for users.
+It also writes a run summary listing the publishable package ids plus their
+declared release versions discovered from `packages/*/repository.json`.
 
 Release publication should reuse the repository builder and index generator so
 that compressed asset hashes in `index.json` match the exact released files.

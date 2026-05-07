@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       package_id:
-        description: Extension package id to publish as an official GitHub Release, for example veralux
+        description: Extension package id to publish as an official GitHub Release, for example veralux. The run summary lists the available publishable package ids and versions.
         required: true
         type: string
       version:
-        description: Version to publish. Must match package/extension.json and repository.json release metadata.
+        description: Version to publish. Must match package/extension.json and repository.json release metadata. The run summary lists the declared release versions.
         required: true
         type: string
       draft:
@@ -46,6 +46,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.14"
+
+      - name: List publishable packages and versions
+        run: python3 tools/release_metadata.py --list-available --github-step-summary
 
       - name: Install system dependencies
         run: |

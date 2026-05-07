@@ -193,6 +193,8 @@ After the PR is merged to `main`, a maintainer publishes the release assets:
 
 The publish workflow:
 
+- lists the publishable package ids and declared release versions from
+  repository metadata in the workflow run summary
 - validates that `extension.json.version`, `repository.json.latest_version`,
   and the requested version match
 - resolves the release tag from `repository.json.asset_base_url`
