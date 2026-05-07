@@ -20,6 +20,7 @@ from afternight_repo.package_tools import (  # noqa: E402
     read_json,
     sha256_file,
 )
+from release_metadata import resolve_release_metadata  # noqa: E402
 
 
 def write_json(path, data):
@@ -465,6 +466,19 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertIn("Representative QA Signoff", readiness)
         self.assertIn("PUBLICATION_READINESS.md", packaging_notes)
         self.assertIn("published through the official AfterNight extension index", packaging_notes)
+
+    def test_release_metadata_resolves_github_release_tag(self):
+        metadata = resolve_release_metadata(REPO_ROOT / "packages", "veralux", "0.1.0")
+
+        self.assertEqual(metadata["package_id"], "veralux")
+        self.assertEqual(metadata["version"], "0.1.0")
+        self.assertEqual(metadata["release_tag"], "veralux-v0.1.0")
+        self.assertEqual(metadata["release_title"], "VeraLux Suite 0.1.0")
+        self.assertIn("github.com/emruiz81/afternight-extensions", metadata["asset_base_url"])
+
+    def test_release_metadata_rejects_version_mismatch(self):
+        with self.assertRaisesRegex(PackageToolError, "manifest version"):
+            resolve_release_metadata(REPO_ROOT / "packages", "veralux", "9.9.9")
 
     def test_veralux_package_asset_smoke_contains_one_suite_and_all_processes(self):
         if shutil.which("zstd") is None:

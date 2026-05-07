@@ -187,3 +187,16 @@ https://github.com/emruiz81/afternight
 This extension repository provides package/index artifacts; the main app
 repository implements the Extension Manager client, package validation, install
 flow, and runtime host integration.
+
+## Release Process
+
+Contributor PRs carry source, tests, metadata, and generated `index.json`
+changes. CI validates the repository and package-local tests, but it does not
+publish GitHub Releases from PRs.
+
+After a PR is merged, a maintainer runs the `Publish Extension Release` GitHub
+Actions workflow from `main` with the package id and version. That workflow
+rebuilds deterministic assets, verifies the checked-in index, creates the GitHub
+Release, and uploads the `.tar.zst` asset plus metadata sidecar.
+
+See `docs/RELEASE_PROCESS.md` for the full contributor and maintainer workflow.

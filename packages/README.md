@@ -15,6 +15,7 @@ packages/<extension_id>/
     THIRD_PARTY_NOTICES.md
   README.md
   tests/
+    requirements.txt   # optional, installed by package-test CI
   packaging/
   repository.json
 ```
@@ -36,3 +37,6 @@ See `../docs/HOST_MODES_AND_LICENSING.md` before adding a new package.
 Use `"publish": false` in `repository.json` when a package is source-staged but not ready for the generated public index.
 
 Keep package IDs stable. Use lowercase snake-case or dotted identifiers that pass AfterNight manifest validation.
+
+See `../docs/RELEASE_PROCESS.md` for the PR, CI, and maintainer publication
+workflow.

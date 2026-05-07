@@ -116,3 +116,15 @@ python3 tools/build_repository_assets.py --output-dir dist
 python3 tools/generate_index.py --packages-root packages --assets-dir dist --updated-at "$(python3 -c 'import json; print(json.load(open("index.json"))["updated_at"])')" --output /tmp/index.json
 diff -u index.json /tmp/index.json
 ```
+
+## Resolve Release Metadata
+
+The maintainer publish workflow uses `release_metadata.py` to verify that the
+requested package/version matches `extension.json` and `repository.json`, and to
+resolve the GitHub Release tag from `asset_base_url`:
+
+```bash
+python3 tools/release_metadata.py --package-id veralux --version 0.1.0
+```
+
+See `../docs/RELEASE_PROCESS.md` for the full release workflow.

@@ -1,0 +1,176 @@
+name: Publish Extension Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_id:
+        description: Extension package id, for example veralux
+        required: true
+        type: string
+      version:
+        description: Version to publish; must match package/extension.json
+        required: true
+        type: string
+      draft:
+        description: Create or keep the GitHub Release as a draft
+        required: true
+        default: false
+        type: boolean
+      prerelease:
+        description: Mark the GitHub Release as a prerelease
+        required: true
+        default: false
+        type: boolean
+      replace_existing_assets:
+        description: Replace assets on an existing release; use only before a release is announced
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.package_id }} ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends zstd
+
+      - name: Resolve release metadata
+        id: release
+        run: |
+          python3 tools/release_metadata.py \
+            --package-id "${{ inputs.package_id }}" \
+            --version "${{ inputs.version }}" \
+            --github-output
+
+      - name: Build published package assets
+        run: python3 tools/build_repository_assets.py --output-dir dist
+
+      - name: Verify checked-in index
+        run: |
+          updated_at="$(python3 -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')"
+          python3 tools/generate_index.py \
+            --packages-root packages \
+            --assets-dir dist \
+            --updated-at "$updated_at" \
+            --output /tmp/index.json
+          diff -u index.json /tmp/index.json
+
+      - name: Select release assets
+        id: assets
+        env:
+          PACKAGE_ID: ${{ inputs.package_id }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+          import uuid
+
+          package_id = os.environ["PACKAGE_ID"]
+          version = os.environ["VERSION"]
+          dist = pathlib.Path("dist")
+          files = []
+          for metadata_path in sorted(dist.glob("*.metadata.json")):
+              metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+              if metadata.get("package_id") != package_id or metadata.get("version") != version:
+                  continue
+              archive_path = dist / metadata["name"]
+              if not archive_path.is_file():
+                  raise SystemExit(f"Missing archive for {metadata_path}: {archive_path}")
+              files.append(str(archive_path))
+              files.append(str(metadata_path))
+
+          if not files:
+              raise SystemExit(f"No built assets found for {package_id} {version}")
+
+          output_path = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          delimiter = f"EOF_{uuid.uuid4().hex}"
+          with output_path.open("a", encoding="utf-8", newline="\n") as handle:
+              handle.write(f"asset_files<<{delimiter}\n")
+              for item in files:
+                  handle.write(f"{item}\n")
+              handle.write(f"{delimiter}\n")
+          PY
+
+      - name: Write release notes
+        env:
+          CHANGELOG: ${{ steps.release.outputs.changelog }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+
+          notes = os.environ.get("CHANGELOG", "").strip()
+          pathlib.Path("release-notes.md").write_text(notes + "\n", encoding="utf-8")
+          PY
+
+      - name: Check existing GitHub Release
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          REPLACE_EXISTING_ASSETS: ${{ inputs.replace_existing_assets }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            if [ "$REPLACE_EXISTING_ASSETS" != "true" ]; then
+              echo "Release $RELEASE_TAG already exists. Re-run with replace_existing_assets=true only if this release has not been announced." >&2
+              exit 1
+            fi
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.release_title }}
+          ASSET_FILES: ${{ steps.assets.outputs.asset_files }}
+        run: |
+          mapfile -t asset_files <<< "$ASSET_FILES"
+          flags=()
+          if [ "${{ inputs.draft }}" = "true" ]; then
+            flags+=(--draft)
+          fi
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" "${asset_files[@]}" \
+            --target "$GITHUB_SHA" \
+            --title "$RELEASE_TITLE" \
+            --notes-file release-notes.md \
+            "${flags[@]}"
+
+      - name: Replace GitHub Release assets
+        if: steps.existing.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.release_title }}
+          ASSET_FILES: ${{ steps.assets.outputs.asset_files }}
+        run: |
+          mapfile -t asset_files <<< "$ASSET_FILES"
+          gh release edit "$RELEASE_TAG" \
+            --title "$RELEASE_TITLE" \
+            --notes-file release-notes.md
+          gh release upload "$RELEASE_TAG" "${asset_files[@]}" --clobber

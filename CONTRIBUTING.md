@@ -18,6 +18,10 @@ This repository is curated. Pull requests are reviewed for package behavior, sou
 10. Run validation.
 11. Open a pull request with a short description, target platforms, dependency behavior, bundled artifacts, and license summary.
 
+Do not commit built package archives or generated sidecars. CI rebuilds assets
+for validation, and maintainers publish release assets from `main` after a PR is
+merged. See `docs/RELEASE_PROCESS.md` for the full release workflow.
+
 ## Updating A Package
 
 - Preserve the extension `id`.
@@ -25,6 +29,9 @@ This repository is curated. Pull requests are reviewed for package behavior, sou
 - Document user-visible changes in the package README or release notes.
 - Preserve user settings compatibility unless a migration is explicitly documented.
 - Refresh dependency locks when dependencies change.
+- Add or update `packages/<extension_id>/tests/requirements.txt` when
+  package-local tests need Python dependencies that are not part of the base CI
+  environment.
 
 ## Review Requirements
 

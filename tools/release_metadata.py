@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+import uuid
+from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from afternight_repo.package_tools import (  # noqa: E402
+    PackageToolError,
+    is_package_published,
+    load_valid_manifest,
+    read_json,
+)
+
+
+def resolve_release_metadata(packages_root, package_id, version):
+    _validate_package_id(package_id)
+    packages_root = Path(packages_root)
+    package_root = packages_root / package_id
+    package_dir = package_root / "package"
+    repository_metadata_path = package_root / "repository.json"
+
+    if not package_dir.is_dir():
+        raise PackageToolError(f"missing package directory: {package_dir}")
+    if not repository_metadata_path.is_file():
+        raise PackageToolError(f"missing repository release metadata: {repository_metadata_path}")
+    if not is_package_published(package_root):
+        raise PackageToolError(
+            f"{repository_metadata_path}: package is marked publish=false and cannot be released"
+        )
+
+    manifest = load_valid_manifest(package_dir)
+    if manifest["id"] != package_id:
+        raise PackageToolError(
+            f"{package_dir / 'extension.json'}: manifest id {manifest['id']} does not match {package_id}"
+        )
+    if manifest["version"] != version:
+        raise PackageToolError(
+            f"{package_dir / 'extension.json'}: manifest version {manifest['version']} does not match {version}"
+        )
+
+    repository_metadata = read_json(repository_metadata_path)
+    latest_version = repository_metadata.get("latest_version", manifest["version"])
+    if latest_version != version:
+        raise PackageToolError(
+            f"{repository_metadata_path}: latest_version {latest_version} does not match release version {version}"
+        )
+
+    releases = repository_metadata.get("releases")
+    if not isinstance(releases, list):
+        raise PackageToolError(f"{repository_metadata_path}: releases must be an array")
+
+    release = next((item for item in releases if item.get("version") == version), None)
+    if release is None:
+        raise PackageToolError(f"{repository_metadata_path}: no release entry for version {version}")
+
+    asset_base_url = release.get("asset_base_url")
+    if not isinstance(asset_base_url, str) or not asset_base_url:
+        raise PackageToolError(
+            f"{repository_metadata_path}: release {version} must declare asset_base_url"
+        )
+
+    marker = "/releases/download/"
+    if marker not in asset_base_url:
+        raise PackageToolError(
+            f"{repository_metadata_path}: release {version} asset_base_url must point to a GitHub release download URL"
+        )
+
+    release_tag = asset_base_url.split(marker, 1)[1].strip("/").split("/", 1)[0]
+    if not release_tag:
+        raise PackageToolError(f"{repository_metadata_path}: release {version} tag is empty")
+
+    return {
+        "package_id": package_id,
+        "version": version,
+        "manifest_name": manifest["name"],
+        "release_tag": release_tag,
+        "release_title": f"{manifest['name']} {version}",
+        "asset_base_url": asset_base_url,
+        "changelog": release.get("changelog", ""),
+        "published_at": release.get("published_at", ""),
+    }
+
+
+def _validate_package_id(value):
+    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789_-")
+    if (
+        not isinstance(value, str)
+        or not value
+        or value[0] in "-_"
+        or any(character not in allowed for character in value)
+    ):
+        raise PackageToolError(
+            "package_id must use lowercase letters, numbers, dashes, or underscores"
+        )
+
+
+def write_github_outputs(path, values):
+    with Path(path).open("a", encoding="utf-8", newline="\n") as handle:
+        for key, value in values.items():
+            text = "" if value is None else str(value)
+            if "\n" in text:
+                delimiter = f"EOF_{uuid.uuid4().hex}"
+                handle.write(f"{key}<<{delimiter}\n{text}\n{delimiter}\n")
+            else:
+                handle.write(f"{key}={text}\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Resolve release metadata for a package release.")
+    parser.add_argument("--packages-root", default="packages")
+    parser.add_argument("--package-id", required=True)
+    parser.add_argument("--version", required=True)
+    parser.add_argument(
+        "--github-output",
+        action="store_true",
+        help="Append selected values to the GITHUB_OUTPUT file for GitHub Actions.",
+    )
+    args = parser.parse_args()
+
+    try:
+        metadata = resolve_release_metadata(args.packages_root, args.package_id, args.version)
+    except PackageToolError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    if args.github_output:
+        output_path = os.environ.get("GITHUB_OUTPUT")
+        if not output_path:
+            print("error: GITHUB_OUTPUT is not set", file=sys.stderr)
+            return 1
+        write_github_outputs(
+            output_path,
+            {
+                "package_id": metadata["package_id"],
+                "version": metadata["version"],
+                "release_tag": metadata["release_tag"],
+                "release_title": metadata["release_title"],
+                "asset_base_url": metadata["asset_base_url"],
+                "changelog": metadata["changelog"],
+            },
+        )
+
+    print(json.dumps(metadata, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

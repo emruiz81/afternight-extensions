@@ -15,6 +15,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -35,3 +40,65 @@ jobs:
             --updated-at "$updated_at" \
             --output /tmp/index.json
           diff -u index.json /tmp/index.json
+
+  discover-package-tests:
+    name: Discover Package Tests
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Discover package test suites
+        id: discover
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import os
+
+          packages = []
+          for tests_dir in sorted(pathlib.Path("packages").glob("*/tests")):
+              if any(path.name.startswith("test") and path.suffix == ".py" for path in tests_dir.rglob("*.py")):
+                  packages.append({"package": tests_dir.parent.name})
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write("matrix=" + json.dumps({"include": packages}) + "\n")
+          PY
+
+  package-tests:
+    name: Package Tests (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    needs: discover-package-tests
+    if: needs.discover-package-tests.outputs.matrix != '{"include": []}'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-package-tests.outputs.matrix) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Check out AfterNight Python SDK context
+        run: git clone --depth 1 https://github.com/emruiz81/afternight.git ../afternight
+
+      - name: Create package test environment
+        run: |
+          python -m venv .venv-package-tests
+          . .venv-package-tests/bin/activate
+          python -m pip install --upgrade pip
+          if [ -f "packages/${{ matrix.package }}/tests/requirements.txt" ]; then
+            python -m pip install -r "packages/${{ matrix.package }}/tests/requirements.txt"
+          fi
+
+      - name: Run package tests
+        run: |
+          . .venv-package-tests/bin/activate
+          python -m unittest discover -s "packages/${{ matrix.package }}/tests"
