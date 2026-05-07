@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "repository": "afternight-extensions",
+  "official": true,
+  "updated_at": "2026-05-07T03:24:38Z",
+  "extensions": [
+    {
+      "id": "cosmic_clarity",
+      "name": "Cosmic Clarity",
+      "summary": "Cosmic Clarity denoise, dark-star, sharpening, and super-resolution workflows hosted through the extension runtime.",
+      "description": "First-party AfterNight adapter for the Cosmic Clarity tool suite. It provides denoise, Dark Star, sharpening, and super-resolution processes while keeping the upstream Cosmic Clarity executables outside the package and user-configurable.",
+      "author": "AfterNight / Seti Astro",
+      "license": "GPL-3.0",
+      "publisher_id": "afternight",
+      "latest_version": "1.0.0",
+      "tags": [
+        "ai",
+        "denoise",
+        "sharpening",
+        "super-resolution",
+        "stars"
+      ],
+      "releases": [
+        {
+          "version": "1.0.0",
+          "min_app_version": "2.0.0",
+          "package_format_version": 1,
+          "protocol_version": 1,
+          "sdk_version": 1,
+          "sdk_backend": "runtime",
+          "launch_mode": "single_image",
+          "runtime_targets": [
+            "linux-clang-x86_64",
+            "windows-msvc-x86_64"
+          ],
+          "assets": [
+            {
+              "name": "cosmic_clarity-1.0.0-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
+              "package_hash": "sha256:7a0aa0fb6330b29bb3f68c5420c0f2197a2d40020ec05cb0b2aea0cac09ce785",
+              "signature_state": "unsigned",
+              "runtime_targets": [
+                "linux-clang-x86_64",
+                "windows-msvc-x86_64"
+              ],
+              "signature_detail": "Unsigned official package; SHA-256 verified from index"
+            }
+          ],
+          "changelog": "Initial official repository release of the Cosmic Clarity adapter.",
+          "published_at": "2026-04-27T00:00:00Z"
+        }
+      ],
+      "homepage_url": "https://www.setiastro.com/cosmic-clarity",
+      "repository_url": "https://github.com/setiastro/cosmicclarity",
+      "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
+    }
+  ]
+}
