@@ -69,7 +69,7 @@ For every release asset:
 
 ## Validation
 
-Prefer repository-local tooling for Phase 6 package-repository work:
+Prefer repository-local tooling for package-repository work:
 
 ```bash
 python3 -m unittest discover -s tests
