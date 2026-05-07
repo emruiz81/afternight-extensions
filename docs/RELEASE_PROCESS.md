@@ -149,10 +149,10 @@ The validation workflow:
 - runs repository tooling tests
 - builds all currently published package assets
 - regenerates `index.json` and diffs it against the checked-in file
-- runs package-local test suites in isolated virtual environments
-- installs `packages/<extension_id>/tests/requirements.txt` when present
-- clones the sibling AfterNight repository only to provide Python SDK import
-  context for package tests
+
+Package-local tests are temporarily disabled in GitHub Actions until the
+private sibling `afternight` repository is made public. Continue running those
+test suites locally against a sibling checkout at `../afternight/python/modules`.
 
 CI-built archives are validation output only. They are not release publication.
 

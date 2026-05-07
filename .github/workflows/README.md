@@ -9,10 +9,10 @@ It:
 - skips source-staged packages marked with `"publish": false`
 - verifies generated sidecar hashes against compressed assets
 - regenerates `index.json` and diffs it against the checked-in file
-- runs package-local tests in isolated virtual environments
-- installs `packages/<extension_id>/tests/requirements.txt` when present
-- clones the sibling AfterNight repository only to provide Python SDK import
-  context for package tests
+
+Package-local tests are currently disabled in GitHub Actions until the sibling
+`afternight` repository is public. Run those suites locally against a sibling
+checkout when needed.
 
 `build-assets.yml` is a manual workflow for producing package assets. It can
 build:
