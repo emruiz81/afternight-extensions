@@ -107,6 +107,19 @@ python3 tools/generate_index.py \
 
 Each package must provide `packages/<extension_id>/repository.json` with release-level metadata such as `min_app_version`, changelog text, and publication timestamp.
 
+The checked-in `index.json` on `main` is the candidate index used by CI and
+release validation. The maintainer release workflow publishes the client-facing
+copy to the `live` branch only after GitHub Release assets have been uploaded
+and their download URLs have been checked.
+
+When a live index already exists, the release workflow uses
+`tools/update_live_index.py` to merge only the package being released into the
+live copy. This lets one merged PR contain multiple package updates without
+making unreleased package assets visible to clients.
+
+When the `live` branch does not exist yet, the same tool creates a live index
+containing only the package being published by that workflow run.
+
 ## Validate Locally
 
 ```bash

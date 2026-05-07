@@ -24,6 +24,7 @@ from release_metadata import (  # noqa: E402
     list_available_release_metadata,
     resolve_release_metadata,
 )
+from update_live_index import update_live_index  # noqa: E402
 
 
 def write_json(path, data):
@@ -163,6 +164,64 @@ class ManifestHostModePolicyTests(unittest.TestCase):
 
             with self.assertRaisesRegex(PackageToolError, "rpc is reserved"):
                 load_valid_manifest(package_dir)
+
+
+class LiveIndexUpdateTests(unittest.TestCase):
+    def make_index(self, updated_at, package_versions):
+        return {
+            "schema_version": 1,
+            "repository": "afternight-extensions",
+            "official": True,
+            "updated_at": updated_at,
+            "extensions": [
+                {
+                    "id": package_id,
+                    "name": package_id,
+                    "summary": f"{package_id} summary",
+                    "description": f"{package_id} description",
+                    "author": "AfterNight Tests",
+                    "license": "MIT",
+                    "latest_version": version,
+                    "releases": [
+                        {
+                            "version": version,
+                            "assets": [
+                                {
+                                    "name": f"{package_id}-{version}.tar.zst",
+                                    "download_url": f"https://example.invalid/{package_id}-{version}.tar.zst",
+                                    "package_hash": "sha256:" + ("a" * 64),
+                                }
+                            ],
+                        }
+                    ],
+                }
+                for package_id, version in package_versions
+            ],
+        }
+
+    def test_update_live_index_seeds_selected_package_without_existing_live_index(self):
+        candidate = self.make_index("2026-05-07T00:00:00Z", [("alpha", "1.0.0"), ("beta", "2.0.0")])
+
+        live = update_live_index(candidate, "alpha")
+
+        self.assertEqual([package["id"] for package in live["extensions"]], ["alpha"])
+        self.assertEqual(live["updated_at"], "2026-05-07T00:00:00Z")
+
+    def test_update_live_index_replaces_only_selected_package(self):
+        current = self.make_index("2026-05-01T00:00:00Z", [("alpha", "0.9.0"), ("beta", "1.9.0")])
+        candidate = self.make_index("2026-05-07T00:00:00Z", [("alpha", "1.0.0"), ("beta", "2.0.0")])
+
+        live = update_live_index(candidate, "alpha", current)
+        live_versions = {package["id"]: package["latest_version"] for package in live["extensions"]}
+
+        self.assertEqual(live_versions, {"alpha": "1.0.0", "beta": "1.9.0"})
+        self.assertEqual(live["updated_at"], "2026-05-07T00:00:00Z")
+
+    def test_update_live_index_rejects_missing_selected_package(self):
+        candidate = self.make_index("2026-05-07T00:00:00Z", [("alpha", "1.0.0")])
+
+        with self.assertRaisesRegex(ValueError, "does not contain package beta"):
+            update_live_index(candidate, "beta")
 
 
 class PackageToolTests(unittest.TestCase):
@@ -408,6 +467,32 @@ class RepositoryPackageTests(unittest.TestCase):
             publishable_package_ids,
             "New publishable package PRs must update .github/workflows/publish-release.yml package_id options.",
         )
+
+    def test_publish_release_workflow_publishes_live_index_after_assets(self):
+        workflow_path = REPO_ROOT / ".github" / "workflows" / "publish-release.yml"
+        workflow = workflow_path.read_text(encoding="utf-8")
+
+        self.assertIn("LIVE_INDEX_BRANCH: live", workflow)
+        self.assertIn("LIVE_INDEX_PATH: index.json", workflow)
+        self.assertIn("Generate repository index candidate", workflow)
+        self.assertIn("Build live index update", workflow)
+        self.assertIn("tools/update_live_index.py", workflow)
+        self.assertIn("Verify live index download URLs", workflow)
+        self.assertIn("Publish live repository index", workflow)
+        self.assertIn("if: ${{ inputs.draft == false }}", workflow)
+
+        upload_index = workflow.index("Create GitHub Release and upload assets")
+        replace_index = workflow.index("Replace GitHub Release assets in place")
+        live_candidate_index = workflow.index("Generate repository index candidate")
+        live_update_index = workflow.index("Build live index update")
+        live_verify_index = workflow.index("Verify live index download URLs")
+        live_publish_index = workflow.index("Publish live repository index")
+
+        self.assertLess(upload_index, live_candidate_index)
+        self.assertLess(replace_index, live_candidate_index)
+        self.assertLess(live_candidate_index, live_update_index)
+        self.assertLess(live_update_index, live_verify_index)
+        self.assertLess(live_verify_index, live_publish_index)
 
     def test_cosmic_clarity_processes_have_specific_categories(self):
         package_dir = REPO_ROOT / "packages" / "cosmic_clarity" / "package"

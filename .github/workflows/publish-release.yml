@@ -36,6 +36,10 @@ on:
 permissions:
   contents: write
 
+env:
+  LIVE_INDEX_BRANCH: live
+  LIVE_INDEX_PATH: index.json
+
 jobs:
   publish:
     name: Publish GitHub Release for ${{ inputs.package_id }} ${{ inputs.version }}
@@ -183,3 +187,124 @@ jobs:
             --title "$RELEASE_TITLE" \
             --notes-file release-notes.md
           gh release upload "$RELEASE_TAG" "${asset_files[@]}" --clobber
+
+      - name: Generate repository index candidate
+        if: ${{ inputs.draft == false }}
+        run: |
+          updated_at="$(python3 -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')"
+          python3 tools/generate_index.py \
+            --packages-root packages \
+            --assets-dir dist \
+            --updated-at "$updated_at" \
+            --output /tmp/candidate-index.json
+
+      - name: Build live index update
+        if: ${{ inputs.draft == false }}
+        env:
+          PACKAGE_ID: ${{ inputs.package_id }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin "$LIVE_INDEX_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$LIVE_INDEX_BRANCH"
+          fi
+
+          if git show "origin/$LIVE_INDEX_BRANCH:$LIVE_INDEX_PATH" > /tmp/current-live-index.json 2>/dev/null; then
+            python3 tools/update_live_index.py \
+              --candidate-index /tmp/candidate-index.json \
+              --current-live-index /tmp/current-live-index.json \
+              --package-id "$PACKAGE_ID" \
+              --output /tmp/live-index.json
+          else
+            python3 tools/update_live_index.py \
+              --candidate-index /tmp/candidate-index.json \
+              --package-id "$PACKAGE_ID" \
+              --output /tmp/live-index.json
+          fi
+
+      - name: Verify live index download URLs
+        if: ${{ inputs.draft == false }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import subprocess
+          import sys
+          import time
+
+          index_path = pathlib.Path("/tmp/live-index.json")
+          index = json.loads(index_path.read_text(encoding="utf-8"))
+          urls = [
+              asset["download_url"]
+              for package in index.get("extensions", [])
+              for release in package.get("releases", [])
+              for asset in release.get("assets", [])
+          ]
+          if not urls:
+              raise SystemExit("live index contains no release asset download URLs")
+
+          failures = []
+          for url in urls:
+              for attempt in range(1, 7):
+                  result = subprocess.run(
+                      [
+                          "curl",
+                          "--fail",
+                          "--location",
+                          "--silent",
+                          "--show-error",
+                          "--head",
+                          "--max-time",
+                          "30",
+                          url,
+                      ],
+                      check=False,
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,
+                      text=True,
+                  )
+                  if result.returncode == 0:
+                      break
+                  if attempt < 6:
+                      time.sleep(5 * attempt)
+              else:
+                  failures.append(f"{url}\n{result.stderr.strip()}")
+
+          if failures:
+              print("One or more live index assets are not downloadable:", file=sys.stderr)
+              print("\n\n".join(failures), file=sys.stderr)
+              raise SystemExit(1)
+          PY
+
+      - name: Publish live repository index
+        if: ${{ inputs.draft == false }}
+        run: |
+          set -euo pipefail
+          worktree="$(mktemp -d)"
+          if git ls-remote --exit-code --heads origin "$LIVE_INDEX_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$LIVE_INDEX_BRANCH"
+            git worktree add -B "$LIVE_INDEX_BRANCH" "$worktree" "origin/$LIVE_INDEX_BRANCH"
+          else
+            git worktree add --detach "$worktree"
+            git -C "$worktree" checkout --orphan "$LIVE_INDEX_BRANCH"
+            git -C "$worktree" rm -r --ignore-unmatch .
+          fi
+
+          cp /tmp/live-index.json "$worktree/$LIVE_INDEX_PATH"
+          cat > "$worktree/README.md" <<'EOF'
+          # AfterNight Extension Live Index
+
+          This branch is updated by the `Publish Extension Release` workflow after
+          GitHub Release assets have been uploaded and their download URLs have
+          been checked. Do not edit it by hand.
+          EOF
+
+          git -C "$worktree" config user.name "github-actions[bot]"
+          git -C "$worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$worktree" add "$LIVE_INDEX_PATH" README.md
+          if git -C "$worktree" diff --cached --quiet; then
+            echo "Live index is already up to date."
+            exit 0
+          fi
+
+          git -C "$worktree" commit -m "Publish live extension index for ${{ inputs.package_id }} ${{ inputs.version }}"
+          git -C "$worktree" push origin "HEAD:$LIVE_INDEX_BRANCH"

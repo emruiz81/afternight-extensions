@@ -3,8 +3,8 @@
 Official curated extension repository for AfterNight.
 
 This repository stores package source trees, release metadata, validation and
-build tooling, and the generated `index.json` consumed by AfterNight's
-Extension Manager.
+build tooling, and the generated candidate `index.json` used to publish
+AfterNight's live Extension Manager feed.
 
 ## Start Here
 
@@ -22,7 +22,7 @@ Use these entry points depending on what you need to do:
 
 ## Published Packages
 
-The generated `index.json` currently publishes:
+The live Extension Manager feed currently publishes:
 
 - Cosmic Clarity: a pure-Python AfterNight adapter for Seti Astro's Cosmic
   Clarity denoise, dark-star, sharpening, and super-resolution workflows. The
@@ -39,7 +39,7 @@ The generated `index.json` currently publishes:
 
 ```text
 .
-|-- index.json                 # generated repository index
+|-- index.json                 # generated candidate repository index
 |-- packages/                  # one folder per extension package
 |   `-- <extension_id>/
 |       |-- package/           # release archive root source
@@ -66,10 +66,12 @@ release outputs should not be committed.
 
 - Extension release assets are zstd-compressed tar archives (`.tar.zst`).
 - `index.json` is generated from package manifests, `repository.json`, and
-  asset sidecars.
+  asset sidecars. The checked-in copy is a candidate index; the release
+  workflow publishes the client-facing copy to the `live` branch after asset
+  upload and URL verification.
 - Public PyPI wheels must not be redistributed in package assets.
 - `"publish": false` in `repository.json` keeps a package source-staged and out
-  of the public index.
+  of generated indexes.
 
 Use [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md) and
 [docs/REPOSITORY_POLICY.md](docs/REPOSITORY_POLICY.md) for the full repository

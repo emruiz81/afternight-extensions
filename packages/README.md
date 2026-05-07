@@ -103,13 +103,15 @@ Each package folder must include `repository.json` next to `package/`. This file
 supplies release metadata that is merged into the generated `index.json`.
 
 - Keep `latest_version` in sync with the most recent published release.
-- Use `"publish": false` when a package is source-staged but not ready for the
-  public index.
+- Use `"publish": false` when a package is source-staged but not ready for
+  generated indexes.
 - Published releases should declare `version`, `min_app_version`, `changelog`,
   `published_at`, `asset_base_url`, `signature_state`, and
   `signature_detail`.
 - `index.json` is generated from package manifests, `repository.json`, and
   built asset sidecars. Do not hand-edit package entries in the index.
+  The checked-in copy on `main` is a candidate index; the release workflow
+  updates the client-facing `live` branch after assets are uploaded.
 
 ## Local Validation
 
