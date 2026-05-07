@@ -2,41 +2,138 @@
 
 Each package lives under `packages/<extension_id>/`.
 
-Recommended layout:
+The `package/` directory becomes the root of the published `.tar.zst` archive.
+Everything outside `package/` supports authoring, tests, staging, and release
+metadata.
+
+## Recommended Layout
 
 ```text
 packages/<extension_id>/
   package/
     extension.json
     <entry_point>.py
-    requirements.lock
-    wheelhouse/   # only for custom/private artifacts unavailable from official PyPI
+    requirements.lock              # when Python dependencies are declared
+    assets/                        # optional package data
+    wheelhouse/                    # only for extension-specific/private artifacts
     LICENSE
-    THIRD_PARTY_NOTICES.md
+    THIRD_PARTY_NOTICES.md         # required when bundling deps/models/binaries/copied source
+    UPSTREAM.md                    # required for derived packages when applicable
+    UPSTREAM.json                  # required for derived packages when applicable
   README.md
   tests/
-    requirements.txt   # optional, installed by package-test CI
+    requirements.txt               # optional; installed by package-test CI
   packaging/
   repository.json
 ```
 
-The `package/` directory is the source for release archives. CI should build `.tar.zst` assets from this directory and publish them as release assets. Use target-specific assets only when the package bundles extension-specific native artifacts.
+Use target-specific assets only when the package bundles extension-specific
+native artifacts. Pure Python packages can usually omit `runtime_targets` or
+publish one cross-target asset.
 
-New packages should install public Python dependencies from official PyPI using hash-locked requirements and explicit index URLs. Do not publish public PyPI wheels inside package assets; reserve `wheelhouse/` for custom/private binaries or native data that cannot be downloaded from official package repositories.
+Current runtime target IDs:
+
+- `linux-clang-x86_64`
+- `windows-msvc-x86_64`
+
+## Repository-Ready Checklist
+
+Before opening a PR, make sure the package includes:
+
+- `package/extension.json` with these required fields: `id`, `name`,
+  `version`, `summary`, `author`, `license`, `publisher_id`, `type`,
+  `entry_point`, `category`, `launch_mode`, `sdk_backend`,
+  `package_format_version`, `protocol_version`, and `sdk_version`
+- `package_format_version`, `protocol_version`, and `sdk_version` set to `1`
+- a package-local `LICENSE` that matches `extension.json`
+- `THIRD_PARTY_NOTICES.md` when dependencies, models, helper binaries, copied
+  upstream source, or bundled artifacts are included
+- `repository.json` for release metadata and publication staging
+- tests under `tests/`
+
+If the package is a derived work or port, also declare these provenance fields
+in `extension.json`:
+
+- `attribution`
+- `original_author`
+- `original_project`
+- `original_source_url`
+- `upstream_commit`
+
+VeraLux-derived packages must also include `UPSTREAM.md` and `UPSTREAM.json`.
+
+Keep package IDs stable. Use lowercase snake-case or dotted identifiers that
+pass AfterNight manifest validation.
+
+## Dependencies And Bundled Artifacts
+
+Public Python dependencies should come from official PyPI using explicit index
+URLs and hash-locked requirements.
+
+- Keep `requirements.lock` inside `package/` when Python dependencies are used.
+- When `requirements_file` is present, set
+  `dependencies.pip.require_hashes` to `true`.
+- Do not bundle public PyPI wheels inside package assets.
+- Reserve `wheelhouse/` and `dependencies.pip.find_links` for
+  extension-specific or private artifacts that are unavailable from official
+  package indexes.
+
+Do not commit generated release archives, metadata sidecars, `dist/`, virtual
+environments, or caches.
+
+## SDK Backend
 
 Every package must declare `sdk_backend` explicitly:
 
-- `runtime` for GPL-3.0-family full hosted packages that use AfterNight Engine or native controls
-- `protocol` for lite hosted packages that use only app/view protocol services,
-  own their UI/processing, and use `afternight.ui_protocol` instead of the
-  native `afternight.ui` surface
-- `rpc` for future lite hosted packages that need Engine SDK calls through the RPC sidecar, once AfterNight supports it
+| `sdk_backend` | Host mode | Use when | License rule |
+| --- | --- | --- | --- |
+| `runtime` | Full hosted | Package uses AfterNight Engine or native controls | Must be GPL-3.0-family |
+| `protocol` | Lite hosted | Package uses only app/view protocol services and owns its UI/processing | Can be non-GPL if it avoids Engine/native-control imports |
+| `rpc` | Future lite host plus SDK sidecar | Reserved for future Engine SDK over RPC | Not publishable until AfterNight supports RPC |
 
-See `../docs/HOST_MODES_AND_LICENSING.md` before adding a new package.
+`protocol` packages should use `afternight.ui_protocol` instead of the native
+`afternight.ui` surface.
 
-Use `"publish": false` in `repository.json` when a package is source-staged but not ready for the generated public index.
+See [../docs/HOST_MODES_AND_LICENSING.md](../docs/HOST_MODES_AND_LICENSING.md)
+before adding a new package.
 
-Keep package IDs stable. Use lowercase snake-case or dotted identifiers that pass AfterNight manifest validation.
+## Release Metadata
 
-See `../docs/RELEASE_PROCESS.md` for the PR, CI, and maintainer publication
-workflow.
+Each package folder must include `repository.json` next to `package/`. This file
+supplies release metadata that is merged into the generated `index.json`.
+
+- Keep `latest_version` in sync with the most recent published release.
+- Use `"publish": false` when a package is source-staged but not ready for the
+  public index.
+- Published releases should declare `version`, `min_app_version`, `changelog`,
+  `published_at`, `asset_base_url`, `signature_state`, and
+  `signature_detail`.
+- `index.json` is generated from package manifests, `repository.json`, and
+  built asset sidecars. Do not hand-edit package entries in the index.
+
+## Local Validation
+
+`zstd` must be available on `PATH` to build release assets.
+
+Run repository tooling tests:
+
+```bash
+python3 -m unittest discover -s tests
+```
+
+Run package tests after installing any optional test requirements:
+
+```bash
+python3 -m unittest discover -s packages/<extension_id>/tests
+```
+
+Build the package asset and regenerate the index for validation:
+
+```bash
+python3 tools/build_package.py packages/<extension_id>/package --output-dir dist
+python3 tools/generate_index.py --packages-root packages --assets-dir dist --updated-at <timestamp> --output index.json
+```
+
+See [../docs/PACKAGE_FORMAT.md](../docs/PACKAGE_FORMAT.md) for the canonical
+package schema and [../docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md) for
+the PR, CI, and maintainer publication workflow.

@@ -1,13 +1,25 @@
 # Repository Policy
 
-This repository is the official curated source for AfterNight Extension Manager packages.
+This document defines the repository-wide rules for what may be committed,
+indexed, and published from this repository. Use it for policy decisions; use
+the companion docs for package schema, detailed licensing rules, and workflow.
+
+## What This Policy Controls
+
+This policy is the enforcement layer for:
+
+- `index.json` as generated source of truth
+- allowed signature states and release metadata rules
+- publication staging through `"publish": false`
+- binary, wheel, and bundled artifact rules
+- license and notice gates that block publication
 
 ## Scope
 
 This repository contains the official package feed consumed by AfterNight's
 Extension Manager. Packages become installable through the official feed only
-after their source, release metadata, license files, dependency locks, generated
-assets, and index entries pass review.
+after their source, release metadata, license files, dependency locks,
+generated assets, and index entries pass review.
 
 ## Index Policy
 
@@ -27,11 +39,17 @@ Each release asset must include:
 - `signature_state`
 - compatible `runtime_targets` either on the asset or inherited from the release
 
-Release asset names should end in `.tar.zst`. `package_hash` is the selected compressed asset's authoritative SHA-256 digest. The installer refuses mismatches before decompression or extraction.
+Release asset names should end in `.tar.zst`. `package_hash` is the selected
+compressed asset's authoritative SHA-256 digest. The installer refuses
+mismatches before decompression or extraction.
 
-Do not hand-edit package entries in `index.json`. Update the package source or `repository.json`, rebuild assets, regenerate the index, and commit the resulting metadata.
+Do not hand-edit package entries in `index.json`. Update the package source or
+`repository.json`, rebuild assets, regenerate the index, and commit the
+resulting metadata.
 
-Packages may be source-staged with `"publish": false` in `repository.json`. Those packages are still validated as source but are skipped by `tools/build_repository_assets.py` and omitted from `index.json`.
+Packages may be source-staged with `"publish": false` in `repository.json`.
+Those packages are still validated as source but are skipped by
+`tools/build_repository_assets.py` and omitted from `index.json`.
 
 ## Signature Policy
 
@@ -39,57 +57,52 @@ Initial official packages may be unsigned.
 
 Allowed initial states:
 
-- `unsigned` - allowed for official hash-pinned assets
-- `failed` - blocks installation
+- `unsigned`: allowed for official hash-pinned assets
+- `failed`: blocks installation
 
-Reserved/future states:
+Reserved and future states:
 
-- `verified` - do not emit until real signing keys and verification are implemented
-- `unknown` - should not be emitted by official repository CI
+- `verified`: do not emit until real signing keys and verification are implemented
+- `unknown`: should not be emitted by official repository CI
 
-## License Policy
+## Licensing And Notice Enforcement
 
-Repository-level terms are summarized in `docs/LICENSING.md`; host-mode rules are
-defined in `docs/HOST_MODES_AND_LICENSING.md`; the repository-level Apache-2.0
-text is available at the repository root in `LICENSE`.
+Repository-level terms are summarized in [LICENSING.md](LICENSING.md), and
+host-mode rules are defined in
+[HOST_MODES_AND_LICENSING.md](HOST_MODES_AND_LICENSING.md). Publication is
+blocked when review cannot confirm:
 
-The repository-level Apache-2.0 license applies to repository tooling,
-documentation, CI configuration, tests, and non-package templates unless a file
-declares different terms. It does not relicense extension packages. Everything
-under `packages/<extension_id>/` is governed by that package's manifest,
-package-local `LICENSE`, and notices unless a file inside the package declares a
-more specific license.
-
-Each package must include license metadata, explicit `sdk_backend` metadata, and
-a package-local `LICENSE` file.
-
-Packages that include dependencies, copied upstream source, models, helper tools, or binary artifacts must include `THIRD_PARTY_NOTICES.md` or equivalent notices.
-
-Packages may use individual licenses, but they must be compatible with official
-AfterNight extension distribution and the selected host mode. Unclear or missing
-license information blocks publication.
-
-Backend-specific rules:
-
-- `sdk_backend = runtime` packages are full hosted and must use a GPL-3.0-family license.
-- `sdk_backend = protocol` packages are lite hosted and may use non-GPL licenses
-  only when they avoid `_afternight_runtime`, Engine-backed `afternight` modules,
-  and the native `afternight.ui` surface. Use `afternight.ui_protocol` for
-  protocol-safe result/dialog/theme helpers.
-- `sdk_backend = rpc` packages are blocked until AfterNight ships RPC extension
-  hosting for the target release.
+- explicit `license` and `sdk_backend` metadata in `extension.json`
+- a package-local `LICENSE` file that matches the manifest
+- `THIRD_PARTY_NOTICES.md` coverage for dependencies, copied source, models,
+  helper tools, or bundled binaries
+- compatible licensing for the selected host mode
+- complete provenance for upstream-derived content when required
 
 ## Binary And Wheel Policy
 
-Do not commit large generated wheelhouses or release archives to `main` unless explicitly approved.
+Do not commit large generated wheelhouses or release archives to `main` unless
+explicitly approved.
 
 Preferred flow:
 
-1. keep source and lock metadata in git
-2. declare official PyPI dependencies through explicit pip indexes and hash-locked requirements
-3. bundle only extension-specific/private artifacts unavailable from official package indexes
-4. produce `.tar.zst` package archives with `tools/build_package.py`
-5. publish archives as GitHub Release assets
-6. regenerate and publish `index.json` with `tools/generate_index.py`
+1. Keep source and lock metadata in git.
+2. Declare official PyPI dependencies through explicit pip indexes and
+   hash-locked requirements.
+3. Bundle only extension-specific or private artifacts unavailable from
+   official package indexes.
+4. Produce `.tar.zst` package archives with `tools/build_package.py`.
+5. Publish archives as GitHub Release assets.
+6. Regenerate and publish `index.json` with `tools/generate_index.py`.
 
-New extensions must not redistribute binaries that can be downloaded from the official PyPI repository. Package-local binaries should be specific to the extension, such as custom `.pyd`/`.so` modules, helper executables, private wheels, models, or native data that has no official package-index source.
+New extensions must not redistribute binaries that can be downloaded from the
+official PyPI repository. Package-local binaries should be specific to the
+extension, such as custom `.pyd` or `.so` modules, helper executables, private
+wheels, models, or native data that has no official package-index source.
+
+## Related Docs
+
+- [README.md](README.md)
+- [LICENSING.md](LICENSING.md)
+- [PACKAGE_FORMAT.md](PACKAGE_FORMAT.md)
+- [RELEASE_PROCESS.md](RELEASE_PROCESS.md)
