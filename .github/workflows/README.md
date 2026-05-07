@@ -16,9 +16,9 @@ It:
 - verifies generated sidecar hashes against compressed assets
 - regenerates `index.json` and diffs it against the checked-in file
 
-Package-local tests are currently disabled in GitHub Actions until the sibling
-`afternight` repository is public. Run those suites locally against a sibling
-checkout when needed.
+Package-local tests are currently disabled in GitHub Actions because they
+depend on a sibling `afternight` SDK checkout. Run those suites locally against
+a sibling checkout when needed.
 
 `build-assets.yml` is a manual workflow for producing package assets. It can
 build:

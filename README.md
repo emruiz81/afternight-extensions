@@ -102,15 +102,13 @@ dependencies or sibling-repository SDK imports.
 
 ## Related Repositories
 
-AfterNight application and SDK source live in the main repository:
+This extension repository provides package and index artifacts for public
+distribution.
 
-```text
-https://github.com/emruiz81/afternight
-```
-
-This extension repository provides package and index artifacts; the main app
-repository implements the Extension Manager client, package validation, install
-flow, and runtime host integration.
+The main AfterNight application and SDK source are maintained separately from
+this repository. References in package tests and authoring docs to a sibling
+`../afternight` checkout mean a local app-source checkout when that code is
+available to you.
 
 ## Release Flow
 

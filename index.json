@@ -37,7 +37,7 @@
             {
               "name": "cosmic_clarity-1.0.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:52a20006a495d31d1d5efe54a324ed6f29e09bf42123fb5f3065523110546878",
+              "package_hash": "sha256:7a0aa0fb6330b29bb3f68c5420c0f2197a2d40020ec05cb0b2aea0cac09ce785",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -52,7 +52,7 @@
       ],
       "homepage_url": "https://www.setiastro.com/cosmic-clarity",
       "repository_url": "https://github.com/setiastro/cosmicclarity",
-      "support_url": "https://github.com/emruiz81/afternight/issues"
+      "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
     },
     {
       "id": "graxpert",
@@ -87,7 +87,7 @@
             {
               "name": "graxpert-1.0.1-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.1/graxpert-1.0.1-all.tar.zst",
-              "package_hash": "sha256:4918337ea788bdbd4ce65bb1ca1f7e4cfe1bcd34d64afb59c9ff34cc1c23aa46",
+              "package_hash": "sha256:81a4cd10aa465f7f8c063743c1a0f9d3d1a86e9c1b0185c64147e24d7bea79e5",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -102,7 +102,7 @@
       ],
       "homepage_url": "https://graxpert.com/",
       "repository_url": "https://github.com/Steffenhir/GraXpert",
-      "support_url": "https://github.com/emruiz81/afternight/issues"
+      "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
     },
     {
       "id": "veralux",
@@ -150,7 +150,7 @@
             {
               "name": "veralux-0.1.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/veralux-v0.1.0/veralux-0.1.0-all.tar.zst",
-              "package_hash": "sha256:202f6e4a11ccc72924c652d24fd628b6a4d4702b48ca46f39962f713c8b147c3",
+              "package_hash": "sha256:c8a1d9405fc8d96a4ac122443b61301a74714d3be331131cc59e4f1c3e4c3d9b",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -170,7 +170,7 @@
       "upstream_commit": "4ce0af52926e071caef55f4d17ac17ae8d8b4aac",
       "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/tree/main/VeraLux",
       "repository_url": "https://gitlab.com/free-astro/siril-scripts",
-      "support_url": "https://github.com/emruiz81/afternight/issues"
+      "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
     }
   ]
 }

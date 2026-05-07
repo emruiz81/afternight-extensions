@@ -150,9 +150,9 @@ The validation workflow:
 - builds all currently published package assets
 - regenerates `index.json` and diffs it against the checked-in file
 
-Package-local tests are temporarily disabled in GitHub Actions until the
-private sibling `afternight` repository is made public. Continue running those
-test suites locally against a sibling checkout at `../afternight/python/modules`.
+Package-local tests are temporarily disabled in GitHub Actions because they
+depend on a sibling `afternight` SDK checkout. Continue running those test
+suites locally against a sibling checkout at `../afternight/python/modules`.
 
 CI-built archives are validation output only. They are not release publication.
 

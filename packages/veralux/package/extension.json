@@ -14,7 +14,7 @@
   "upstream_commit": "4ce0af52926e071caef55f4d17ac17ae8d8b4aac",
   "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/tree/main/VeraLux",
   "repository_url": "https://gitlab.com/free-astro/siril-scripts",
-  "support_url": "https://github.com/emruiz81/afternight/issues",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
   "type": "python",
   "entry_point": "veralux_extension",
   "category": "sharpening_enhancement",

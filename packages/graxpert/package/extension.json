@@ -9,7 +9,7 @@
   "publisher_id": "afternight",
   "homepage_url": "https://graxpert.com/",
   "repository_url": "https://github.com/Steffenhir/GraXpert",
-  "support_url": "https://github.com/emruiz81/afternight/issues",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
   "type": "python",
   "entry_point": "graxpert_extension",
   "category": "denoising",
