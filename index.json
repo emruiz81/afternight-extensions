@@ -53,6 +53,56 @@
       "homepage_url": "https://www.setiastro.com/cosmic-clarity",
       "repository_url": "https://github.com/setiastro/cosmicclarity",
       "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
+    },
+    {
+      "id": "graxpert",
+      "name": "GraXpert AI",
+      "summary": "GraXpert background extraction, denoise, and deconvolution processes hosted through the extension runtime.",
+      "description": "First-party AfterNight adapter for GraXpert AI background extraction, denoise, and deconvolution. The package keeps only AfterNight-specific adapter code; the shared GraXpert dependency context is provisioned from hash-locked official PyPI wheels during install.",
+      "author": "AfterNight / GraXpert Development Team",
+      "license": "GPL-3.0",
+      "publisher_id": "afternight",
+      "latest_version": "1.0.1",
+      "tags": [
+        "ai",
+        "background-extraction",
+        "denoise",
+        "deconvolution",
+        "gpu"
+      ],
+      "releases": [
+        {
+          "version": "1.0.1",
+          "min_app_version": "2.0.0",
+          "package_format_version": 1,
+          "protocol_version": 1,
+          "sdk_version": 1,
+          "sdk_backend": "runtime",
+          "launch_mode": "single_image",
+          "runtime_targets": [
+            "linux-clang-x86_64",
+            "windows-msvc-x86_64"
+          ],
+          "assets": [
+            {
+              "name": "graxpert-1.0.1-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.1/graxpert-1.0.1-all.tar.zst",
+              "package_hash": "sha256:81a4cd10aa465f7f8c063743c1a0f9d3d1a86e9c1b0185c64147e24d7bea79e5",
+              "signature_state": "unsigned",
+              "runtime_targets": [
+                "linux-clang-x86_64",
+                "windows-msvc-x86_64"
+              ],
+              "signature_detail": "Unsigned official package; SHA-256 verified from index"
+            }
+          ],
+          "changelog": "Switch GraXpert to a thin PyPI-backed package. Official PyPI wheels are hash-locked and downloaded by the host during install instead of being redistributed as release-asset payload.",
+          "published_at": "2026-04-28T00:00:00Z"
+        }
+      ],
+      "homepage_url": "https://graxpert.com/",
+      "repository_url": "https://github.com/Steffenhir/GraXpert",
+      "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
     }
   ]
 }
