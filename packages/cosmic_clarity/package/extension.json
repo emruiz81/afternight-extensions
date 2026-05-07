@@ -39,24 +39,28 @@
       "id_suffix": "denoise",
       "class": "CosmicClarityDenoiseExtension",
       "display_name": "Cosmic Clarity Denoise",
+      "category": "denoising",
       "action_object_name": "actionCosmic_Clarity_Denoise"
     },
     {
       "id_suffix": "dark_star",
       "class": "CosmicClarityDarkStarExtension",
       "display_name": "Cosmic Clarity Dark Star",
+      "category": "star_object",
       "action_object_name": "actionCosmic_Clarity_Dark_Star"
     },
     {
       "id_suffix": "super_resolution",
       "class": "CosmicClaritySuperResExtension",
       "display_name": "Cosmic Clarity Super Resolution",
+      "category": "sharpening_enhancement",
       "action_object_name": "actionCosmic_Clarity_Super_Resolution"
     },
     {
       "id_suffix": "sharpening",
       "class": "CosmicClaritySharpeningExtension",
       "display_name": "Cosmic Clarity Sharpening",
+      "category": "sharpening_enhancement",
       "action_object_name": "actionCosmic_Clarity_Sharpening"
     }
   ]

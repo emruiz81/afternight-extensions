@@ -2,7 +2,7 @@
   "schema_version": 1,
   "repository": "afternight-extensions",
   "official": true,
-  "updated_at": "2026-05-07T02:30:30Z",
+  "updated_at": "2026-05-07T03:04:07Z",
   "extensions": [
     {
       "id": "cosmic_clarity",
@@ -37,7 +37,7 @@
             {
               "name": "cosmic_clarity-1.0.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:257536653933044bab05c5b4ba78475c78205f3183d9d3bd3c3e267fc3f922b5",
+              "package_hash": "sha256:a980429a176c29cdb66079a1a8aa7e7e4e22749662460c03d3cbb8312c23509a",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",

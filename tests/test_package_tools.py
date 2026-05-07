@@ -231,6 +231,16 @@ class RepositoryPackageTests(unittest.TestCase):
                 self.assertIn(manifest["version"], versions)
                 self.assertIn(repository_metadata.get("latest_version", manifest["version"]), versions)
 
+    def test_cosmic_clarity_processes_have_specific_categories(self):
+        package_dir = REPO_ROOT / "packages" / "cosmic_clarity" / "package"
+        manifest = load_valid_manifest(package_dir)
+        processes = {process["id_suffix"]: process for process in manifest["processes"]}
+
+        self.assertEqual(processes["denoise"]["category"], "denoising")
+        self.assertEqual(processes["dark_star"]["category"], "star_object")
+        self.assertEqual(processes["super_resolution"]["category"], "sharpening_enhancement")
+        self.assertEqual(processes["sharpening"]["category"], "sharpening_enhancement")
+
     def test_veralux_package_declares_suite_processes_and_port_provenance(self):
         package_dir = REPO_ROOT / "packages" / "veralux" / "package"
         self.assertTrue(package_dir.is_dir())
