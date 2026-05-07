@@ -623,6 +623,7 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertIn("tools/update_live_index.py", workflow)
         self.assertIn("Verify live index download URLs", workflow)
         self.assertIn("Publish live repository index", workflow)
+        self.assertIn("git -C \"$worktree\" rm -r -f --ignore-unmatch .", workflow)
         self.assertIn("if: ${{ inputs.draft == false }}", workflow)
 
         upload_index = workflow.index("Create GitHub Release and upload assets")

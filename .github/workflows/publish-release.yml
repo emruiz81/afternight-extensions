@@ -533,7 +533,7 @@ jobs:
           else
             git worktree add --detach "$worktree"
             git -C "$worktree" checkout --orphan "$LIVE_INDEX_BRANCH"
-            git -C "$worktree" rm -r --ignore-unmatch .
+            git -C "$worktree" rm -r -f --ignore-unmatch .
           fi
 
           cp /tmp/live-index.json "$worktree/$LIVE_INDEX_PATH"
