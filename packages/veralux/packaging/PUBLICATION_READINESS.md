@@ -1,10 +1,10 @@
 # VeraLux Publication Readiness
 
-Status: source-staged, not publishable yet.
+Status: published as `veralux` version `0.1.0`.
 
-Keep `"publish": false` in `packages/veralux/repository.json` until every
-release gate below is complete and the built package asset is available as a
-hash-verified release asset.
+The package is included in the official repository index. The release asset is
+hash-pinned in `index.json` and uses `signature_state: "unsigned"` until package
+signing is implemented.
 
 ## Completed Gates
 
@@ -18,16 +18,41 @@ hash-verified release asset.
 - Automated quality checks: package-local tests cover process adapters,
   numerical regression metrics, and upstream quality parity for the ported
   VeraLux algorithms.
+- Upstream provenance: `tools/check_veralux_upstream.py` verifies the captured
+  VeraLux baseline against the local `siril-scripts` checkout.
 - Host integration checks: the main AfterNight host tests exercise VeraLux
   process discovery, native parameter schemas, runtime host execution, and
   large NumPy image round-trips.
+- Representative real-image visual QA: maintainer manual testing completed
+  before release and confirmed outputs are visually sane in AfterNight.
+- Release signoff: maintainer release request accepted for version `0.1.0` on
+  2026-05-07.
 
-## Remaining Publication Blocker
+## Release Validation
 
-- [ ] Representative real-image visual QA and release signoff.
+Release validation for `0.1.0` used an isolated Python environment with the
+host-provided scientific runtime dependency (`numpy`) plus the packages declared
+in `package/requirements.lock`.
 
-Before removing `publish: false`, run the built VeraLux package against an
-approved real-image QA set that covers at least:
+Commands run:
+
+```bash
+python -m unittest discover -s packages/veralux/tests
+python -m unittest tests/test_package_tools.py tests/test_veralux_upstream_tools.py
+python tools/check_veralux_upstream.py --upstream-checkout ../siril-scripts
+VERALUX_UPSTREAM_CHECKOUT=../siril-scripts \
+  python -m unittest packages/veralux/tests/test_veralux_upstream_quality.py
+python tools/build_package.py packages/veralux/package --output-dir dist-veralux
+python tools/generate_index.py \
+  --packages-root packages \
+  --assets-dir dist \
+  --updated-at 2026-05-07T02:30:30Z \
+  --output index.json
+```
+
+## Representative QA Signoff
+
+Manual release testing covered representative:
 
 - linear RGB data
 - stretched RGB data
@@ -35,48 +60,6 @@ approved real-image QA set that covers at least:
 - star-mask data for StarComposer
 - starless plus stars workflow data when the host UI supports paired inputs
 
-For the signoff, capture the input set, process settings, output artifacts, and
-review notes. The review must confirm that outputs are visually sane in
-AfterNight and that any known differences from upstream Siril behavior are
-intentional and documented in `package/QUALITY_VALIDATION.md` or release notes.
-
-## Release Checklist
-
-1. Provision the VeraLux runtime dependency set for local testing. A clean Python
-   needs `numpy` from the host scientific runtime plus the packages declared in
-   `package/requirements.lock`.
-
-2. Run package tests:
-
-   ```bash
-   python3 -m unittest discover -s packages/veralux/tests
-   python3 -m unittest tests/test_package_tools.py tests/test_veralux_upstream_tools.py
-   ```
-
-3. Verify upstream provenance and quality parity with the local Siril scripts
-   checkout:
-
-   ```bash
-   python3 tools/check_veralux_upstream.py --upstream-checkout /path/to/siril-scripts
-   VERALUX_UPSTREAM_CHECKOUT=/path/to/siril-scripts \
-     python3 -m unittest packages/veralux/tests/test_veralux_upstream_quality.py
-   ```
-
-4. Build the deterministic release asset:
-
-   ```bash
-   python3 tools/build_package.py packages/veralux/package --output-dir dist-veralux
-   ```
-
-5. Publish the `.tar.zst` asset and sidecar metadata as release assets.
-6. Record the release asset URL in release metadata if needed.
-7. Remove `"publish": false` from `packages/veralux/repository.json`.
-8. Regenerate and review the repository index:
-
-   ```bash
-   python3 tools/generate_index.py \
-     --packages-root packages \
-     --assets-dir dist-veralux \
-     --updated-at <release timestamp> \
-     --output index.json
-   ```
+The maintainer confirmed the tested outputs are visually sane in AfterNight.
+When future behavior differs from upstream Siril, document the intentional
+difference in `package/QUALITY_VALIDATION.md` or release notes.

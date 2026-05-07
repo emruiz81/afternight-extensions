@@ -12,6 +12,7 @@ on:
           - published
           - cosmic_clarity
           - graxpert
+          - veralux
       compression_level:
         description: zstd compression level
         required: true
@@ -50,6 +51,12 @@ jobs:
             graxpert)
               python3 tools/build_package.py \
                 packages/graxpert/package \
+                --output-dir dist \
+                --compression-level "${{ inputs.compression_level }}"
+              ;;
+            veralux)
+              python3 tools/build_package.py \
+                packages/veralux/package \
                 --output-dir dist \
                 --compression-level "${{ inputs.compression_level }}"
               ;;

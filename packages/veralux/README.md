@@ -10,7 +10,7 @@ The original VeraLux Starting Point script is adapted as
 `package/STARTING_POINT.md`. It is a workflow guide rather than a process, and
 documents the recommended order for applying the suite inside AfterNight.
 
-The suite registers these processes when published:
+The suite registers these processes:
 
 - VeraLux Revela, which enhances post-stretch local contrast and texture
   through a modified ATWT frequency-separation core while preserving a
@@ -41,11 +41,10 @@ Recommended order:
 Nox -> Silentium -> Alchemy -> HyperMetric Stretch -> Curves -> Revela -> Vectra -> StarComposer
 ```
 
-The package remains source-staged with `publish: false` until release assets and
-the final publication-readiness review are complete. The release blocker and
-signoff checklist are documented in `packaging/PUBLICATION_READINESS.md`.
-Automated upstream quality coverage and known first-pass parity limits are
-documented in `package/QUALITY_VALIDATION.md`.
+The package is published through the official AfterNight extension index.
+Release validation and signoff notes are documented in
+`packaging/PUBLICATION_READINESS.md`. Automated upstream quality coverage and
+known first-pass parity limits are documented in `package/QUALITY_VALIDATION.md`.
 
 The broader extension-author porting notes for this suite are captured in
 `../../docs/VERALUX_PORTING_CASE_STUDY.md`.

@@ -17,11 +17,10 @@ The generated `index.json` currently publishes:
 - GraXpert AI: a thin AfterNight adapter for GraXpert background extraction,
   denoise, and deconvolution. GraXpert and public dependency wheels are
   installed by the host from hash-locked PyPI requirements during install.
-
-The repository also contains source-staged packages that are reviewed and tested
-in git but intentionally omitted from `index.json` until their release gates are
-complete. VeraLux Suite is currently source-staged with `"publish": false` in
-`packages/veralux/repository.json`.
+- VeraLux Suite: a GPL-3.0-or-later AfterNight port/adaptation of Riccardo
+  Paterniti's VeraLux Siril scripts, published as one suite package that
+  registers Revela, Alchemy, HyperMetric Stretch, Curves, Nox, Silentium,
+  Vectra, StarComposer, and the Starting Point workflow guide.
 
 ## Repository Layout
 

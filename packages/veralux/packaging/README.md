@@ -1,10 +1,10 @@
 # VeraLux Suite Packaging
 
-This package is not published yet. `PUBLICATION_READINESS.md` is the release
-gate for this package and currently keeps the suite source-staged until
-representative real-image visual QA is signed off.
+This package is published through the official AfterNight extension index.
+`PUBLICATION_READINESS.md` records the release gates and validation commands for
+the current VeraLux release.
 
-When it is ready for release:
+For a future VeraLux release:
 
 1. Confirm the suite-level dependency set and update `package/requirements.lock`
    as additional VeraLux processes are added.
@@ -15,5 +15,5 @@ When it is ready for release:
 4. Complete the `PUBLICATION_READINESS.md` checklist.
 5. Build deterministic assets with `tools/build_package.py`.
 6. Regenerate the repository index with `tools/generate_index.py`.
-7. Remove `publish: false` from `repository.json` only after release assets are
-   available, hash-verified, and the visual QA signoff is recorded.
+7. Regenerate `index.json` only after release assets are available and
+   hash-verified.

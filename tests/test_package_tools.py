@@ -299,7 +299,7 @@ class RepositoryPackageTests(unittest.TestCase):
             ],
         )
 
-    def test_veralux_publication_readiness_keeps_visual_qa_gate_closed(self):
+    def test_veralux_publication_readiness_records_release_state(self):
         package_root = REPO_ROOT / "packages" / "veralux"
         repository_metadata = read_json(package_root / "repository.json")
         readiness = (package_root / "packaging" / "PUBLICATION_READINESS.md").read_text(
@@ -307,13 +307,17 @@ class RepositoryPackageTests(unittest.TestCase):
         )
         packaging_notes = (package_root / "packaging" / "README.md").read_text(encoding="utf-8")
 
-        self.assertFalse(repository_metadata.get("publish", True))
-        self.assertIn("Status: source-staged, not publishable yet.", readiness)
-        self.assertIn('"publish": false', readiness)
-        self.assertIn("Representative real-image visual QA and release signoff", readiness)
-        self.assertIn("- [ ] Representative real-image visual QA", readiness)
+        self.assertIsNot(repository_metadata.get("publish"), False)
+        release = repository_metadata["releases"][0]
+        self.assertEqual(release["version"], "0.1.0")
+        self.assertIn("veralux-v0.1.0", release["asset_base_url"])
+        self.assertIn("Status: published as `veralux` version `0.1.0`.", readiness)
+        self.assertIn("Representative real-image visual QA", readiness)
+        self.assertIn("Manual release testing covered representative", readiness)
+        self.assertIn("Release signoff", readiness)
+        self.assertIn("Representative QA Signoff", readiness)
         self.assertIn("PUBLICATION_READINESS.md", packaging_notes)
-        self.assertIn("visual QA signoff", packaging_notes)
+        self.assertIn("published through the official AfterNight extension index", packaging_notes)
 
     def test_veralux_package_asset_smoke_contains_one_suite_and_all_processes(self):
         if shutil.which("zstd") is None:

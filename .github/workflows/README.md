@@ -16,6 +16,7 @@ build:
 - all currently published packages
 - Cosmic Clarity by itself
 - GraXpert's thin PyPI-backed asset without redistributing public wheels
+- VeraLux Suite by itself
 
 The workflow uploads `.tar.zst` files and sidecars as GitHub Actions artifacts.
 It does not create a GitHub Release or modify `index.json` on its own.
