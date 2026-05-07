@@ -78,7 +78,7 @@
       "intentional_divergences": [
         "Replace sirilpy image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
         "Replace PyQt6 arbitrary point-curve editor and histogram preview with an AfterNight native curve editor parameter.",
-        "Use a package-local NumPy Akima-style Hermite interpolator instead of adding SciPy only for Curves.",
+        "Use the upstream SciPy Akima interpolation and OpenCV Lab/HSV conversion paths when runtime dependencies are installed, with a package-local NumPy fallback only for minimal diagnostics.",
         "Preserve RGB/K, channel, luminance, chrominance, saturation, and luminance-range behavior while deferring pipette and applied-stage stack UI parity to a later native UI slice."
       ]
     },
@@ -119,7 +119,7 @@
         "Replace PyQt6 loupe/progress UI with native AfterNight RT-preview parameter definitions.",
         "Expose host-side Linear/Autostretch preview display controls, default the native preview to Autostretch like the original Siril preview, and keep applied Silentium output linear.",
         "Use the upstream PyWavelets SWT/db2 coefficient-thresholding path and SciPy edge morphology when runtime dependencies are installed, with a NumPy fallback for minimal test environments.",
-        "Use AfterNight star profiling for the stellar protection mask, but do not thread the generated local FWHM map into the wavelet threshold path because it collapses most preview ROIs toward a near no-op; this mirrors the original script's common fallback to a uniform wavelet FWHM map when list.lst is not in the process cwd.",
+        "Use AfterNight star profiling for the stellar protection mask and FWHM map that feed the wavelet threshold path; remaining exact-output drift can come from host star profiling and FWHM-map generation versus Siril findstar/list.lst side effects.",
         "Preserve the original noise-intensity, linear signal-probability, detail-guard, shadow-smoothness, LAB chroma-denoise, star-protection, and auto-starless controls while deferring loupe UI parity to later host integration."
       ]
     },
@@ -157,7 +157,7 @@
       "intentional_divergences": [
         "Replace sirilpy FITS loading, save/reload, ICC cleanup, and logging with AfterNight SDK image handles and metadata.",
         "Use the active AfterNight target as the starless base and a second selected open view as the stars/star-mask input via host view snapshots.",
-        "Use package-local NumPy blur and morphology helpers instead of requiring OpenCV for this first native process port."
+        "Use the upstream OpenCV blur/morphology paths when runtime dependencies are installed, preserve the post-surgery star-layer range before composition, and retain package-local NumPy helpers only for minimal diagnostics."
       ]
     },
     {

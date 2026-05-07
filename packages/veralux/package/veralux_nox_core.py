@@ -97,6 +97,31 @@ def _exact_solver_available():
     )
 
 
+def quality_fallback_messages():
+    _load_cv2()
+    _load_scipy()
+    messages = []
+    if _cv2 is None:
+        messages.append(
+            "VeraLux Nox is using a lower-quality gradient solver fallback "
+            "because OpenCV is unavailable; resize/morphology behavior may not "
+            "match the original Siril Zenith engine."
+        )
+    if (
+        _sparse is None
+        or _scipy_cg is None
+        or _scipy_spsolve is None
+        or _scipy_uniform_filter is None
+        or _scipy_expit is None
+    ):
+        messages.append(
+            "VeraLux Nox is using a lower-quality gradient solver fallback "
+            "because SciPy sparse/ndimage/special helpers are unavailable; "
+            "background modeling may not match the original Siril Zenith engine."
+        )
+    return tuple(messages)
+
+
 def normalize_input(image):
     """Normalize common integer/float image arrays using VeraLux Nox rules."""
 

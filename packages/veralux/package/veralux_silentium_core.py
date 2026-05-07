@@ -13,13 +13,13 @@ import numpy as np
 
 try:
     import pywt as _pywt
-except ImportError:  # pragma: no cover - exercised only in minimal dependency test environments.
+except Exception:  # pragma: no cover - exercised only in minimal dependency test environments.
     _pywt = None
 
 try:
     from scipy.ndimage import maximum_filter as _scipy_maximum_filter
     from scipy.signal import convolve2d as _scipy_convolve2d
-except ImportError:  # pragma: no cover - fallback keeps local tests light.
+except Exception:  # pragma: no cover - fallback keeps local tests light.
     _scipy_convolve2d = None
     _scipy_maximum_filter = None
 
@@ -27,6 +27,23 @@ except ImportError:  # pragma: no cover - fallback keeps local tests light.
 UPSTREAM_VERSION = "1.0.3"
 _SWT_LEVELS = 4
 _SWT_WAVELET = "db2"
+
+
+def quality_fallback_messages():
+    messages = []
+    if _pywt is None:
+        messages.append(
+            "VeraLux Silentium is using a lower-quality multiscale denoise "
+            "fallback because PyWavelets is unavailable; install or repair "
+            "PyWavelets to match the original Siril SWT/db2 engine."
+        )
+    if _scipy_convolve2d is None or _scipy_maximum_filter is None:
+        messages.append(
+            "VeraLux Silentium is using lower-quality NumPy edge-morphology "
+            "fallbacks because SciPy signal/ndimage helpers are unavailable; "
+            "edge protection may not match the original Siril output."
+        )
+    return tuple(messages)
 
 
 def normalize_input(image):

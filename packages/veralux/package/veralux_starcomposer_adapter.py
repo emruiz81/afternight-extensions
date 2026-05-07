@@ -243,6 +243,12 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux StarComposer processing was cancelled.")
 
+        sdk.warn_quality_fallbacks_once(
+            self,
+            core.quality_fallback_messages(),
+            component=self.component,
+        )
+
         starless = sdk.read_image(src_image)
         if preview:
             result = self._preview_result(starless, params, src_image)

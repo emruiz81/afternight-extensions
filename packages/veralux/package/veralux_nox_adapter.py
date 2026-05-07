@@ -53,6 +53,12 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Nox processing was cancelled.")
 
+        sdk.warn_quality_fallbacks_once(
+            self,
+            core.quality_fallback_messages(),
+            component=self.component,
+        )
+
         source = sdk.read_image(src_image)
         user_mask = sdk.first_mask_array(masks) if bool(params.get("use_manual_mask", False)) else None
         star_mask, fwhm_val = self._star_physics(src_image, params)

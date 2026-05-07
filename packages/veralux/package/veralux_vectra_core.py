@@ -29,6 +29,16 @@ TARGET_HUES = {
 }
 
 
+def quality_fallback_messages():
+    if _nd_convolve is None:
+        return (
+            "VeraLux Vectra is using lower-quality NumPy convolution fallbacks "
+            "because SciPy ndimage is unavailable; star protection and Shadow "
+            "Authority masks may not match the original Siril output.",
+        )
+    return ()
+
+
 def default_vectors():
     return {key: (0.0, 0.0) for key in VECTOR_KEYS}
 

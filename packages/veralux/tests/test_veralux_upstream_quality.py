@@ -18,11 +18,12 @@ sys.path.insert(0, str(TEST_ROOT))
 sys.path.insert(0, str(PACKAGE_ROOT))
 sys.path.insert(0, str(APP_REPO / "python" / "modules"))
 
-from test_veralux_regression_metrics import synthetic_suite_rgb  # noqa: E402
+from test_veralux_regression_metrics import synthetic_star_mask, synthetic_suite_rgb  # noqa: E402
 
 import veralux_alchemy_core as alchemy_core  # noqa: E402
 import veralux_curves_core as curves_core  # noqa: E402
 import veralux_hypermetric_stretch_core as hms_core  # noqa: E402
+import veralux_starcomposer_core as starcomposer_core  # noqa: E402
 import veralux_vectra_core as vectra_core  # noqa: E402
 
 
@@ -239,6 +240,7 @@ class VeraLuxUpstreamQualityTests(unittest.TestCase):
             "alchemy": _load_upstream_module(checkout, "Alchemy"),
             "curves": _load_upstream_module(checkout, "Curves"),
             "hms": _load_upstream_module(checkout, "HyperMetric_Stretch"),
+            "starcomposer": _load_upstream_module(checkout, "StarComposer"),
             "vectra": _load_upstream_module(checkout, "Vectra"),
         }
 
@@ -406,36 +408,101 @@ class VeraLuxUpstreamQualityTests(unittest.TestCase):
                     self.assertLessEqual(max_delta, 2e-4)
                     self.assertLessEqual(mean_delta, 1e-5)
 
-    def test_curves_tracks_upstream_akima_output_with_documented_local_interpolator_tolerance(self):
+    def test_curves_matches_upstream_akima_output_for_rgbk_and_luminance_paths(self):
         source = synthetic_suite_rgb(64)
-        points = curves_core.curve_from_controls(
-            black_point=0.04,
-            shadow_lift=0.06,
-            midtone_input=0.42,
-            midtone_output=0.64,
-            highlight_compression=0.10,
-            white_point=0.96,
-        )
-        actual = curves_core.process_curves(
-            source,
-            [curves_core.curve_operation("RGB/K", points=points, lum_range_enabled=False)],
-        )
-
         upstream_curves = self.upstream["curves"]
-        lut = upstream_curves.CurvesCore.generate_lut(points)
-        expected = upstream_curves.CurvesCore.apply_pipeline(
+
+        cases = [
+            (
+                curves_core.curve_operation(
+                    "RGB/K",
+                    points=curves_core.curve_from_controls(
+                        black_point=0.04,
+                        shadow_lift=0.06,
+                        midtone_input=0.42,
+                        midtone_output=0.64,
+                        highlight_compression=0.10,
+                        white_point=0.96,
+                    ),
+                    lum_range_enabled=False,
+                ),
+                "RGB/K",
+            ),
+            (
+                curves_core.curve_operation(
+                    "L",
+                    points=[(0.0, 0.0), (0.18, 0.10), (0.42, 0.62), (0.74, 0.80), (1.0, 1.0)],
+                    lum_range_enabled=True,
+                    lum_min=0.05,
+                    lum_max=0.85,
+                    feather=0.20,
+                ),
+                "L",
+            ),
+        ]
+
+        if curves_core._cv2 is None:
+            cases = cases[:1]
+
+        for operation, domain in cases:
+            with self.subTest(domain=domain):
+                actual = curves_core.process_curves(source, [operation])
+                lut = upstream_curves.CurvesCore.generate_lut(operation["points"])
+                expected = upstream_curves.CurvesCore.apply_pipeline(
+                    source,
+                    {
+                        domain: {
+                            "active": True,
+                            "lut": lut,
+                            "lum_range_enabled": operation["lum_range_enabled"],
+                            "lum_min": operation["lum_min"],
+                            "lum_max": operation["lum_max"],
+                            "feather_sigma": operation["feather"],
+                        }
+                    },
+                )
+
+                max_delta, mean_delta = _max_and_mean_delta(actual, expected)
+                self.assertLessEqual(max_delta, 2e-6)
+                self.assertLessEqual(mean_delta, 2e-7)
+
+    def test_starcomposer_matches_upstream_shaping_without_post_surgery_clipping(self):
+        if starcomposer_core.cv2 is None:
+            self.skipTest("OpenCV is required for StarComposer upstream surgery parity")
+
+        source = synthetic_star_mask(64)
+        actual = starcomposer_core.process_star_mask(
             source,
-            {"RGB/K": {"active": True, "lut": lut, "lum_range_enabled": False}},
+            working_space=starcomposer_core.DEFAULT_PROFILE,
+            use_adaptive_anchor=False,
+            log_d=2.0,
+            profile_hardness=70.0,
+            color_grip=0.80,
+            shadow_convergence=0.20,
+            large_structure_rejection=0.35,
+            star_reduction=0.45,
+            optical_healing=8.0,
         )
 
-        delta = np.abs(actual - expected)
-        self.assertEqual(actual.shape, expected.shape)
-        self.assertTrue(np.all(np.isfinite(actual)))
-        self.assertGreaterEqual(float(np.min(actual)), 0.0)
-        self.assertLessEqual(float(np.max(actual)), 1.0)
-        self.assertLessEqual(float(np.mean(delta)), 0.025)
-        self.assertLessEqual(float(np.percentile(delta, 95.0)), 0.040)
-        self.assertLessEqual(float(np.max(delta)), 0.050)
+        upstream = self.upstream["starcomposer"]
+        expected_chw = upstream.process_star_pipeline(
+            np.moveaxis(source, -1, 0),
+            2.0,
+            70.0,
+            0.80,
+            0.20,
+            0.45,
+            8.0,
+            0.35,
+            upstream.SENSOR_PROFILES[starcomposer_core.DEFAULT_PROFILE],
+            False,
+        )
+        expected = np.moveaxis(expected_chw, 0, -1)
+
+        self.assertLess(float(np.min(expected)), 0.0)
+        max_delta, mean_delta = _max_and_mean_delta(actual, expected)
+        self.assertLessEqual(max_delta, 2e-6)
+        self.assertLessEqual(mean_delta, 2e-7)
 
 
 if __name__ == "__main__":

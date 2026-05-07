@@ -92,6 +92,25 @@ def log_warning(message, *, component):
     afternight.log_warning(str(message), component=str(component))
 
 
+def warn_quality_fallbacks_once(owner, messages, *, component):
+    """Log each quality-fallback warning once for a process instance."""
+
+    warnings = tuple(str(message) for message in (messages or ()) if str(message).strip())
+    if not warnings:
+        return
+
+    seen = getattr(owner, "_veralux_quality_fallback_warnings", None)
+    if seen is None:
+        seen = set()
+        setattr(owner, "_veralux_quality_fallback_warnings", seen)
+
+    for message in warnings:
+        if message in seen:
+            continue
+        log_warning(message, component=component)
+        seen.add(message)
+
+
 def migrate_settings(params, *, defaults, aliases=None):
     """Merge params with defaults and simple old-name aliases."""
 

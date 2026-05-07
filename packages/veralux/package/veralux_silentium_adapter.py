@@ -43,17 +43,17 @@ class VeraLuxSilentiumExtension(ui.RTPreviewProcess):
         if bool(params.get("auto_starless", True)) and float(star_mask.max(initial=0.0)) < 0.1:
             return None, None
 
-        # The upstream wavelet core looks for Siril's list.lst in the process
-        # cwd, so the visible script path commonly falls back to a uniform
-        # FWHM map while still applying the star mask. Threading AfterNight's
-        # local FWHM map through here can collapse the threshold to near zero
-        # across most preview ROIs, making Silentium look like a no-op.
-        del fwhm_map
-        return star_mask, None
+        return star_mask, fwhm_map
 
     def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Silentium processing was cancelled.")
+
+        sdk.warn_quality_fallbacks_once(
+            self,
+            core.quality_fallback_messages(),
+            component=self.component,
+        )
 
         source = sdk.read_image(src_image)
         star_mask, fwhm_map = self._star_protection(src_image, params)

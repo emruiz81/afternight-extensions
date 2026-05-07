@@ -143,10 +143,12 @@ attribution is generated from those constants through `veralux_attribution.py`.
   first native process implementation.
 - HyperMetric Stretch keeps the core tone-mapping path NumPy-only and preserves
   the source image layout when returning through the AfterNight SDK boundary.
-- Curves uses a package-local NumPy Akima-style Hermite interpolator instead of
-  adding SciPy only for this process. The native UI exposes an AfterNight
-  point-curve editor with histogram overlay; pipette and applied-stage stack
-  parity are deferred to a later native UI slice.
+- Curves uses the upstream SciPy Akima interpolation and OpenCV Lab/HSV
+  conversion paths when the packaged runtime dependencies are installed. A
+  package-local NumPy fallback remains only for minimal local diagnostics. The
+  native UI exposes an AfterNight point-curve editor with histogram overlay;
+  pipette and applied-stage stack parity are deferred to a later native UI
+  slice.
 - Nox uses the upstream Zenith sparse membrane solver, dual-scale variance
   protection, PSF veto, iterative positive-residual rejection, and smart
   pedestal path when the packaged SciPy/OpenCV runtime dependencies are
@@ -160,9 +162,10 @@ attribution is generated from those constants through `veralux_attribution.py`.
   NumPy fallback for minimal test environments. The native slice follows the
   upstream parameter scales, LAB chroma path, signal gating, shadow authority,
   and star-protection controls. AfterNight star profiling feeds the protection
-  mask, while the wavelet FWHM map uses the uniform fallback rather than the
-  generated local map because the local map collapses most preview ROIs toward
-  a near no-op. Loupe UI parity is deferred to later host integration.
+  mask and FWHM map into the wavelet threshold path; remaining exact-output
+  drift can come from host star profiling and FWHM-map generation versus Siril
+  `findstar`/`list.lst` side effects. Loupe UI parity is deferred to later host
+  integration.
   Silentium is exposed as an AfterNight RT-preview process with native sub-area
   preview and host Linear/Autostretch display controls that open in
   Autostretch mode to match the original Siril preview display.
@@ -172,7 +175,9 @@ attribution is generated from those constants through `veralux_attribution.py`.
 - StarComposer uses the active AfterNight target as the starless base and a
   second selected open view as the stars/star-mask input. The extension reads
   that second view through the host snapshot API so RT preview target switching
-  remains stable.
+  remains stable. The upstream OpenCV blur/morphology and post-surgery
+  star-layer range are preserved when the packaged runtime dependencies are
+  installed, with package-local helpers only for minimal local diagnostics.
 - Starting Point is adapted from a PyQt6 interactive guide into
   `STARTING_POINT.md`, preserving the workflow order and attribution while
   avoiding a non-processing extension entry.

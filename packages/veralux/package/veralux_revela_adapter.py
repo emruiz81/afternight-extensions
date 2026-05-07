@@ -28,6 +28,12 @@ class VeraLuxRevelaExtension(ui.RTPreviewProcess):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Revela processing was cancelled.")
 
+        sdk.warn_quality_fallbacks_once(
+            self,
+            core.quality_fallback_messages(),
+            component=self.component,
+        )
+
         source = sdk.read_image(src_image)
         result = core.process_structure(
             source,

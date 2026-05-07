@@ -30,6 +30,12 @@ class VeraLuxVectraExtension(ui.RTPreviewProcess):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Vectra processing was cancelled.")
 
+        sdk.warn_quality_fallbacks_once(
+            self,
+            core.quality_fallback_messages(),
+            component=self.component,
+        )
+
         vectors = {
             "R": (float(params.get("red_hue", 0.0)), self._saturation_from_ui(params, "red_saturation")),
             "G": (float(params.get("green_hue", 0.0)), self._saturation_from_ui(params, "green_saturation")),

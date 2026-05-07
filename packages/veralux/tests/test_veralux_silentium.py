@@ -261,20 +261,28 @@ class VeraLuxSilentiumAdapterTests(unittest.TestCase):
         self.assertEqual(preview.metadata, {})
         self.assertEqual(progress.value, 100.0)
 
-    def test_star_protection_does_not_make_preview_nearly_noop_when_fwhm_map_is_sparse(self):
+    def test_star_protection_forwards_after_night_fwhm_map_to_wavelet_core(self):
         src = FakeImage(synthetic_noisy_linear_rgb(size=128, seed=21))
         preview = FakeImage(np.zeros_like(src.array))
         mask = np.zeros(src.array.shape[:2], dtype=np.float32)
         mask[32, 36] = 1.0
         collapsed_fwhm_map = np.full(src.array.shape[:2], 0.1, dtype=np.float32)
         original_builder = silentium_adapter.sdk.star_mask_and_fwhm_map_from_find_stars
+        original_process = silentium_adapter.core.process_noise_reduction
+        captured = {}
 
         def fake_star_builder(*args, **kwargs):
             del args, kwargs
             return mask, collapsed_fwhm_map
 
+        def fake_process(image, **kwargs):
+            captured["star_mask"] = kwargs.get("star_mask")
+            captured["fwhm_map"] = kwargs.get("fwhm_map")
+            return np.asarray(image, dtype=np.float32)
+
         try:
             silentium_adapter.sdk.star_mask_and_fwhm_map_from_find_stars = fake_star_builder
+            silentium_adapter.core.process_noise_reduction = fake_process
             VeraLuxSilentiumExtension(None).execute_preview(
                 None,
                 src,
@@ -293,13 +301,11 @@ class VeraLuxSilentiumAdapterTests(unittest.TestCase):
             )
         finally:
             silentium_adapter.sdk.star_mask_and_fwhm_map_from_find_stars = original_builder
+            silentium_adapter.core.process_noise_reduction = original_process
 
-        background = np.s_[0:32, 0:32, :]
-        self.assertLess(
-            robust_sigma(luminance(preview.array[background])),
-            robust_sigma(luminance(src.array[background])) * 0.8,
-        )
-        self.assertGreater(float(np.mean(np.abs(preview.array - src.array))), 0.005)
+        self.assertIs(captured["star_mask"], mask)
+        self.assertIs(captured["fwhm_map"], collapsed_fwhm_map)
+        self.assertTrue(np.array_equal(preview.array, src.array))
 
     def test_manifest_declares_silentium_preview_capabilities(self):
         with (PACKAGE_ROOT / "extension.json").open("r", encoding="utf-8") as handle:

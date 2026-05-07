@@ -28,25 +28,39 @@ except Exception:  # pragma: no cover - defensive for direct extraction.
 UPSTREAM_VERSION = "2.1.0"
 
 
-def normalize_input(image):
+def quality_fallback_messages():
+    if cv2 is None:
+        return (
+            "VeraLux StarComposer is using lower-quality NumPy blur, resize, and "
+            "morphology fallbacks because OpenCV is unavailable; star surgery may "
+            "not match the original Siril output.",
+        )
+    return ()
+
+
+def normalize_input(image, *, clip=True):
     img = np.asarray(image)
     input_dtype = img.dtype
     img_float = np.nan_to_num(img.astype(np.float32, copy=False), nan=0.0, posinf=1.0, neginf=0.0)
     if np.issubdtype(input_dtype, np.integer):
         if input_dtype == np.uint8:
-            return img_float / 255.0
+            normalized = img_float / 255.0
+            return np.clip(normalized, 0.0, 1.0) if clip else normalized
         if input_dtype == np.uint16:
-            return img_float / 65535.0
-        return img_float / float(np.iinfo(input_dtype).max)
+            normalized = img_float / 65535.0
+            return np.clip(normalized, 0.0, 1.0) if clip else normalized
+        normalized = img_float / float(np.iinfo(input_dtype).max)
+        return np.clip(normalized, 0.0, 1.0) if clip else normalized
     if np.issubdtype(input_dtype, np.floating):
         if img_float.size == 0:
             return img_float
         current_max = float(np.max(img_float))
         if current_max > 1.0 + 1e-5:
             if current_max <= 65535.0:
-                return img_float / 65535.0
-            return img_float / current_max
-    return np.clip(img_float, 0.0, 1.0)
+                img_float = img_float / 65535.0
+            else:
+                img_float = img_float / current_max
+    return np.clip(img_float, 0.0, 1.0) if clip else img_float
 
 
 def _profile_weights(working_space):
@@ -56,8 +70,8 @@ def _profile_weights(working_space):
     return tuple(profile)
 
 
-def _to_chw_rgb(image):
-    img = np.asarray(normalize_input(image), dtype=np.float32)
+def _to_chw_rgb(image, *, clip=True):
+    img = np.asarray(normalize_input(image, clip=clip), dtype=np.float32)
     if img.ndim == 2:
         return np.stack([img, img, img]), "hw", None
     if img.ndim != 3:
@@ -77,8 +91,10 @@ def _to_chw_rgb(image):
     raise ValueError("VeraLux StarComposer expects RGB images to have at least 3 channels")
 
 
-def _from_chw_rgb(chw, layout, extras):
-    out = np.clip(np.asarray(chw, dtype=np.float32), 0.0, 1.0)
+def _from_chw_rgb(chw, layout, extras, *, clip=True):
+    out = np.asarray(chw, dtype=np.float32)
+    if clip:
+        out = np.clip(out, 0.0, 1.0)
     if layout == "chw":
         return out.astype(np.float32, copy=False)
     if layout == "chw_mono":
@@ -326,7 +342,7 @@ def process_star_mask(
     final = apply_large_structure_rejection(final, large_structure_rejection)
     final = apply_optical_healing(final, optical_healing, weights)
     final = apply_star_reduction(final, star_reduction)
-    return _from_chw_rgb(np.clip(final, 0.0, 1.0), layout, extras)
+    return _from_chw_rgb(final, layout, extras, clip=False)
 
 
 def normalize_blend_mode(blend_mode):
@@ -346,7 +362,7 @@ def compose_with_starless(starless, stars, blend_mode="screen"):
     """Composite shaped stars onto a starless base using StarComposer blend modes."""
 
     base_chw, base_layout, base_extras = _to_chw_rgb(starless)
-    stars_chw, _stars_layout, _stars_extras = _to_chw_rgb(stars)
+    stars_chw, _stars_layout, _stars_extras = _to_chw_rgb(stars, clip=False)
     min_h = min(base_chw.shape[1], stars_chw.shape[1])
     min_w = min(base_chw.shape[2], stars_chw.shape[2])
     base = base_chw[:, :min_h, :min_w]

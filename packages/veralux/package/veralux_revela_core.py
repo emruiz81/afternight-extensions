@@ -25,6 +25,16 @@ except Exception:  # pragma: no cover - exercised when OpenCV is absent.
 UPSTREAM_VERSION = "1.0.2"
 
 
+def quality_fallback_messages():
+    if _cv2 is None:
+        return (
+            "VeraLux Revela is using lower-quality NumPy filter/color fallbacks "
+            "because OpenCV is unavailable; Lab structure processing may not "
+            "match the original Siril output.",
+        )
+    return ()
+
+
 def normalize_input(image):
     """Normalize common integer/float image arrays to float32 in the 0..1 range."""
 

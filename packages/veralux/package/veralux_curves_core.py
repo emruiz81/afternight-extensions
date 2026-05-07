@@ -11,6 +11,16 @@ from __future__ import annotations
 
 import numpy as np
 
+try:
+    import cv2 as _cv2
+except Exception:  # pragma: no cover - minimal diagnostic environments only.
+    _cv2 = None
+
+try:
+    from scipy.interpolate import Akima1DInterpolator as _Akima1DInterpolator
+except Exception:  # pragma: no cover - fallback keeps imports light without SciPy.
+    _Akima1DInterpolator = None
+
 
 UPSTREAM_VERSION = "1.0.1"
 CHANNELS = ("RGB/K", "R", "G", "B", "L", "C", "S")
@@ -89,24 +99,15 @@ def _clean_points(points):
     if len(source) < 2:
         source = [(0.0, 0.0), (1.0, 1.0)]
 
-    clipped = sorted(
-        (
-            float(np.clip(x, 0.0, 1.0)),
-            float(y),
-        )
-        for x, y in source
-    )
+    clipped = sorted((float(x), float(y)) for x, y in source)
     cleaned = []
-    eps = 1e-6
+    last_x = -1.0
     for x, y in clipped:
-        if cleaned and x <= cleaned[-1][0] + eps:
-            x = cleaned[-1][0] + eps
-        if x > 1.0:
-            x = 1.0
-        if cleaned and x <= cleaned[-1][0]:
-            cleaned[-1] = (cleaned[-1][0], y)
-            continue
+        if x <= last_x:
+            x = last_x + 1e-6
+        x = 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
         cleaned.append((x, y))
+        last_x = x
 
     if len(cleaned) < 2:
         return [(0.0, 0.0), (1.0, 1.0)]
@@ -172,20 +173,24 @@ def _hermite_interpolate(values, x_values, y_values):
 
 
 def generate_lut(points, size=65536):
-    """Generate a clipped high-precision LUT using a package-local Akima path."""
+    """Generate the upstream high-precision Akima LUT, with a local fallback."""
 
     cleaned = _clean_points(points)
     x, y = zip(*cleaned)
-    x = np.asarray(x, dtype=np.float64)
-    y = np.asarray(y, dtype=np.float64)
-    domain = np.linspace(0.0, 1.0, int(size), dtype=np.float64)
+    domain = np.linspace(0.0, 1.0, int(size), dtype=np.float32)
     lut = np.zeros_like(domain)
 
-    min_x = float(x[0])
-    max_x = float(x[-1])
+    min_x = x[0]
+    max_x = x[-1]
     inner = (domain >= min_x) & (domain <= max_x)
     if len(cleaned) > 2:
-        lut[inner] = _hermite_interpolate(domain[inner], x, y)
+        if _Akima1DInterpolator is not None:
+            try:
+                lut[inner] = _Akima1DInterpolator(x, y)(domain[inner])
+            except Exception:
+                lut[inner] = np.interp(domain[inner], x, y)
+        else:
+            lut[inner] = _hermite_interpolate(domain[inner], x, y)
     else:
         lut[inner] = np.interp(domain[inner], x, y)
 
@@ -195,6 +200,35 @@ def generate_lut(points, size=65536):
         lut[domain > max_x] = y[-1]
 
     return np.clip(lut, 0.0, 1.0).astype(np.float32)
+
+
+def quality_fallback_messages(operations=None):
+    """Return console warnings for active Curves paths that cannot use upstream deps."""
+
+    source = tuple(operations or ())
+    needs_akima = not source
+    needs_cv2 = not source
+    for operation in source:
+        domain = str(operation.get("domain", "RGB/K"))
+        if len(_clean_points(operation.get("points"))) > 2:
+            needs_akima = True
+        if domain in {"L", "S", "C"}:
+            needs_cv2 = True
+
+    messages = []
+    if needs_akima and _Akima1DInterpolator is None:
+        messages.append(
+            "VeraLux Curves is using a lower-quality interpolation fallback because "
+            "SciPy Akima1DInterpolator is unavailable; install or repair scipy to "
+            "match the original Siril curve engine."
+        )
+    if needs_cv2 and _cv2 is None:
+        messages.append(
+            "VeraLux Curves is using lower-quality NumPy color conversion fallbacks "
+            "because OpenCV is unavailable; Lab/HSV domains may not match the "
+            "original Siril output."
+        )
+    return tuple(messages)
 
 
 def curve_from_controls(
@@ -423,15 +457,37 @@ def apply_operation(rgb, operation, lut_size=65536):
         result[..., index] = _apply_lut_with_mask(result[..., index], lut, mask)
         return np.clip(result, 0.0, 1.0)
     if domain == "L":
+        if _cv2 is not None:
+            lab = _cv2.cvtColor(result, _cv2.COLOR_RGB2Lab)
+            lightness = lab[..., 0] / 100.0
+            lab[..., 0] = np.clip(_apply_lut_with_mask(lightness, lut, mask), 0.0, 1.0) * 100.0
+            return np.clip(_cv2.cvtColor(lab, _cv2.COLOR_Lab2RGB), 0.0, 1.0).astype(np.float32, copy=False)
         lab = rgb_to_lab(result)
         lightness = np.clip(lab[..., 0] / 100.0, 0.0, 1.0)
         lab[..., 0] = np.clip(_apply_lut_with_mask(lightness, lut, mask), 0.0, 1.0) * 100.0
         return lab_to_rgb(lab)
     if domain == "S":
+        if _cv2 is not None:
+            hsv = _cv2.cvtColor(result, _cv2.COLOR_RGB2HSV)
+            hsv[..., 1] = np.clip(_apply_lut_with_mask(hsv[..., 1], lut, mask), 0.0, 1.0)
+            return np.clip(_cv2.cvtColor(hsv, _cv2.COLOR_HSV2RGB), 0.0, 1.0).astype(np.float32, copy=False)
         hsv = rgb_to_hsv(result)
         hsv[..., 1] = np.clip(_apply_lut_with_mask(hsv[..., 1], lut, mask), 0.0, 1.0)
         return hsv_to_rgb(hsv)
     if domain == "C":
+        if _cv2 is not None:
+            lab = _cv2.cvtColor(result, _cv2.COLOR_RGB2Lab)
+            a = lab[..., 1]
+            b = lab[..., 2]
+            chroma = np.sqrt(a**2 + b**2)
+            chroma_norm = np.clip(chroma / 128.0, 0.0, 1.0)
+            chroma_new = _apply_lut_with_mask(chroma_norm, lut, mask) * 128.0
+            with np.errstate(divide="ignore", invalid="ignore"):
+                multiplier = chroma_new / chroma
+            multiplier = np.where(chroma > 1e-12, multiplier, 1.0)
+            lab[..., 1] = a * multiplier
+            lab[..., 2] = b * multiplier
+            return np.clip(_cv2.cvtColor(lab, _cv2.COLOR_Lab2RGB), 0.0, 1.0).astype(np.float32, copy=False)
         lab = rgb_to_lab(result)
         a = lab[..., 1]
         b = lab[..., 2]
