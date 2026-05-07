@@ -125,6 +125,19 @@ Every publishable package must include:
   upstream code, or bundled artifacts are included
 - tests or validation coverage appropriate to the package risk
 
+Choose host mode before choosing license:
+
+- `sdk_backend = runtime` launches the GPL full host and must use a
+  GPL-3.0-family package license.
+- `sdk_backend = protocol` launches the lite host and may use a non-GPL license
+  only when the package avoids `_afternight_runtime`, Engine-backed
+  `afternight` modules, and native AfterNight controls.
+- `sdk_backend = rpc` is reserved until AfterNight advertises RPC host support.
+
+See `docs/HOST_MODES_AND_LICENSING.md` for manifest examples, allowed imports,
+standalone/dev launch commands, PySide6/PyQt6 notes, and migration steps from
+full hosted to lite hosted packages.
+
 Use `packages/<extension_id>/repository.json` for release-only metadata such as
 minimum app version, changelog text, publication timestamp, asset base URL, and
 signature state. Set `"publish": false` when a package should remain

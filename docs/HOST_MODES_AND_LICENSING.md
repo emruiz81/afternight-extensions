@@ -19,6 +19,15 @@ The `sdk_backend` field in `extension.json` selects the host mode:
 
 Existing official packages currently use `sdk_backend = runtime`, so they must remain under a GPL-3.0-family license.
 
+Packages never choose host executable paths. The AfterNight Extension Manager
+maps `sdk_backend` to the correct host process, so authors only need to set the
+manifest field correctly:
+
+- `runtime` spawns `AfterNightExtensionHost`
+- `protocol` spawns `AfterNightExtensionHostLite`
+- `rpc` will spawn `AfterNightExtensionHostLite` and verify
+  `AfterNightSdkHost` after AfterNight ships RPC support
+
 ## Full Hosted Packages
 
 Use full hosting when the package needs AfterNight's Engine or native process UI.
@@ -28,8 +37,12 @@ Manifest:
 ```json
 {
   "license": "GPL-3.0-or-later",
+  "type": "python",
   "launch_mode": "single_image",
-  "sdk_backend": "runtime"
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1
 }
 ```
 
@@ -54,8 +67,12 @@ Manifest:
 ```json
 {
   "license": "MIT",
+  "type": "python",
   "launch_mode": "single_image",
-  "sdk_backend": "protocol"
+  "sdk_backend": "protocol",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1
 }
 ```
 
@@ -78,11 +95,68 @@ Lite hosted packages must not use:
 
 If a package is non-GPL and imports Engine-backed modules, it is not eligible for lite publication.
 
+Recommended Python imports for lite packages:
+
+```python
+import afternight
+from afternight.lite import LiteProcessExtension
+
+
+class ExampleLiteProcess(LiteProcessExtension):
+    def on_launch(self):
+        for view in self.list_views():
+            self.log_info(f"Open view: {view.get('name')}")
+```
+
 ## Future RPC Packages
 
 `sdk_backend = rpc` is reserved for the future AfterNight RPC backend. It keeps the extension in the lite host, then sends Engine-domain SDK calls to the GPL `AfterNightSdkHost` sidecar over the shared protocol.
 
 RPC packages are not publishable until the target AfterNight release advertises RPC support. Before then, repository validation should mark them incompatible.
+
+## Allowed Imports By Mode
+
+| Python surface | `runtime` full host | `protocol` lite host | `rpc` future lite host |
+|---|---:|---:|---:|
+| `afternight`, settings, logging, session metadata | Yes | Yes | Yes |
+| `afternight.lite` base classes | Not recommended | Yes | Yes |
+| `afternight.ui` native process-window helpers | Yes | No | No for non-GPL packages |
+| `_afternight_runtime` | Yes | No | No |
+| Engine-backed modules: `core`, `io`, `calibration`, `registration`, `stacking` | Yes | No | Through RPC only after AfterNight ships RPC support |
+| Extension-owned PySide6/PyQt6 UI | Yes, but full-host package remains GPL-compatible | Yes | Yes |
+
+## Standalone And Dev Mode
+
+AfterNight exposes socketless dev launches for both host processes:
+
+```bash
+AfterNightExtensionHost --standalone --sdk-backend runtime --extension-package-root <package> --entry-point <module> --process-class <class> --environment-root <env> --runtime-root <PythonLib>
+AfterNightExtensionHostLite --standalone --sdk-backend protocol --extension-package-root <package> --entry-point <module> --process-class <class> --environment-root <env> --runtime-root <PythonLib>
+```
+
+Full standalone mode is a GPL full-host development path and may load the direct
+runtime backend. Lite standalone mode provides mock/empty app-view services only
+and must not expose loopback Engine services. Lite extensions can inspect
+`afternight.current_session().is_standalone` when they need to adjust UI startup
+for a socketless dev run.
+
+## Migrating From Full Hosted To Lite Hosted
+
+Move a package from `runtime` to `protocol` only when it can stop using
+AfterNight Engine and native-control APIs:
+
+1. Change `sdk_backend` from `runtime` to `protocol`.
+2. Change the package license only if the package code and all dependencies
+   permit the new license.
+3. Replace full-host base classes with `afternight.lite.LiteProcessExtension`
+   or `LiteWorkflowExtension`.
+4. Remove `_afternight_runtime` and Engine-backed `afternight` imports.
+5. Replace native `ParamDef`/`afternight.ui` controls with extension-owned UI
+   such as PySide6, another toolkit, a helper process, or no UI.
+6. Use protocol-safe app/view services for view metadata, snapshots, shared
+   buffers, settings, progress, logging, and result presentation.
+7. Test with `AfterNightExtensionHostLite --standalone` and then through the
+   Extension Manager.
 
 ## UI Toolkit Notes
 
