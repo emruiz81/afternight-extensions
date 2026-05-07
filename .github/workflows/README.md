@@ -38,7 +38,11 @@ the selected package `.tar.zst` plus metadata sidecar.
 
 This is the only workflow that publishes downloadable release assets for users.
 It also writes a run summary listing the publishable package ids plus their
-declared release versions discovered from `packages/*/repository.json`.
+declared release versions discovered from `packages/*/repository.json`. The
+GitHub dispatch form itself can only show a static package dropdown, so version
+discovery remains in the run summary. Pull requests that add a new publishable
+package must update that dropdown; repository tests fail if the workflow list
+falls out of sync.
 
 Release publication should reuse the repository builder and index generator so
 that compressed asset hashes in `index.json` match the exact released files.

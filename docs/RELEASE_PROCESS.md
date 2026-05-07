@@ -195,6 +195,12 @@ The publish workflow:
 
 - lists the publishable package ids and declared release versions from
   repository metadata in the workflow run summary
+- exposes a static package-id dropdown in the GitHub dispatch form for the
+  current known packages; GitHub does not support filesystem-driven dynamic
+  workflow-dispatch choices
+- requires every pull request that adds a new publishable package to update the
+  dropdown list in `.github/workflows/publish-release.yml`; repository tests
+  enforce that the static list matches the current publishable packages
 - validates that `extension.json.version`, `repository.json.latest_version`,
   and the requested version match
 - resolves the release tag from `repository.json.asset_base_url`

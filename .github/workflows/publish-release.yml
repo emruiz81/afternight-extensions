@@ -6,11 +6,15 @@ on:
   workflow_dispatch:
     inputs:
       package_id:
-        description: Extension package id to publish as an official GitHub Release, for example veralux. The run summary lists the available publishable package ids and versions.
+        description: Publishable package id. This dropdown is static in the GitHub UI; the run summary shows the repository-discovered package and version list.
         required: true
-        type: string
+        type: choice
+        options:
+          - cosmic_clarity
+          - graxpert
+          - veralux
       version:
-        description: Version to publish. Must match package/extension.json and repository.json release metadata. The run summary lists the declared release versions.
+        description: Version to publish. Must match package/extension.json and repository.json release metadata. The run summary shows the declared release versions discovered from the repository.
         required: true
         type: string
       draft:

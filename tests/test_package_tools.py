@@ -20,7 +20,10 @@ from afternight_repo.package_tools import (  # noqa: E402
     read_json,
     sha256_file,
 )
-from release_metadata import resolve_release_metadata  # noqa: E402
+from release_metadata import (  # noqa: E402
+    list_available_release_metadata,
+    resolve_release_metadata,
+)
 
 
 def write_json(path, data):
@@ -368,6 +371,43 @@ class RepositoryPackageTests(unittest.TestCase):
 
                 self.assertIn(manifest["version"], versions)
                 self.assertIn(repository_metadata.get("latest_version", manifest["version"]), versions)
+
+    def test_publish_release_workflow_dropdown_matches_publishable_packages(self):
+        workflow_path = REPO_ROOT / ".github" / "workflows" / "publish-release.yml"
+        workflow_lines = workflow_path.read_text(encoding="utf-8").splitlines()
+
+        try:
+            package_id_index = workflow_lines.index("      package_id:")
+        except ValueError:
+            self.fail("publish-release.yml must define workflow_dispatch.inputs.package_id")
+
+        try:
+            options_index = workflow_lines.index("        options:", package_id_index + 1)
+        except ValueError:
+            self.fail("publish-release.yml package_id input must expose a static dropdown")
+
+        dropdown_package_ids = []
+        for line in workflow_lines[options_index + 1 :]:
+            if line.startswith("          - "):
+                dropdown_package_ids.append(line.removeprefix("          - ").strip())
+                continue
+            if dropdown_package_ids:
+                break
+
+        self.assertTrue(
+            dropdown_package_ids,
+            "publish-release.yml package_id dropdown must define at least one package option",
+        )
+        publishable_package_ids = [
+            item["package_id"]
+            for item in list_available_release_metadata(REPO_ROOT / "packages")
+        ]
+
+        self.assertEqual(
+            dropdown_package_ids,
+            publishable_package_ids,
+            "New publishable package PRs must update .github/workflows/publish-release.yml package_id options.",
+        )
 
     def test_cosmic_clarity_processes_have_specific_categories(self):
         package_dir = REPO_ROOT / "packages" / "cosmic_clarity" / "package"
