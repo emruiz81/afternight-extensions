@@ -1,5 +1,11 @@
 # Workflows
 
+Use the workflows for different purposes:
+
+- `validate.yml`: automatic gate on pull requests and pushes. It rebuilds published assets only to verify repository consistency; it does not publish anything.
+- `build-assets.yml`: manual packaging preview. It builds archives and uploads temporary GitHub Actions artifacts for inspection; it does not create a GitHub Release.
+- `publish-release.yml`: manual maintainer publication path. It is the only workflow that creates or updates the official GitHub Release for a package version.
+
 `validate.yml` is the repository gate for pull requests and pushes to `main`.
 It:
 
@@ -29,6 +35,8 @@ It does not create a GitHub Release or modify `index.json` on its own.
 `main`, validates the requested package id and version, rebuilds published
 assets, verifies the checked-in index, creates the GitHub Release, and uploads
 the selected package `.tar.zst` plus metadata sidecar.
+
+This is the only workflow that publishes downloadable release assets for users.
 
 Release publication should reuse the repository builder and index generator so
 that compressed asset hashes in `index.json` match the exact released files.

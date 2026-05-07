@@ -1,14 +1,16 @@
-name: Publish Extension Release
+name: Publish Extension Release (GitHub Release)
+
+run-name: Publish ${{ inputs.package_id }} ${{ inputs.version }} as a GitHub Release
 
 on:
   workflow_dispatch:
     inputs:
       package_id:
-        description: Extension package id, for example veralux
+        description: Extension package id to publish as an official GitHub Release, for example veralux
         required: true
         type: string
       version:
-        description: Version to publish; must match package/extension.json
+        description: Version to publish. Must match package/extension.json and repository.json release metadata.
         required: true
         type: string
       draft:
@@ -22,7 +24,7 @@ on:
         default: false
         type: boolean
       replace_existing_assets:
-        description: Replace assets on an existing release; use only before a release is announced
+        description: Replace assets on an existing GitHub Release; use only before a release is announced
         required: true
         default: false
         type: boolean
@@ -32,7 +34,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish ${{ inputs.package_id }} ${{ inputs.version }}
+    name: Publish GitHub Release for ${{ inputs.package_id }} ${{ inputs.version }}
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -50,7 +52,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends zstd
 
-      - name: Resolve release metadata
+      - name: Resolve release metadata and tag
         id: release
         run: |
           python3 tools/release_metadata.py \
@@ -58,10 +60,10 @@ jobs:
             --version "${{ inputs.version }}" \
             --github-output
 
-      - name: Build published package assets
+      - name: Build published package assets for release
         run: python3 tools/build_repository_assets.py --output-dir dist
 
-      - name: Verify checked-in index
+      - name: Verify checked-in index matches release assets
         run: |
           updated_at="$(python3 -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')"
           python3 tools/generate_index.py \
@@ -71,7 +73,7 @@ jobs:
             --output /tmp/index.json
           diff -u index.json /tmp/index.json
 
-      - name: Select release assets
+      - name: Select release archive and metadata sidecar
         id: assets
         env:
           PACKAGE_ID: ${{ inputs.package_id }}
@@ -110,7 +112,7 @@ jobs:
               handle.write(f"{delimiter}\n")
           PY
 
-      - name: Write release notes
+      - name: Write GitHub Release notes
         env:
           CHANGELOG: ${{ steps.release.outputs.changelog }}
         run: |
@@ -139,7 +141,7 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release and upload assets
         if: steps.existing.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -161,7 +163,7 @@ jobs:
             --notes-file release-notes.md \
             "${flags[@]}"
 
-      - name: Replace GitHub Release assets
+      - name: Replace GitHub Release assets in place
         if: steps.existing.outputs.exists == 'true'
         env:
           GH_TOKEN: ${{ github.token }}

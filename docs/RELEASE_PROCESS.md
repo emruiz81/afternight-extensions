@@ -156,6 +156,14 @@ test suites locally against a sibling checkout at `../afternight/python/modules`
 
 CI-built archives are validation output only. They are not release publication.
 
+## Workflow Selection
+
+Use the repository workflows for different purposes:
+
+- `Validate Repository`: automatic CI gate on pull requests and pushes. It rebuilds published assets only to prove the repository is internally consistent. It never creates a GitHub Release.
+- `Build Package Assets (Artifacts Only)`: manual packaging preview. It builds archives and uploads temporary GitHub Actions artifacts for review. It never creates a GitHub Release.
+- `Publish Extension Release (GitHub Release)`: manual maintainer publication workflow from `main`. It is the only workflow that creates or updates the official GitHub Release for a package version.
+
 ## Common Failure Signals
 
 When validation fails, start with the failure class rather than the workflow
@@ -207,7 +215,7 @@ Before announcing a release, verify:
 - the GitHub Release is public
 - each `index.json` `download_url` returns the uploaded `.tar.zst`
 - each uploaded asset hash matches `index.json.package_hash`
-- package tests passed in CI
+- package tests passed locally, and in CI again once package-test automation is re-enabled
 - repository tooling tests passed in CI
 - license and notice files are present
 - no generated archives, wheel downloads, caches, secrets, or local paths were
