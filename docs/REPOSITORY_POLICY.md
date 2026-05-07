@@ -50,8 +50,15 @@ Reserved/future states:
 ## License Policy
 
 Repository-level terms are summarized in `docs/LICENSING.md`; host-mode rules are
-defined in `docs/HOST_MODES_AND_LICENSING.md`; the GPL-3.0 text is available at
-the repository root in `LICENSE`.
+defined in `docs/HOST_MODES_AND_LICENSING.md`; the repository-level Apache-2.0
+text is available at the repository root in `LICENSE`.
+
+The repository-level Apache-2.0 license applies to repository tooling,
+documentation, CI configuration, tests, and non-package templates unless a file
+declares different terms. It does not relicense extension packages. Everything
+under `packages/<extension_id>/` is governed by that package's manifest,
+package-local `LICENSE`, and notices unless a file inside the package declares a
+more specific license.
 
 Each package must include license metadata, explicit `sdk_backend` metadata, and
 a package-local `LICENSE` file.

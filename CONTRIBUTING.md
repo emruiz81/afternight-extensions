@@ -42,8 +42,9 @@ license/notice review, and validation are complete.
 
 ## Licensing Expectations
 
-The repository-level license is documented in `LICENSE` and
-`docs/LICENSING.md`. Package-level terms live in each package's
+Repository-level contributions to tooling, documentation, tests, CI
+configuration, and non-package templates are accepted under Apache-2.0 unless the
+file declares different terms. Package-level terms live in each package's
 `extension.json`, package-local `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
 
 Derived works must keep upstream attribution and provenance visible. Dependency

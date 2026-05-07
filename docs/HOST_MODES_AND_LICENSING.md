@@ -2,6 +2,11 @@
 
 This document explains how an extension package chooses the AfterNight host process and what that means for licensing review. It is not legal advice; it is the repository policy used for package validation and publication review.
 
+The repository-level license for tooling, documentation, CI configuration,
+tests, and non-package templates is Apache-2.0. Extension packages are licensed
+separately by their manifest, package-local `LICENSE`, and notices. The
+repository-level Apache-2.0 license does not relicense package-local GPL code.
+
 ## Host Mode Summary
 
 The `sdk_backend` field in `extension.json` selects the host mode:

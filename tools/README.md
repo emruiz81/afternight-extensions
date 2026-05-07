@@ -43,7 +43,7 @@ The package validator enforces host-mode policy from
 `docs/HOST_MODES_AND_LICENSING.md`:
 
 - every manifest must declare `sdk_backend`
-- `runtime` packages must use a GPL-3.0-compatible package license
+- `runtime` packages must use a GPL-3.0-family package license
 - `protocol` packages must not import `_afternight_runtime` or Engine-backed
   `afternight` modules
 - `rpc` packages are rejected until the target AfterNight release ships RPC

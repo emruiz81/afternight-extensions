@@ -13,12 +13,16 @@ is reserved until the AfterNight RPC backend ships.
 
 ## Repository-Level License
 
-Repository tooling, documentation, CI configuration, tests, and current
-AfterNight-maintained runtime adapter code are distributed under GPL-3.0 unless a
-file or package declares a different license. The GPL-3.0 license text is
-available at the repository root in `LICENSE`. Future lite/protocol templates may
-declare a permissive license when they do not import AfterNight Engine or native
-control code.
+Repository tooling, documentation, CI configuration, tests, and non-package
+templates are distributed under Apache-2.0 unless a file declares a different
+license. The Apache-2.0 license text is available at the repository root in
+`LICENSE`.
+
+Package directories are licensed separately. Everything under
+`packages/<extension_id>/` is governed by that package's manifest, package-local
+`LICENSE`, and notices unless a file inside the package declares a more specific
+license. The repository-level Apache-2.0 license does not relicense package-local
+GPL code or upstream-derived content.
 
 ## Package License Summary
 
@@ -68,3 +72,8 @@ Do not publish a package when any of these are true:
   modules, or native AfterNight controls
 - a package declares `sdk_backend = rpc` before the target AfterNight release
   supports RPC extension hosting
+
+## References
+
+- Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+- GNU license list and GPL compatibility notes: https://www.gnu.org/licenses/license-list.html#apache2

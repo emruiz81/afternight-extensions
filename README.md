@@ -132,11 +132,16 @@ source-staged and absent from the public index.
 
 ## Licensing
 
-The repository tooling, documentation, and current AfterNight-maintained runtime
-adapter code are distributed under GPL-3.0 unless a file or package says
-otherwise. See `LICENSE` for the GPL-3.0 text, `docs/LICENSING.md` for the
-package license summary, and `docs/HOST_MODES_AND_LICENSING.md` for full vs lite
-hosted extension rules.
+Repository tooling, documentation, CI configuration, tests, and non-package
+templates are distributed under Apache-2.0 unless a file says otherwise. See
+`LICENSE` for the Apache-2.0 text, `docs/LICENSING.md` for the package license
+summary, and `docs/HOST_MODES_AND_LICENSING.md` for full vs lite hosted
+extension rules.
+
+Extension packages are licensed separately. Everything under
+`packages/<extension_id>/` is governed by that package's manifest, package-local
+`LICENSE`, and notices unless a file inside the package declares a more specific
+license.
 
 Each package also carries package-local licensing:
 
