@@ -92,6 +92,23 @@ def log_warning(message, *, component):
     afternight.log_warning(str(message), component=str(component))
 
 
+def log_launch_banner(tool_name, subtitle, *, version=None, component, include_contact=True):
+    title = f"# VeraLux - {tool_name}"
+    if version:
+        title = f"{title} v{version}"
+    lines = [
+        "",
+        "##############################################",
+        title,
+        f"# {subtitle}",
+        "# Author: Riccardo Paterniti (2025)",
+    ]
+    if include_contact:
+        lines.append("# Contact: info@veralux.space")
+    lines.append("##############################################")
+    log_info("\n".join(lines), component=component)
+
+
 def warn_quality_fallbacks_once(owner, messages, *, component):
     """Log each quality-fallback warning once for a process instance."""
 

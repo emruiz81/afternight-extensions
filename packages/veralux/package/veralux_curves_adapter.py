@@ -70,6 +70,15 @@ class VeraLuxCurvesExtension(ui.RTPreviewProcess):
     def get_params(self):
         return curves_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "Curves",
+            "Spline-Based Photometric Sculpting Engine",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+        )
+        sdk.log_info("VeraLux Curves: Akima point-curve editor initialized.", component=self.component)
+
     def _curve_points_from_params(self, params):
         points = _points_from_curve_editor(params.get("curve_points"))
         if points is not None:
@@ -100,6 +109,12 @@ class VeraLuxCurvesExtension(ui.RTPreviewProcess):
             raise RuntimeError("VeraLux Curves processing was cancelled.")
 
         operation = self._operation_from_params(params)
+        if not preview:
+            range_state = "range-limited" if operation.get("lum_range_enabled") else "global"
+            sdk.log_info(
+                f"VeraLux Curves: Applying {operation.get('domain', 'RGB/K')} curve ({range_state}).",
+                component=self.component,
+            )
         sdk.warn_quality_fallbacks_once(
             self,
             core.quality_fallback_messages([operation]),

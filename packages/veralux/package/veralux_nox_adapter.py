@@ -30,18 +30,30 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
     def get_params(self):
         return nox_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "Nox",
+            "Physically-Faithful Photometric Gradient Reduction",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+        )
+        sdk.log_info(f"VeraLux Nox v{core.UPSTREAM_VERSION} Initialized.", component=self.component)
+
     def _star_physics(self, src_image, params):
         if not bool(params.get("auto_mask", True)):
             return None, 4.0
 
+        sdk.log_info("VeraLux: Measuring PSF for Physics Engine...", component=self.component)
         try:
-            return sdk.star_mask_and_median_fwhm_from_find_stars(
+            star_mask, fwhm_val = sdk.star_mask_and_median_fwhm_from_find_stars(
                 src_image,
                 max_stars=8192,
                 radius_scale=1.8,
                 min_radius=3.0,
                 max_radius=24.0,
             )
+            sdk.log_info(f"VeraLux: Measured FWHM = {float(fwhm_val):.2f} px", component=self.component)
+            return star_mask, fwhm_val
         except Exception as exc:
             sdk.log_warning(
                 f"VeraLux Nox PSF auto-masking unavailable: {exc}",
@@ -62,6 +74,13 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         source = sdk.read_image(src_image)
         user_mask = sdk.first_mask_array(masks) if bool(params.get("use_manual_mask", False)) else None
         star_mask, fwhm_val = self._star_physics(src_image, params)
+        sdk.log_info(
+            "VeraLux Nox: Running Zenith membrane engine "
+            f"(stiffness={float(params.get('stiffness', 2.0)):.2f}, "
+            f"signal_rejection={float(params.get('rejection_power', 50.0)):.1f}%, "
+            f"auto_mask={'ON' if bool(params.get('auto_mask', True)) else 'OFF'}).",
+            component=self.component,
+        )
 
         result, model = core.process_gradient_reduction(
             source,
@@ -171,6 +190,19 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         del target, weights, output_masks
         progress.set_text("Applying VeraLux Nox...")
         result, model, _star_mask, fwhm_val = self._process(src_image, params, progress, masks=masks)
+        sdk.log_info(
+            "\n------------------------------------------------------------\n"
+            f" VERALUX NOX v{core.UPSTREAM_VERSION} - SCIENTIFIC ENGINE REPORT\n"
+            "------------------------------------------------------------\n"
+            " > Engine: Zenith (PSF-Aware Membrane)\n"
+            " > Logic: Linear Physics (Golden Mean Grid)\n"
+            f" > Auto-Mask: {'ON' if bool(params.get('auto_mask', True)) else 'OFF'}\n"
+            f" > Stiffness: {float(params.get('stiffness', 2.0)):.2f}\n"
+            f" > Signal Rejection: {float(params.get('rejection_power', 50.0)):.1f}%\n"
+            f" > FWHM: {float(fwhm_val):.2f} px\n"
+            "------------------------------------------------------------",
+            component=self.component,
+        )
 
         sdk.write_image(dst_image, result)
         sdk.stamp_result(

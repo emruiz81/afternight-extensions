@@ -24,6 +24,16 @@ class VeraLuxRevelaExtension(ui.RTPreviewProcess):
     def get_params(self):
         return revela_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "Revela",
+            "Photometric Local Contrast & Texture Engine",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+            include_contact=False,
+        )
+        sdk.log_info("VeraLux Revela: Input cache is managed by AfterNight image handles.", component=self.component)
+
     def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Revela processing was cancelled.")
@@ -33,6 +43,15 @@ class VeraLuxRevelaExtension(ui.RTPreviewProcess):
             core.quality_fallback_messages(),
             component=self.component,
         )
+
+        if not preview:
+            sdk.log_info(
+                "VeraLux Revela: Processing "
+                f"texture={float(params.get('texture', 0.0)):.2f}, "
+                f"structure={float(params.get('structure', 0.0)):.2f}, "
+                f"Shadow Authority={float(params.get('shadow_authority', 33.0)):.1f}.",
+                component=self.component,
+            )
 
         source = sdk.read_image(src_image)
         result = core.process_structure(

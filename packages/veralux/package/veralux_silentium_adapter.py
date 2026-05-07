@@ -22,10 +22,20 @@ class VeraLuxSilentiumExtension(ui.RTPreviewProcess):
     def get_params(self):
         return silentium_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "Silentium",
+            "Linear-Phase Noise Suppression Engine",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+        )
+        sdk.log_info("Silentium: Input and star-list data are supplied by AfterNight.", component=self.component)
+
     def _star_protection(self, src_image, params):
         if not bool(params.get("use_stars", True)):
             return None, None
 
+        sdk.log_info("Silentium: Building star mask from AfterNight star profiling.", component=self.component)
         try:
             star_mask, fwhm_map = sdk.star_mask_and_fwhm_map_from_find_stars(
                 src_image,
@@ -41,6 +51,7 @@ class VeraLuxSilentiumExtension(ui.RTPreviewProcess):
             return None, None
 
         if bool(params.get("auto_starless", True)) and float(star_mask.max(initial=0.0)) < 0.1:
+            sdk.log_info("Silentium: Starless mode (few stars).", component=self.component)
             return None, None
 
         return star_mask, fwhm_map
@@ -54,6 +65,10 @@ class VeraLuxSilentiumExtension(ui.RTPreviewProcess):
             core.quality_fallback_messages(),
             component=self.component,
         )
+
+        if not preview:
+            mode = "LAB chroma" if bool(params.get("enable_chroma", True)) else "luminance"
+            sdk.log_info(f"Silentium: Processing full-resolution SWT ({mode}).", component=self.component)
 
         source = sdk.read_image(src_image)
         star_mask, fwhm_map = self._star_protection(src_image, params)

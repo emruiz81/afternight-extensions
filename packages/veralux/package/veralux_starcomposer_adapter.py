@@ -32,6 +32,15 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
     def get_params(self):
         return starcomposer_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "StarComposer",
+            "High-Fidelity Star Reconstruction Engine",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+        )
+        sdk.log_info("VeraLux StarComposer: Select starless base and stars view to begin.", component=self.component)
+
     def _stars_image_handle(self, params):
         injected_image = params.get("_stars_image")
         if injected_image is None:
@@ -195,6 +204,8 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
         if cache_key is not None and cache_key == self._preview_shaped_stars_cache_key:
             return self._preview_shaped_stars_cache
 
+        if cache_key is None:
+            sdk.log_info("VeraLux StarComposer: Shaping stars with hybrid reconstruction engine.", component=self.component)
         shaped_stars = core.process_star_mask(
             stars,
             log_d=float(params.get("log_d", 1.0)),
@@ -256,6 +267,7 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
             stars = sdk.read_image(self._stars_image_handle(params))
             shaped_stars = self._shape_stars(stars, params)
             blend_mode = core.normalize_blend_mode(params.get("blend_mode", "screen"))
+            sdk.log_info(f"VeraLux StarComposer: Compositing stars ({blend_mode}).", component=self.component)
             result = core.compose_with_starless(starless, shaped_stars, blend_mode=blend_mode)
 
         if progress.is_cancelled():

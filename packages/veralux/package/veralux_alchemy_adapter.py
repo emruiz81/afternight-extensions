@@ -22,6 +22,16 @@ class VeraLuxAlchemyExtension(ui.RTPreviewProcess):
     def get_params(self):
         return alchemy_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "Alchemy",
+            "Linear-Phase Narrowband Normalization & Mixing",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+            include_contact=False,
+        )
+        sdk.log_info("VeraLux Alchemy: Input cache is managed by AfterNight image handles.", component=self.component)
+
     def handle_param_action(self, action_id, target, src_image, params):
         del target, src_image, params
         preset = core.PALETTE_PRESETS.get(str(action_id))
@@ -30,6 +40,15 @@ class VeraLuxAlchemyExtension(ui.RTPreviewProcess):
     def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Alchemy processing was cancelled.")
+
+        if not preview:
+            mode = "Quantum Unmix" if bool(params.get("quantum_unmix", False)) else "linear channel mix"
+            sdk.log_info(
+                "VeraLux Alchemy: Processing "
+                f"{mode} (profile={params.get('sensor_profile', 'Generic OSC')}, "
+                f"boost={float(params.get('boost', 1.0)):.2f}).",
+                component=self.component,
+            )
 
         source = sdk.read_image(src_image)
         result = core.process_narrowband(

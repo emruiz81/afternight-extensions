@@ -22,9 +22,29 @@ class VeraLuxHyperMetricStretchExtension(ui.RTPreviewProcess):
     def get_params(self):
         return hms_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "HyperMetric Stretch",
+            "Photometric Hyperbolic Stretch Engine",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+        )
+        sdk.log_info(
+            "VeraLux HyperMetric Stretch: Requirement: linear data with color calibration applied.",
+            component=self.component,
+        )
+
     def _process(self, src_image, dst_image, params, progress, *, preview=False):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux HyperMetric Stretch processing was cancelled.")
+
+        if not preview:
+            sdk.log_info(
+                "VeraLux HyperMetric Stretch: Processing "
+                f"{params.get('processing_mode', 'ready_to_use')} mode "
+                f"[{params.get('working_space', core.DEFAULT_PROFILE)}].",
+                component=self.component,
+            )
 
         source = sdk.read_image(src_image)
         result = core.process_hypermetric_stretch(

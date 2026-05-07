@@ -22,6 +22,16 @@ class VeraLuxVectraExtension(ui.RTPreviewProcess):
     def get_params(self):
         return vectra_ui.parameter_defs()
 
+    def on_process_launch(self):
+        sdk.log_launch_banner(
+            "Vectra",
+            "Vector Color Grading Engine",
+            version=core.UPSTREAM_VERSION,
+            component=self.component,
+            include_contact=False,
+        )
+        sdk.log_info("VeraLux Vectra: LCH vector scope controls initialized.", component=self.component)
+
     @staticmethod
     def _saturation_from_ui(params, key):
         return float(params.get(key, 0.0)) / 100.0
@@ -44,6 +54,18 @@ class VeraLuxVectraExtension(ui.RTPreviewProcess):
             "C": (float(params.get("cyan_hue", 0.0)), self._saturation_from_ui(params, "cyan_saturation")),
             "M": (float(params.get("magenta_hue", 0.0)), self._saturation_from_ui(params, "magenta_saturation")),
         }
+
+        if not preview:
+            active_vectors = sum(
+                1
+                for hue_shift, saturation_boost in vectors.values()
+                if abs(float(hue_shift)) > 1.0e-6 or abs(float(saturation_boost)) > 1.0e-6
+            )
+            sdk.log_info(
+                f"VeraLux Vectra: Applying {active_vectors} active LCH vector(s) "
+                f"with Shadow Authority={float(params.get('shadow_authority', 0.0)):.1f}.",
+                component=self.component,
+            )
 
         source = sdk.read_image(src_image)
         result = core.process_vectors(
