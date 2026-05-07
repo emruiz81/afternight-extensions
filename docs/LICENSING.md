@@ -8,8 +8,9 @@ Host-mode licensing rules are defined in
 [Host Modes and Licensing](HOST_MODES_AND_LICENSING.md). In short:
 `sdk_backend = runtime` packages are full hosted and must use a GPL-3.0-family license;
 `sdk_backend = protocol` packages are lite hosted and may use non-GPL licenses
-when they avoid AfterNight Engine/native-control imports; `sdk_backend = rpc`
-is reserved until the AfterNight RPC backend ships.
+when they avoid AfterNight Engine/native-control imports and use
+`afternight.ui_protocol` instead of the native `afternight.ui` surface;
+`sdk_backend = rpc` is reserved until the AfterNight RPC backend ships.
 
 ## Repository-Level License
 
@@ -47,10 +48,11 @@ Every publishable package must include:
 Packages using `sdk_backend = runtime` must use a GPL-3.0-family license
 (`GPL-3.0`, `GPL-3.0-only`, or `GPL-3.0-or-later`).
 Packages using `sdk_backend = protocol` may use non-GPL licenses if they do not
-import `_afternight_runtime`, Engine-backed `afternight` modules, or native
-AfterNight controls. Packages using `sdk_backend = rpc` are blocked until the
-target AfterNight release ships RPC support and the package passes the same
-non-linking review.
+import `_afternight_runtime`, Engine-backed `afternight` modules, or the native
+`afternight.ui` surface. Use `afternight.ui_protocol` for lite-host result
+presentation, theme tokens, and host dialogs. Packages using `sdk_backend = rpc`
+are blocked until the target AfterNight release ships RPC support and the
+package passes the same non-linking review.
 
 Public PyPI wheels must not be redistributed in package assets. When a package
 depends on public PyPI artifacts, keep a hash-locked `requirements.lock` and let
@@ -69,7 +71,7 @@ Do not publish a package when any of these are true:
   distribution
 - a non-GPL package declares `sdk_backend = runtime`
 - a lite-hosted package imports `_afternight_runtime`, Engine-backed `afternight`
-  modules, or native AfterNight controls
+  modules, or the native `afternight.ui` surface instead of `afternight.ui_protocol`
 - a package declares `sdk_backend = rpc` before the target AfterNight release
   supports RPC extension hosting
 

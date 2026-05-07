@@ -74,7 +74,8 @@ Backend-specific rules:
 - `sdk_backend = runtime` packages are full hosted and must use a GPL-3.0-family license.
 - `sdk_backend = protocol` packages are lite hosted and may use non-GPL licenses
   only when they avoid `_afternight_runtime`, Engine-backed `afternight` modules,
-  and native AfterNight controls.
+  and the native `afternight.ui` surface. Use `afternight.ui_protocol` for
+  protocol-safe result/dialog/theme helpers.
 - `sdk_backend = rpc` packages are blocked until AfterNight ships RPC extension
   hosting for the target release.
 

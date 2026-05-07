@@ -44,7 +44,15 @@ ENGINE_BACKED_IMPORTS = {
     "afternight.core",
     "afternight.io",
     "afternight.registration",
+    "afternight.runtime",
     "afternight.stacking",
+}
+
+NATIVE_UI_IMPORTS = {
+    "afternight.ProcessExtension",
+    "afternight.RTPreviewExtension",
+    "afternight.WorkflowExtension",
+    "afternight.ui",
 }
 
 NATIVE_CONTROL_CAPABILITY_KEYS = {
@@ -565,6 +573,14 @@ def _validate_host_mode_policy(package_dir, manifest, manifest_path):
                 f"Engine-backed module {module_name}"
             )
 
+        native_ui_import = _find_native_ui_import(package_dir)
+        if native_ui_import:
+            source_path, module_name = native_ui_import
+            raise PackageToolError(
+                f"{source_path}: sdk_backend protocol packages must not import "
+                f"native afternight.ui surface {module_name}; use afternight.ui_protocol"
+            )
+
 
 def _find_engine_backed_import(package_dir):
     for source_path in _iter_python_sources(package_dir):
@@ -612,6 +628,54 @@ def _match_engine_backed_module(module_name):
     for banned in ENGINE_BACKED_IMPORTS:
         if module_name.startswith(banned + "."):
             return banned
+    return None
+
+
+def _find_native_ui_import(package_dir):
+    for source_path in _iter_python_sources(package_dir):
+        try:
+            tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+        except SyntaxError as exc:
+            raise PackageToolError(f"{source_path}: Python syntax error: {exc.msg}") from exc
+
+        for node in ast.walk(tree):
+            module_name = _native_ui_import_name(node)
+            if module_name:
+                return source_path, module_name
+    return None
+
+
+def _native_ui_import_name(node):
+    if isinstance(node, ast.Import):
+        for alias in node.names:
+            matched = _match_native_ui_module(alias.name)
+            if matched:
+                return matched
+    elif isinstance(node, ast.ImportFrom):
+        module = node.module or ""
+        matched = _match_native_ui_module(module)
+        if matched:
+            return matched
+        if module == "afternight":
+            for alias in node.names:
+                candidate = f"afternight.{alias.name}"
+                matched = _match_native_ui_module(candidate)
+                if matched:
+                    return matched
+        elif module.startswith("afternight."):
+            for alias in node.names:
+                candidate = f"{module}.{alias.name}"
+                matched = _match_native_ui_module(candidate)
+                if matched:
+                    return matched
+    return None
+
+
+def _match_native_ui_module(module_name):
+    if module_name in NATIVE_UI_IMPORTS:
+        return module_name
+    if module_name.startswith("afternight.ui."):
+        return "afternight.ui"
     return None
 
 

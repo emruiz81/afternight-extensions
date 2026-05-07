@@ -63,7 +63,12 @@ def create_policy_package(root, *, license_id="MIT", sdk_backend="protocol", sou
 class ManifestHostModePolicyTests(unittest.TestCase):
     def test_protocol_backend_allows_non_gpl_package_without_engine_imports(self):
         with tempfile.TemporaryDirectory() as tmp:
-            package_dir = create_policy_package(Path(tmp), license_id="MIT", sdk_backend="protocol")
+            package_dir = create_policy_package(
+                Path(tmp),
+                license_id="MIT",
+                sdk_backend="protocol",
+                source_text="import afternight.ui_protocol as ui\n\nclass PolicyExtension: pass\n",
+            )
 
             manifest = load_valid_manifest(package_dir)
 
@@ -120,6 +125,17 @@ class ManifestHostModePolicyTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(PackageToolError, "Engine-backed module _afternight_runtime"):
+                load_valid_manifest(package_dir)
+
+    def test_protocol_backend_rejects_native_ui_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(
+                Path(tmp),
+                sdk_backend="protocol",
+                source_text="import afternight.ui as ui\n\nclass PolicyExtension: pass\n",
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "native afternight.ui surface afternight.ui"):
                 load_valid_manifest(package_dir)
 
     def test_protocol_backend_rejects_native_control_capability(self):

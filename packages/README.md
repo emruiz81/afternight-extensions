@@ -26,7 +26,9 @@ New packages should install public Python dependencies from official PyPI using 
 Every package must declare `sdk_backend` explicitly:
 
 - `runtime` for GPL-3.0-family full hosted packages that use AfterNight Engine or native controls
-- `protocol` for lite hosted packages that use only app/view protocol services and own their UI/processing
+- `protocol` for lite hosted packages that use only app/view protocol services,
+  own their UI/processing, and use `afternight.ui_protocol` instead of the
+  native `afternight.ui` surface
 - `rpc` for future lite hosted packages that need Engine SDK calls through the RPC sidecar, once AfterNight supports it
 
 See `../docs/HOST_MODES_AND_LICENSING.md` before adding a new package.

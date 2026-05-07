@@ -99,6 +99,7 @@ Recommended Python imports for lite packages:
 
 ```python
 import afternight
+import afternight.ui_protocol as ui
 from afternight.lite import LiteProcessExtension
 
 
@@ -106,6 +107,7 @@ class ExampleLiteProcess(LiteProcessExtension):
     def on_launch(self):
         for view in self.list_views():
             self.log_info(f"Open view: {view.get('name')}")
+        ui.show_info("Lite process launched")
 ```
 
 ## Future RPC Packages
@@ -120,6 +122,7 @@ RPC packages are not publishable until the target AfterNight release advertises 
 |---|---:|---:|---:|
 | `afternight`, settings, logging, session metadata | Yes | Yes | Yes |
 | `afternight.lite` base classes | Not recommended | Yes | Yes |
+| `afternight.ui_protocol` result presentation/dialog/theme helpers | Yes | Yes | Yes |
 | `afternight.ui` native process-window helpers | Yes | No | No for non-GPL packages |
 | `_afternight_runtime` | Yes | No | No |
 | Engine-backed modules: `core`, `io`, `calibration`, `registration`, `stacking` | Yes | No | Through RPC only after AfterNight ships RPC support |
@@ -152,7 +155,9 @@ AfterNight Engine and native-control APIs:
    or `LiteWorkflowExtension`.
 4. Remove `_afternight_runtime` and Engine-backed `afternight` imports.
 5. Replace native `ParamDef`/`afternight.ui` controls with extension-owned UI
-   such as PySide6, another toolkit, a helper process, or no UI.
+   such as PySide6, another toolkit, a helper process, or no UI. Use
+   `afternight.ui_protocol` for result presentation, theme tokens, and host
+   dialogs in lite packages.
 6. Use protocol-safe app/view services for view metadata, snapshots, shared
    buffers, settings, progress, logging, and result presentation.
 7. Test with `AfterNightExtensionHostLite --standalone` and then through the

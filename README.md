@@ -131,7 +131,8 @@ Choose host mode before choosing license:
   GPL-3.0-family package license.
 - `sdk_backend = protocol` launches the lite host and may use a non-GPL license
   only when the package avoids `_afternight_runtime`, Engine-backed
-  `afternight` modules, and native AfterNight controls.
+  `afternight` modules, and the native `afternight.ui` surface. Use
+  `afternight.ui_protocol` for protocol-safe result/dialog/theme helpers.
 - `sdk_backend = rpc` is reserved until AfterNight advertises RPC host support.
 
 See `docs/HOST_MODES_AND_LICENSING.md` for manifest examples, allowed imports,
@@ -171,7 +172,8 @@ machine paths, or private download URLs block publication.
 
 Host mode matters for licensing review: `sdk_backend = runtime` packages must use
 a GPL-3.0-family license; `sdk_backend = protocol` packages may use non-GPL
-licenses only when they avoid AfterNight Engine/native-control imports;
+licenses only when they avoid AfterNight Engine/native-control imports and use
+`afternight.ui_protocol` instead of the native `afternight.ui` surface;
 `sdk_backend = rpc` is reserved until AfterNight ships RPC extension hosting.
 
 ## Related Repository

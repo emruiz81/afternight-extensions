@@ -102,9 +102,11 @@ Examples:
 ```
 
 `runtime` packages must use a GPL-3.0-family license. `protocol` packages must not import
-`_afternight_runtime`, Engine-backed `afternight` modules, or native AfterNight
-controls. `rpc` packages are rejected until the target AfterNight release
-advertises RPC support. See [Host Modes and Licensing](HOST_MODES_AND_LICENSING.md).
+`_afternight_runtime`, Engine-backed `afternight` modules, or the native
+`afternight.ui` surface. Lite packages should use `afternight.ui_protocol` for
+protocol-safe result/dialog/theme helpers. `rpc` packages are rejected until the
+target AfterNight release advertises RPC support. See
+[Host Modes and Licensing](HOST_MODES_AND_LICENSING.md).
 
 ## Repository Release Metadata
 
