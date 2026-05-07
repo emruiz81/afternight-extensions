@@ -175,6 +175,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
     window_size = (600, 400)
     process_name = "Cosmic Clarity"
     process_subtitle = "External astrophotography helper process"
+    process_header_detail = "Run the selected Cosmic Clarity helper against the active image."
     not_configured_text = (
         "Cosmic Clarity is not configured. Click Configure to select the installation folder."
     )
@@ -260,9 +261,9 @@ class _CosmicClarityBase(ui.ProcessWindow):
             },
         )
         meta["header_description"] = (
-            "Seti Astro Cosmic Clarity helper wrapped by AfterNight. Configure the "
-            "external suite folder once, then run the selected denoise, star, "
-            "sharpening, or super-resolution process."
+            f"Seti Astro Cosmic Clarity - {self.process_name}. "
+            f"{self.process_header_detail} Configure the external suite folder once; "
+            "GPU and executable checks are shared across the Cosmic Clarity tools."
         )
         return [meta]
 
@@ -520,6 +521,10 @@ class _CosmicClarityBase(ui.ProcessWindow):
 class CosmicClarityDenoiseExtension(_CosmicClarityBase):
     process_name = "Denoise"
     process_subtitle = "Seti Astro noise reduction helper"
+    process_header_detail = (
+        "Reduce luminance or full-image noise with the configured Cosmic Clarity "
+        "Denoise executable."
+    )
     not_configured_text = (
         "Cosmic Clarity Denoise 6.5+ is required. Click Configure to select the "
         "Cosmic Clarity installation folder."
@@ -592,6 +597,10 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
 class CosmicClarityDarkStarExtension(_CosmicClarityBase):
     process_name = "Dark Star"
     process_subtitle = "Seti Astro star separation helper"
+    process_header_detail = (
+        "Generate a starless result with optional extracted-stars output from the "
+        "configured Dark Star executable."
+    )
     not_configured_text = (
         "Cosmic Clarity Dark Star is required. Click Configure to select the "
         "Cosmic Clarity installation folder."
@@ -693,6 +702,10 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
     window_size = (600, 400)
     process_name = "Sharpening"
     process_subtitle = "Seti Astro stellar and non-stellar sharpening helper"
+    process_header_detail = (
+        "Sharpen stellar, non-stellar, or combined detail with optional automatic "
+        "PSF detection."
+    )
     not_configured_text = (
         "Cosmic Clarity Sharpen 6.5+ is required. Click Configure to select the "
         "Cosmic Clarity installation folder."
@@ -819,6 +832,10 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
 class CosmicClaritySuperResExtension(_CosmicClarityBase):
     process_name = "Super Resolution"
     process_subtitle = "Seti Astro upscaling helper"
+    process_header_detail = (
+        "Upscale the active image with the configured Cosmic Clarity SuperRes "
+        "helper and open the resized result."
+    )
     not_configured_text = (
         "Cosmic Clarity Super-Resolution 1.1+ is required. Click Configure to select "
         "the Cosmic Clarity installation folder."

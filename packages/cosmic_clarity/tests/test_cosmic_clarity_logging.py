@@ -52,13 +52,23 @@ class CosmicClarityLoggingTests(unittest.TestCase):
                 self.assertIn("AfterNight extension maintainer: Ezequiel Ruiz", text)
                 self.assertIn("https://github.com/setiastro/cosmicclarity", text)
 
-    def test_process_window_meta_uses_descriptive_header(self):
-        params = CosmicClarityDenoiseExtension(None).get_params()
-        meta = params[0]
+    def test_each_process_window_meta_uses_process_specific_header(self):
+        cases = [
+            (CosmicClarityDenoiseExtension, "Seti Astro Cosmic Clarity - Denoise", "full-image noise"),
+            (CosmicClarityDarkStarExtension, "Seti Astro Cosmic Clarity - Dark Star", "starless result"),
+            (CosmicClaritySharpeningExtension, "Seti Astro Cosmic Clarity - Sharpening", "PSF detection"),
+            (CosmicClaritySuperResExtension, "Seti Astro Cosmic Clarity - Super Resolution", "Upscale"),
+        ]
 
-        self.assertEqual(meta["id"], "window_meta")
-        self.assertIn("Seti Astro Cosmic Clarity helper", meta["header_description"])
-        self.assertIn("external suite folder", meta["header_description"])
+        for extension_class, title, detail in cases:
+            with self.subTest(title=title):
+                params = extension_class(None).get_params()
+                meta = params[0]
+
+                self.assertEqual(meta["id"], "window_meta")
+                self.assertIn(title, meta["header_description"])
+                self.assertIn(detail, meta["header_description"])
+                self.assertIn("external suite folder", meta["header_description"])
 
 
 if __name__ == "__main__":

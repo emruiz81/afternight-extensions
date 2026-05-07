@@ -55,6 +55,7 @@ class _GraXpertBase(ui.ProcessWindow):
     window_size = (600, 400)
     process_name = "GraXpert"
     process_subtitle = "AI astrophotography processing"
+    process_header_detail = "Run the selected GraXpert AI process against the active image."
 
     def on_process_launch(self):
         _log_launch_banner(
@@ -498,9 +499,9 @@ class _GraXpertBase(ui.ProcessWindow):
             target_channel_filter=[1, 3],
         )
         meta["header_description"] = (
-            "GraXpert AI processing hosted by AfterNight. Select a target image, "
-            "choose the model/version controls, and run background extraction, "
-            "denoise, or deconvolution from the shared GraXpert environment."
+            f"GraXpert AI - {self.process_name}. {self.process_header_detail} "
+            "Select a target image, choose model/version controls, and use the "
+            "shared GraXpert environment managed by AfterNight."
         )
         return [meta]
 
@@ -814,6 +815,10 @@ class _GraXpertBase(ui.ProcessWindow):
 class GraXpertBackgroundExtension(_GraXpertBase):
     process_name = "Background Extraction"
     process_subtitle = "AI background model generation and correction"
+    process_header_detail = (
+        "Generate and apply an AI background model, with optional background-model "
+        "artifact output."
+    )
 
     def _inference_model_dir_keys(self):
         return ["bge_ai_models_dir"]
@@ -931,6 +936,10 @@ class GraXpertBackgroundExtension(_GraXpertBase):
 class GraXpertDenoiseExtension(_GraXpertBase):
     process_name = "Denoise"
     process_subtitle = "AI noise reduction"
+    process_header_detail = (
+        "Apply GraXpert's denoise model with strength, batch-size, GPU, and model "
+        "version controls."
+    )
 
     def _inference_model_dir_keys(self):
         return ["denoise_ai_models_dir"]
@@ -1006,6 +1015,10 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
     window_size = (600, 500)
     process_name = "Deconvolution"
     process_subtitle = "AI object and stellar deconvolution"
+    process_header_detail = (
+        "Run object or stellar deconvolution with FWHM controls and the matching "
+        "GraXpert AI model."
+    )
 
     def _inference_model_dir_keys(self):
         return [
