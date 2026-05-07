@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Ezequiel Ruiz
+
 import argparse
 import json
 import sys
@@ -42,4 +45,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

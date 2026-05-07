@@ -126,3 +126,11 @@ Actions workflow from `main` with the package id and version.
 
 See [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) for the full contributor
 and maintainer workflow.
+
+## Credits and Licensing
+
+This repository is maintained by Ezequiel Ruiz. Repository-authored
+tooling, documentation, CI configuration, tests, and non-package templates are
+licensed under Apache-2.0 unless a file declares different terms. Package
+directories are licensed separately by their manifest, package-local `LICENSE`,
+and notices. See [LICENSE](LICENSE) and [docs/LICENSING.md](docs/LICENSING.md).

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Ezequiel Ruiz
+
 import argparse
 import sys
 from datetime import datetime, timezone
