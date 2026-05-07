@@ -52,6 +52,12 @@ static package dropdown, so version discovery remains in the run summary. Pull
 requests that add a new publishable package must update that dropdown;
 repository tests fail if the workflow list falls out of sync.
 
+Publish runs are serialized to avoid `live` branch races. Re-running a release
+is idempotent when the existing uploaded assets byte-match the rebuilt files.
+Draft releases can be promoted by re-running the same package/version with
+`draft` disabled; mismatched existing assets still require
+`replace_existing_assets=true`.
+
 Release publication should reuse the repository builder and index generator so
 that compressed asset hashes in `index.json` match the exact released files.
 

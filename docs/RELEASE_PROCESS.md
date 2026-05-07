@@ -112,6 +112,13 @@ https://github.com/emruiz81/afternight-extensions/releases/download/<extension_i
 Official packages remain `signature_state: "unsigned"` until a real signing
 pipeline exists. Do not use `verified` for unsigned packages.
 
+The generated client index is latest-source metadata, not a historical archive
+catalog. For an existing package update, bump `extension.json.version`, set
+`repository.json.latest_version` to that same version, and keep the current
+release entry pointed at `<extension_id>-v<version>`. Older uploaded assets stay
+available from their GitHub Releases, but the current tooling does not rebuild
+or re-emit historical releases from the new package source.
+
 ## Local Validation
 
 The package builder requires `zstd` on `PATH`.
@@ -210,6 +217,8 @@ The publish workflow:
 - exposes a static package-id dropdown in the GitHub dispatch form for the
   current known packages; GitHub does not support filesystem-driven dynamic
   workflow-dispatch choices
+- serializes publish runs so concurrent manual releases do not race the `live`
+  branch update
 - requires every pull request that adds a new publishable package to update the
   dropdown list in `.github/workflows/publish-release.yml`; repository tests
   enforce that the static list matches the current publishable packages
@@ -223,6 +232,11 @@ The publish workflow:
   and version
 - creates or updates the GitHub Release
 - uploads the asset and `.metadata.json` sidecar
+- when the release already exists, reuses it only if every selected release
+  asset byte-matches the local build, unless `replace_existing_assets` is
+  explicitly enabled
+- promotes a previously drafted release when the workflow is re-run with
+  `draft` disabled and the existing uploaded assets still match the build
 - regenerates the repository index candidate
 - merges the selected package into the existing live index, or creates a new
   live index containing only the selected package when the `live` branch does
@@ -230,14 +244,18 @@ The publish workflow:
 - verifies every asset `download_url` in the live index is reachable
 - pushes `index.json` to the `live` branch for clients to consume
 
-If the release already exists, the workflow fails unless
-`replace_existing_assets` is enabled. Use replacement only before a release has
-been announced or consumed. Once users may have installed a public asset,
-publish a new version instead of replacing it.
+If the release already exists and its assets already match the rebuilt package,
+the workflow continues without re-uploading them. If any existing asset differs
+or is missing, the workflow fails unless `replace_existing_assets` is enabled.
+Use replacement only before a release has been announced or consumed. Once users
+may have installed a public asset, publish a new version instead of replacing
+it.
 
 Draft releases do not update the `live` branch. This prevents the Extension
 Manager from seeing release metadata whose GitHub assets are not publicly
-downloadable yet.
+downloadable yet. To publish a prepared draft, re-run the same package/version
+with `draft` disabled; the workflow verifies that the draft assets match the
+current build, publishes the release, and then updates `live`.
 
 ## Publication Checks
 

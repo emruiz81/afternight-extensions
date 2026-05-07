@@ -112,6 +112,11 @@ release validation. The maintainer release workflow publishes the client-facing
 copy to the `live` branch only after GitHub Release assets have been uploaded
 and their download URLs have been checked.
 
+The generated index describes the current publishable release for each package
+from the current source tree. Older uploaded archives remain on their GitHub
+Release tags, but the current generator does not rebuild or preserve historical
+release entries from previous source versions.
+
 When a live index already exists, the release workflow uses
 `tools/update_live_index.py` to merge only the package being released into the
 live copy. This lets one merged PR contain multiple package updates without
@@ -134,7 +139,9 @@ diff -u index.json /tmp/index.json
 
 The maintainer publish workflow uses `release_metadata.py` to verify that the
 requested package/version matches `extension.json` and `repository.json`, and to
-resolve the GitHub Release tag from `asset_base_url`:
+resolve the GitHub Release tag from `asset_base_url`. The URL must point at the
+expected `github.com/<owner>/<repo>/releases/download/<package_id>-v<version>`
+location for the publishing repository:
 
 ```bash
 python3 tools/release_metadata.py --package-id veralux --version 0.1.0

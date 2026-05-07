@@ -155,7 +155,12 @@ Example:
 ```
 
 `repository.json` is merged with `extension.json` and built asset sidecars to
-generate the candidate `index.json`.
+generate the candidate `index.json`. The generated client index is built from
+the current package source and should describe the current publishable release
+for that package. Older package archives remain available as GitHub Releases,
+but they are not rebuilt from newer source trees or carried forward in the
+generated index unless future tooling explicitly learns how to preserve external
+historical asset metadata.
 
 Set `"publish": false` in `repository.json` for source-staged packages that
 should validate locally but remain absent from generated indexes until their
@@ -168,11 +173,15 @@ When `requirements_file` is present:
 
 - the file must exist inside the package root
 - `dependencies.pip.require_hashes` must be `true`
+- every requirement line must be exactly pinned with `==` and include at least
+  one `--hash=sha256:` value
 - public PyPI dependencies should use explicit
   `dependencies.pip.index_urls` or `extra_index_urls` and fully pinned hashes
 - package-local `dependencies.pip.find_links` paths must exist inside the
   package root and are only for extension-specific or private artifacts
   unavailable from official indexes
+
+Packages that declare dependencies must include `THIRD_PARTY_NOTICES.md`.
 
 Compiled wheels from official PyPI should be downloaded by the host during
 install, not bundled into release assets. Bundle only extension-specific

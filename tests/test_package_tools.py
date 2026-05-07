@@ -165,6 +165,78 @@ class ManifestHostModePolicyTests(unittest.TestCase):
             with self.assertRaisesRegex(PackageToolError, "rpc is reserved"):
                 load_valid_manifest(package_dir)
 
+    def test_dependencies_require_hash_locked_requirements_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(Path(tmp))
+            manifest = read_json(package_dir / "extension.json")
+            manifest["dependencies"] = {
+                "dependency_context": "private",
+                "requirements_file": "requirements.lock",
+                "pip": {
+                    "require_hashes": True,
+                    "index_urls": ["https://pypi.org/simple"],
+                },
+            }
+            write_json(package_dir / "extension.json", manifest)
+            (package_dir / "THIRD_PARTY_NOTICES.md").write_text(
+                "Dependency notices.\n", encoding="utf-8"
+            )
+            (package_dir / "requirements.lock").write_text(
+                "example-dependency==1.0.0\n", encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "at least one --hash=sha256"):
+                load_valid_manifest(package_dir)
+
+    def test_dependencies_accept_hash_locked_requirements_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(Path(tmp))
+            manifest = read_json(package_dir / "extension.json")
+            manifest["dependencies"] = {
+                "dependency_context": "private",
+                "requirements_file": "requirements.lock",
+                "pip": {
+                    "require_hashes": True,
+                    "index_urls": ["https://pypi.org/simple"],
+                },
+            }
+            write_json(package_dir / "extension.json", manifest)
+            (package_dir / "THIRD_PARTY_NOTICES.md").write_text(
+                "Dependency notices.\n", encoding="utf-8"
+            )
+            (package_dir / "requirements.lock").write_text(
+                "example-dependency==1.0.0 --hash=sha256:" + ("a" * 64) + "\n",
+                encoding="utf-8",
+            )
+
+            loaded = load_valid_manifest(package_dir)
+
+            self.assertEqual(loaded["dependencies"]["requirements_file"], "requirements.lock")
+
+    def test_dependencies_reject_package_external_find_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(Path(tmp))
+            manifest = read_json(package_dir / "extension.json")
+            manifest["dependencies"] = {
+                "dependency_context": "private",
+                "requirements_file": "requirements.lock",
+                "pip": {
+                    "require_hashes": True,
+                    "find_links": ["../wheelhouse"],
+                },
+            }
+            write_json(package_dir / "extension.json", manifest)
+            (package_dir / "THIRD_PARTY_NOTICES.md").write_text(
+                "Dependency notices.\n", encoding="utf-8"
+            )
+            (package_dir / "requirements.lock").write_text(
+                "example-dependency==1.0.0 --hash=sha256:" + ("a" * 64) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "safe package-local path"):
+                load_valid_manifest(package_dir)
+
 
 class LiveIndexUpdateTests(unittest.TestCase):
     def make_index(self, updated_at, package_versions):
@@ -415,6 +487,64 @@ class PackageToolTests(unittest.TestCase):
             self.assertFalse(is_package_published(package_dir.parent))
             self.assertEqual(index["extensions"], [])
 
+    def test_generate_index_rejects_historical_release_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            build_package(package_dir, root / "dist", compression_level=3)
+            repository_metadata = read_json(package_dir.parent / "repository.json")
+            repository_metadata["releases"].append(
+                {
+                    "version": "0.9.0",
+                    "min_app_version": "2.0.0",
+                    "changelog": "Older fixture release.",
+                    "published_at": "2026-04-01T00:00:00Z",
+                }
+            )
+            write_json(package_dir.parent / "repository.json", repository_metadata)
+
+            with self.assertRaisesRegex(PackageToolError, "current package version only"):
+                generate_index(
+                    packages_root=root / "packages",
+                    assets_dir=root / "dist",
+                    repository="afternight-extensions",
+                    updated_at="2026-04-27T00:00:00Z",
+                )
+
+    def test_release_metadata_accepts_expected_repository_asset_url(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            repository_metadata = read_json(package_dir.parent / "repository.json")
+            repository_metadata["latest_version"] = "1.0.0"
+            repository_metadata["releases"][0]["asset_base_url"] = (
+                "https://github.com/acme/extensions/releases/download/example_ext-v1.0.0"
+            )
+            write_json(package_dir.parent / "repository.json", repository_metadata)
+
+            metadata = resolve_release_metadata(
+                root / "packages",
+                "example_ext",
+                "1.0.0",
+                expected_github_repository="acme/extensions",
+            )
+
+            self.assertEqual(metadata["release_tag"], "example_ext-v1.0.0")
+
+    def test_release_metadata_rejects_wrong_repository_asset_url(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            repository_metadata = read_json(package_dir.parent / "repository.json")
+            repository_metadata["latest_version"] = "1.0.0"
+            repository_metadata["releases"][0]["asset_base_url"] = (
+                "https://github.com/example/wrong/releases/download/example_ext-v1.0.0"
+            )
+            write_json(package_dir.parent / "repository.json", repository_metadata)
+
+            with self.assertRaisesRegex(PackageToolError, "asset_base_url must be"):
+                resolve_release_metadata(root / "packages", "example_ext", "1.0.0")
+
 
 class RepositoryPackageTests(unittest.TestCase):
     def test_repository_packages_have_release_metadata(self):
@@ -423,6 +553,8 @@ class RepositoryPackageTests(unittest.TestCase):
 
         for package_dir in package_dirs:
             with self.subTest(package=package_dir.parent.name):
+                if not is_package_published(package_dir.parent):
+                    continue
                 manifest = load_valid_manifest(package_dir)
                 repository_metadata = read_json(package_dir.parent / "repository.json")
                 releases = repository_metadata.get("releases", [])
@@ -472,8 +604,17 @@ class RepositoryPackageTests(unittest.TestCase):
         workflow_path = REPO_ROOT / ".github" / "workflows" / "publish-release.yml"
         workflow = workflow_path.read_text(encoding="utf-8")
 
+        self.assertIn("concurrency:", workflow)
+        self.assertIn("group: publish-extension-release-live-index", workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
         self.assertIn("LIVE_INDEX_BRANCH: live", workflow)
         self.assertIn("LIVE_INDEX_PATH: index.json", workflow)
+        self.assertIn("--expected-github-repository", workflow)
+        self.assertIn("releases?per_page=100", workflow)
+        self.assertIn("Verify selected GitHub Release assets match local files", workflow)
+        self.assertIn("Update existing GitHub Release metadata and visibility", workflow)
+        self.assertIn("target_draft", workflow)
+        self.assertIn("gh api --method PATCH", workflow)
         self.assertIn("Generate repository index candidate", workflow)
         self.assertIn("Build live index update", workflow)
         self.assertIn("tools/update_live_index.py", workflow)
@@ -483,13 +624,17 @@ class RepositoryPackageTests(unittest.TestCase):
 
         upload_index = workflow.index("Create GitHub Release and upload assets")
         replace_index = workflow.index("Replace GitHub Release assets in place")
+        asset_verify_index = workflow.index("Verify selected GitHub Release assets match local files")
+        release_update_index = workflow.index("Update existing GitHub Release metadata and visibility")
         live_candidate_index = workflow.index("Generate repository index candidate")
         live_update_index = workflow.index("Build live index update")
         live_verify_index = workflow.index("Verify live index download URLs")
         live_publish_index = workflow.index("Publish live repository index")
 
-        self.assertLess(upload_index, live_candidate_index)
-        self.assertLess(replace_index, live_candidate_index)
+        self.assertLess(upload_index, asset_verify_index)
+        self.assertLess(replace_index, asset_verify_index)
+        self.assertLess(asset_verify_index, release_update_index)
+        self.assertLess(release_update_index, live_candidate_index)
         self.assertLess(live_candidate_index, live_update_index)
         self.assertLess(live_update_index, live_verify_index)
         self.assertLess(live_verify_index, live_publish_index)

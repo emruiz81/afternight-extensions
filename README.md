@@ -69,6 +69,9 @@ release outputs should not be committed.
   asset sidecars. The checked-in copy is a candidate index; the release
   workflow publishes the client-facing copy to the `live` branch after asset
   upload and URL verification.
+- The generated index describes the current publishable release for each
+  package. Older archives remain on their GitHub Release tags rather than being
+  rebuilt from newer source.
 - Public PyPI wheels must not be redistributed in package assets.
 - `"publish": false` in `repository.json` keeps a package source-staged and out
   of generated indexes.

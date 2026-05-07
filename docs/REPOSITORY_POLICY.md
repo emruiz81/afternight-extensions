@@ -47,6 +47,11 @@ Do not hand-edit package entries in `index.json`. Update the package source or
 `repository.json`, rebuild assets, regenerate the index, and commit the
 resulting metadata.
 
+The generated index describes the current publishable release for each package
+from the current source tree. Older package archives remain available from their
+GitHub Release tags, but the current index generator does not rebuild or
+preserve previous source versions as historical release entries.
+
 Packages may be source-staged with `"publish": false` in `repository.json`.
 Those packages are still validated as source but are skipped by
 `tools/build_repository_assets.py` and omitted from `index.json`.
@@ -88,7 +93,7 @@ Preferred flow:
 
 1. Keep source and lock metadata in git.
 2. Declare official PyPI dependencies through explicit pip indexes and
-   hash-locked requirements.
+   hash-locked requirements with `dependencies.pip.require_hashes: true`.
 3. Bundle only extension-specific or private artifacts unavailable from
    official package indexes.
 4. Produce `.tar.zst` package archives with `tools/build_package.py`.

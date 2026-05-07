@@ -73,6 +73,9 @@ URLs and hash-locked requirements.
 - Keep `requirements.lock` inside `package/` when Python dependencies are used.
 - When `requirements_file` is present, set
   `dependencies.pip.require_hashes` to `true`.
+- Every requirement in a lock file must be exactly pinned with `==` and include
+  at least one `--hash=sha256:` value.
+- Packages that declare dependencies must include `THIRD_PARTY_NOTICES.md`.
 - Do not bundle public PyPI wheels inside package assets.
 - Reserve `wheelhouse/` and `dependencies.pip.find_links` for
   extension-specific or private artifacts that are unavailable from official
@@ -108,6 +111,9 @@ supplies release metadata that is merged into the generated `index.json`.
 - Published releases should declare `version`, `min_app_version`, `changelog`,
   `published_at`, `asset_base_url`, `signature_state`, and
   `signature_detail`.
+- The generated index is latest-source metadata. For package updates, replace
+  the current release metadata with the new version; older archives remain on
+  their GitHub Release tags but are not regenerated into `index.json`.
 - `index.json` is generated from package manifests, `repository.json`, and
   built asset sidecars. Do not hand-edit package entries in the index.
   The checked-in copy on `main` is a candidate index; the release workflow

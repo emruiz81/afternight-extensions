@@ -31,6 +31,8 @@ DEFAULT_SIGNATURE_STATE = "unsigned"
 
 SDK_BACKENDS = ("runtime", "protocol", "rpc")
 RPC_BACKEND_AVAILABLE = False
+DEPENDENCY_CONTEXTS = ("private", "shared_host", "shared_group")
+SHARED_HOST_PROFILES = ("scientific_core",)
 
 GPL_RUNTIME_LICENSES = {
     "GPL-3.0",
@@ -219,6 +221,7 @@ def load_valid_manifest(package_dir):
     _validate_tags(manifest.get("tags"), manifest_path)
     _validate_entry_point(package_dir, manifest["entry_point"])
     _validate_license(package_dir)
+    _validate_dependencies(package_dir, manifest, manifest_path)
     _validate_host_mode_policy(package_dir, manifest, manifest_path)
     return manifest
 
@@ -242,6 +245,18 @@ def _generate_package_index_entry(package_source, assets_dir, base_url):
     releases_metadata = repository_metadata.get("releases")
     if not isinstance(releases_metadata, list) or not releases_metadata:
         raise PackageToolError(f"{repository_metadata_path}: releases must be a non-empty array")
+    release_versions = [
+        release.get("version")
+        for release in releases_metadata
+        if isinstance(release, dict) and isinstance(release.get("version"), str)
+    ]
+    historical_versions = sorted(set(release_versions) - {manifest["version"]})
+    if historical_versions:
+        raise PackageToolError(
+            f"{repository_metadata_path}: generated index supports the current package "
+            f"version only ({manifest['version']}); remove historical release metadata "
+            f"for {', '.join(historical_versions)}"
+        )
 
     all_assets = _load_asset_metadata(assets_dir)
     assets_by_version = {}
@@ -538,6 +553,171 @@ def _validate_entry_point(package_dir, entry_point):
 def _validate_license(package_dir):
     if not any((package_dir / name).is_file() for name in ("LICENSE", "LICENSE.md", "LICENSE.txt")):
         raise PackageToolError(f"{package_dir}: package-local LICENSE file is required")
+
+
+def _validate_dependencies(package_dir, manifest, manifest_path):
+    dependencies = manifest.get("dependencies")
+    if dependencies is None:
+        return
+    if not isinstance(dependencies, dict):
+        raise PackageToolError(f"{manifest_path}: dependencies must be an object")
+
+    context = dependencies.get("dependency_context")
+    if not isinstance(context, str) or not context:
+        raise PackageToolError(
+            f"{manifest_path}: dependencies.dependency_context must be a non-empty string"
+        )
+    if context not in DEPENDENCY_CONTEXTS:
+        allowed = ", ".join(DEPENDENCY_CONTEXTS)
+        raise PackageToolError(
+            f"{manifest_path}: dependencies.dependency_context must be one of {allowed}"
+        )
+
+    if context == "shared_host":
+        profile = dependencies.get("shared_host_profile")
+        if profile not in SHARED_HOST_PROFILES:
+            allowed = ", ".join(SHARED_HOST_PROFILES)
+            raise PackageToolError(
+                f"{manifest_path}: dependencies.shared_host_profile must be one of {allowed}"
+            )
+        if dependencies.get("requirements_file"):
+            raise PackageToolError(
+                f"{manifest_path}: shared_host dependencies must use a host-curated profile, "
+                "not a package requirements_file"
+            )
+    elif context == "shared_group":
+        shared_group = dependencies.get("shared_group")
+        if not isinstance(shared_group, str) or not shared_group:
+            raise PackageToolError(
+                f"{manifest_path}: shared_group dependencies must declare dependencies.shared_group"
+            )
+
+    pip = dependencies.get("pip")
+    if pip is not None and not isinstance(pip, dict):
+        raise PackageToolError(f"{manifest_path}: dependencies.pip must be an object")
+
+    requirements_file = dependencies.get("requirements_file")
+    if requirements_file is not None:
+        requirements_path = _resolve_package_relative_path(
+            package_dir,
+            requirements_file,
+            manifest_path,
+            "dependencies.requirements_file",
+        )
+        if not requirements_path.is_file():
+            raise PackageToolError(
+                f"{manifest_path}: dependencies.requirements_file does not exist: "
+                f"{requirements_file}"
+            )
+        if not isinstance(pip, dict):
+            raise PackageToolError(
+                f"{manifest_path}: dependencies.pip is required when requirements_file is present"
+            )
+        if pip.get("require_hashes") is not True:
+            raise PackageToolError(
+                f"{manifest_path}: dependencies.pip.require_hashes must be true "
+                "when requirements_file is present"
+            )
+        _validate_requirements_lock(requirements_path)
+
+    if isinstance(pip, dict):
+        _validate_pip_path_list(package_dir, manifest_path, pip, "find_links", must_exist=True)
+        for key in ("index_urls", "extra_index_urls"):
+            _validate_string_list(manifest_path, pip, f"dependencies.pip.{key}", key)
+
+    if dependencies:
+        _validate_third_party_notices(package_dir)
+
+
+def _validate_third_party_notices(package_dir):
+    notices_path = package_dir / "THIRD_PARTY_NOTICES.md"
+    if not notices_path.is_file():
+        raise PackageToolError(
+            f"{package_dir}: THIRD_PARTY_NOTICES.md is required when dependencies are declared"
+        )
+
+
+def _validate_pip_path_list(package_dir, manifest_path, pip, key, must_exist):
+    values = pip.get(key)
+    if values is None:
+        return
+    if not isinstance(values, list) or not all(isinstance(item, str) and item for item in values):
+        raise PackageToolError(f"{manifest_path}: dependencies.pip.{key} must be an array of strings")
+    for value in values:
+        path = _resolve_package_relative_path(
+            package_dir,
+            value,
+            manifest_path,
+            f"dependencies.pip.{key}",
+        )
+        if must_exist and not path.exists():
+            raise PackageToolError(
+                f"{manifest_path}: dependencies.pip.{key} path does not exist: {value}"
+            )
+
+
+def _validate_string_list(manifest_path, data, display_key, key):
+    values = data.get(key)
+    if values is None:
+        return
+    if not isinstance(values, list) or not all(isinstance(item, str) and item for item in values):
+        raise PackageToolError(f"{manifest_path}: {display_key} must be an array of strings")
+
+
+def _resolve_package_relative_path(package_dir, value, source, key):
+    if not isinstance(value, str) or not value:
+        raise PackageToolError(f"{source}: {key} must be a non-empty string")
+    try:
+        _validate_archive_path(value)
+    except PackageToolError as exc:
+        raise PackageToolError(f"{source}: {key} must be a safe package-local path") from exc
+
+    path = package_dir / Path(value)
+    package_root = package_dir.resolve()
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(package_root)
+    except ValueError as exc:
+        raise PackageToolError(f"{source}: {key} must stay inside the package root") from exc
+    return path
+
+
+def _validate_requirements_lock(path):
+    requirement_count = 0
+    for line in _iter_logical_requirement_lines(path):
+        if not line or line.startswith("-"):
+            continue
+        requirement_count += 1
+        requirement_part = line.split("--hash=", 1)[0]
+        if "==" not in requirement_part:
+            raise PackageToolError(
+                f"{path}: hashed requirements must pin exact versions with =="
+            )
+        hashes = [part for part in line.split() if part.startswith("--hash=")]
+        if not hashes:
+            raise PackageToolError(
+                f"{path}: every requirement must include at least one --hash=sha256: value"
+            )
+        if any(not item.startswith("--hash=sha256:") for item in hashes):
+            raise PackageToolError(f"{path}: requirement hashes must use sha256")
+
+    if requirement_count == 0:
+        raise PackageToolError(f"{path}: requirements lock must contain at least one requirement")
+
+
+def _iter_logical_requirement_lines(path):
+    pending = ""
+    for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.endswith("\\"):
+            pending += line[:-1].strip() + " "
+            continue
+        yield (pending + line).strip()
+        pending = ""
+    if pending.strip():
+        yield pending.strip()
 
 
 def _validate_host_mode_policy(package_dir, manifest, manifest_path):

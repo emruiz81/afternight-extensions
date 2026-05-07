@@ -17,6 +17,9 @@ from afternight_repo.package_tools import (  # noqa: E402
 )
 
 
+OFFICIAL_GITHUB_REPOSITORY = "emruiz81/afternight-extensions"
+
+
 def list_available_release_metadata(packages_root):
     packages_root = Path(packages_root)
     available = []
@@ -63,7 +66,12 @@ def list_available_release_metadata(packages_root):
     return available
 
 
-def resolve_release_metadata(packages_root, package_id, version):
+def resolve_release_metadata(
+    packages_root,
+    package_id,
+    version,
+    expected_github_repository=OFFICIAL_GITHUB_REPOSITORY,
+):
     _validate_package_id(package_id)
     packages_root = Path(packages_root)
     package_root = packages_root / package_id
@@ -110,21 +118,22 @@ def resolve_release_metadata(packages_root, package_id, version):
             f"{repository_metadata_path}: release {version} must declare asset_base_url"
         )
 
-    marker = "/releases/download/"
-    if marker not in asset_base_url:
+    expected_release_tag = f"{package_id}-v{version}"
+    expected_asset_base_url = (
+        f"https://github.com/{expected_github_repository}/releases/download/"
+        f"{expected_release_tag}"
+    )
+    if asset_base_url.rstrip("/") != expected_asset_base_url:
         raise PackageToolError(
-            f"{repository_metadata_path}: release {version} asset_base_url must point to a GitHub release download URL"
+            f"{repository_metadata_path}: release {version} asset_base_url must be "
+            f"{expected_asset_base_url}"
         )
-
-    release_tag = asset_base_url.split(marker, 1)[1].strip("/").split("/", 1)[0]
-    if not release_tag:
-        raise PackageToolError(f"{repository_metadata_path}: release {version} tag is empty")
 
     return {
         "package_id": package_id,
         "version": version,
         "manifest_name": manifest["name"],
-        "release_tag": release_tag,
+        "release_tag": expected_release_tag,
         "release_title": f"{manifest['name']} {version}",
         "asset_base_url": asset_base_url,
         "changelog": release.get("changelog", ""),
@@ -193,6 +202,11 @@ def main():
     parser.add_argument("--package-id")
     parser.add_argument("--version")
     parser.add_argument(
+        "--expected-github-repository",
+        default=os.environ.get("GITHUB_REPOSITORY", OFFICIAL_GITHUB_REPOSITORY),
+        help="owner/name repository expected in release.asset_base_url.",
+    )
+    parser.add_argument(
         "--list-available",
         action="store_true",
         help="List publishable package ids and declared release versions discovered from the repository.",
@@ -233,7 +247,12 @@ def main():
         parser.error("--package-id and --version are required unless --list-available is used by itself")
 
     try:
-        metadata = resolve_release_metadata(args.packages_root, args.package_id, args.version)
+        metadata = resolve_release_metadata(
+            args.packages_root,
+            args.package_id,
+            args.version,
+            expected_github_repository=args.expected_github_repository,
+        )
     except PackageToolError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

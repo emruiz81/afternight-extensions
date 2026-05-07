@@ -36,6 +36,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: publish-extension-release-live-index
+  cancel-in-progress: false
+
 env:
   LIVE_INDEX_BRANCH: live
   LIVE_INDEX_PATH: index.json
@@ -69,6 +73,7 @@ jobs:
           python3 tools/release_metadata.py \
             --package-id "${{ inputs.package_id }}" \
             --version "${{ inputs.version }}" \
+            --expected-github-repository "${{ github.repository }}" \
             --github-output
 
       - name: Build published package assets for release
@@ -140,14 +145,30 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
-          REPLACE_EXISTING_ASSETS: ${{ inputs.replace_existing_assets }}
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            if [ "$REPLACE_EXISTING_ASSETS" != "true" ]; then
-              echo "Release $RELEASE_TAG already exists. Re-run with replace_existing_assets=true only if this release has not been announced." >&2
-              exit 1
-            fi
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+          if python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+
+          release_tag = os.environ["RELEASE_TAG"]
+          releases = json.loads(pathlib.Path("releases.json").read_text(encoding="utf-8"))
+          release = next((item for item in releases if item.get("tag_name") == release_tag), None)
+          if release is None:
+              raise SystemExit(1)
+          pathlib.Path("existing-release.json").write_text(
+              json.dumps(release, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          then
+            release_id="$(python3 -c 'import json; print(json.load(open("existing-release.json", encoding="utf-8"))["id"])')"
+            release_is_draft="$(python3 -c 'import json; print(str(json.load(open("existing-release.json", encoding="utf-8"))["draft"]).lower())')"
             echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+            echo "release_is_draft=$release_is_draft" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -175,18 +196,244 @@ jobs:
             "${flags[@]}"
 
       - name: Replace GitHub Release assets in place
-        if: steps.existing.outputs.exists == 'true'
+        if: steps.existing.outputs.exists == 'true' && inputs.replace_existing_assets == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.existing.outputs.release_id }}
+          ASSET_FILES: ${{ steps.assets.outputs.asset_files }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          import urllib.parse
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          release_id = os.environ["RELEASE_ID"]
+          asset_files = [
+              pathlib.Path(line)
+              for line in os.environ["ASSET_FILES"].splitlines()
+              if line.strip()
+          ]
+
+          assets_result = subprocess.run(
+              [
+                  "gh",
+                  "api",
+                  f"repos/{repository}/releases/{release_id}/assets?per_page=100",
+              ],
+              check=False,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+              text=True,
+          )
+          if assets_result.returncode != 0:
+              print(assets_result.stderr, file=sys.stderr)
+              raise SystemExit(assets_result.returncode)
+          release_assets = {
+              asset.get("name"): asset
+              for asset in json.loads(assets_result.stdout)
+              if isinstance(asset, dict)
+          }
+
+          for local_path in asset_files:
+              existing = release_assets.get(local_path.name)
+              if existing is not None:
+                  delete_result = subprocess.run(
+                      [
+                          "gh",
+                          "api",
+                          "--method",
+                          "DELETE",
+                          f"repos/{repository}/releases/assets/{existing['id']}",
+                      ],
+                      check=False,
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,
+                      text=True,
+                  )
+                  if delete_result.returncode != 0:
+                      print(delete_result.stderr, file=sys.stderr)
+                      raise SystemExit(delete_result.returncode)
+
+              upload_url = (
+                  f"https://uploads.github.com/repos/{repository}/releases/"
+                  f"{release_id}/assets?name={urllib.parse.quote(local_path.name)}"
+              )
+              upload_result = subprocess.run(
+                  [
+                      "curl",
+                      "--fail",
+                      "--silent",
+                      "--show-error",
+                      "--location",
+                      "--request",
+                      "POST",
+                      "--header",
+                      f"Authorization: Bearer {os.environ['GH_TOKEN']}",
+                      "--header",
+                      "X-GitHub-Api-Version: 2022-11-28",
+                      "--header",
+                      "Content-Type: application/octet-stream",
+                      "--data-binary",
+                      f"@{local_path}",
+                      upload_url,
+                  ],
+                  check=False,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+                  text=True,
+              )
+              if upload_result.returncode != 0:
+                  print(upload_result.stderr, file=sys.stderr)
+                  raise SystemExit(upload_result.returncode)
+          PY
+
+      - name: Resolve selected GitHub Release id
+        id: selected_release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
-          RELEASE_TITLE: ${{ steps.release.outputs.release_title }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import pathlib
+
+          release_tag = os.environ["RELEASE_TAG"]
+          releases = json.loads(pathlib.Path("releases.json").read_text(encoding="utf-8"))
+          release = next((item for item in releases if item.get("tag_name") == release_tag), None)
+          if release is None:
+              raise SystemExit(f"release {release_tag} was not found after create/upload step")
+          print(f"release_id={release['id']}")
+          print(f"release_is_draft={str(release.get('draft')).lower()}")
+          PY
+
+      - name: Verify selected GitHub Release assets match local files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.selected_release.outputs.release_id }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          REPLACE_EXISTING_ASSETS: ${{ inputs.replace_existing_assets }}
+          EXISTING_RELEASE: ${{ steps.existing.outputs.exists }}
           ASSET_FILES: ${{ steps.assets.outputs.asset_files }}
         run: |
-          mapfile -t asset_files <<< "$ASSET_FILES"
-          gh release edit "$RELEASE_TAG" \
-            --title "$RELEASE_TITLE" \
-            --notes-file release-notes.md
-          gh release upload "$RELEASE_TAG" "${asset_files[@]}" --clobber
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          import tempfile
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          release_id = os.environ["RELEASE_ID"]
+          release_tag = os.environ["RELEASE_TAG"]
+          asset_files = [
+              pathlib.Path(line)
+              for line in os.environ["ASSET_FILES"].splitlines()
+              if line.strip()
+          ]
+
+          def sha256(path):
+              digest = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          assets_result = subprocess.run(
+              [
+                  "gh",
+                  "api",
+                  f"repos/{repository}/releases/{release_id}/assets?per_page=100",
+              ],
+              check=False,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+              text=True,
+          )
+          if assets_result.returncode != 0:
+              print(assets_result.stderr, file=sys.stderr)
+              raise SystemExit(assets_result.returncode)
+          release_assets = {
+              asset.get("name"): asset
+              for asset in json.loads(assets_result.stdout)
+              if isinstance(asset, dict)
+          }
+
+          failures = []
+          with tempfile.TemporaryDirectory() as temp:
+              download_dir = pathlib.Path(temp)
+              for local_path in asset_files:
+                  release_asset = release_assets.get(local_path.name)
+                  if release_asset is None:
+                      failures.append(
+                          f"{local_path.name}: not present on release {release_tag}"
+                      )
+                      continue
+                  downloaded = download_dir / local_path.name
+                  with downloaded.open("wb") as output:
+                      result = subprocess.run(
+                          [
+                              "gh",
+                              "api",
+                              f"repos/{repository}/releases/assets/{release_asset['id']}",
+                              "-H",
+                              "Accept: application/octet-stream",
+                          ],
+                          check=False,
+                          stdout=output,
+                          stderr=subprocess.PIPE,
+                      )
+                  stderr = result.stderr.decode("utf-8", errors="replace")
+                  if result.returncode != 0:
+                      failures.append(
+                          f"{local_path.name}: could not download release asset\n"
+                          f"{stderr.strip()}"
+                      )
+                      continue
+                  if sha256(downloaded) != sha256(local_path):
+                      failures.append(f"{local_path.name}: uploaded asset hash does not match local build")
+                  downloaded.unlink(missing_ok=True)
+
+          if failures:
+              print("GitHub Release assets do not match this build:", file=sys.stderr)
+              print("\n\n".join(failures), file=sys.stderr)
+              if (
+                  os.environ.get("EXISTING_RELEASE") == "true"
+                  and os.environ.get("REPLACE_EXISTING_ASSETS") != "true"
+              ):
+                  print(
+                      "\nRe-run with replace_existing_assets=true only if this release "
+                      "has not been announced or consumed.",
+                      file=sys.stderr,
+                  )
+              raise SystemExit(1)
+          PY
+
+      - name: Update existing GitHub Release metadata and visibility
+        if: steps.existing.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.selected_release.outputs.release_id }}
+          EXISTING_RELEASE_IS_DRAFT: ${{ steps.existing.outputs.release_is_draft }}
+          RELEASE_TITLE: ${{ steps.release.outputs.release_title }}
+        run: |
+          notes="$(cat release-notes.md)"
+          target_draft="${{ inputs.draft }}"
+          if [ "$EXISTING_RELEASE_IS_DRAFT" != "true" ] && [ "$target_draft" = "true" ]; then
+            target_draft="false"
+          fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -f name="$RELEASE_TITLE" \
+            -f body="$notes" \
+            -F draft="$target_draft" \
+            -F prerelease="${{ inputs.prerelease }}"
 
       - name: Generate repository index candidate
         if: ${{ inputs.draft == false }}
