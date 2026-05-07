@@ -215,52 +215,56 @@ class _CosmicClarityBase(ui.ProcessWindow):
         ]
 
     def _meta_params(self):
-        return [
-            ui.process_window_meta(
-                size=self.window_size,
-                fixed_size=True,
-                target_selector=True,
-                target_channel_filter=[1, 3],
-                tool_configuration={
-                    "settings_key": _COSMIC_CLARITY_SETTING_KEY,
-                    "label": "Cosmic Clarity",
-                    "button_label": "Configure",
-                    "dialog_title": "Select Cosmic Clarity Folder",
-                    "dialog_size": [600, 450],
-                    "not_configured_text": self.not_configured_text,
-                    "configured_text": "Cosmic Clarity is configured and ready to use.",
-                    "show_configured_banner": False,
-                    "required_executables": _COSMIC_CLARITY_REQUIRED_EXECUTABLES,
-                    "append_platform_executable_suffix": True,
-                    "require_executable": True,
-                    "download_page_url": "https://www.setiastro.com/cosmic-clarity",
-                    "download_note": (
-                        "Initial Cosmic Clarity downloads are hosted by Seti Astro. "
-                        "After downloading the current platform suite, unzip it and "
-                        "select the folder that contains the Cosmic Clarity executables. "
-                        "Existing installations can be checked and updated from the "
-                        "platform release files."
+        meta = ui.process_window_meta(
+            size=self.window_size,
+            fixed_size=True,
+            target_selector=True,
+            target_channel_filter=[1, 3],
+            tool_configuration={
+                "settings_key": _COSMIC_CLARITY_SETTING_KEY,
+                "label": "Cosmic Clarity",
+                "button_label": "Configure",
+                "dialog_title": "Select Cosmic Clarity Folder",
+                "dialog_size": [600, 450],
+                "not_configured_text": self.not_configured_text,
+                "configured_text": "Cosmic Clarity is configured and ready to use.",
+                "show_configured_banner": False,
+                "required_executables": _COSMIC_CLARITY_REQUIRED_EXECUTABLES,
+                "append_platform_executable_suffix": True,
+                "require_executable": True,
+                "download_page_url": "https://www.setiastro.com/cosmic-clarity",
+                "download_note": (
+                    "Initial Cosmic Clarity downloads are hosted by Seti Astro. "
+                    "After downloading the current platform suite, unzip it and "
+                    "select the folder that contains the Cosmic Clarity executables. "
+                    "Existing installations can be checked and updated from the "
+                    "platform release files."
+                ),
+                "install_instructions": (
+                    "Select the Cosmic Clarity suite folder containing "
+                    "SetiAstroCosmicClarity, SetiAstroCosmicClarity_denoise, "
+                    "setiastrocosmicclarity_superres, and "
+                    "setiastrocosmicclarity_darkstar."
+                ),
+                "update_page_url": "https://github.com/setiastro/cosmicclarity/releases",
+                "platform_update_api_urls": {
+                    "linux": (
+                        "https://api.github.com/repos/setiastro/cosmicclarity/"
+                        "releases/tags/Linux"
                     ),
-                    "install_instructions": (
-                        "Select the Cosmic Clarity suite folder containing "
-                        "SetiAstroCosmicClarity, SetiAstroCosmicClarity_denoise, "
-                        "setiastrocosmicclarity_superres, and "
-                        "setiastrocosmicclarity_darkstar."
+                    "windows": (
+                        "https://api.github.com/repos/setiastro/cosmicclarity/"
+                        "releases/tags/Windows"
                     ),
-                    "update_page_url": "https://github.com/setiastro/cosmicclarity/releases",
-                    "platform_update_api_urls": {
-                        "linux": (
-                            "https://api.github.com/repos/setiastro/cosmicclarity/"
-                            "releases/tags/Linux"
-                        ),
-                        "windows": (
-                            "https://api.github.com/repos/setiastro/cosmicclarity/"
-                            "releases/tags/Windows"
-                        ),
-                    },
                 },
-            )
-        ]
+            },
+        )
+        meta["header_description"] = (
+            "Seti Astro Cosmic Clarity helper wrapped by AfterNight. Configure the "
+            "external suite folder once, then run the selected denoise, star, "
+            "sharpening, or super-resolution process."
+        )
+        return [meta]
 
     def _tool_dir(self):
         raw_path = str(self.settings.get(_COSMIC_CLARITY_SETTING_KEY, "") or "").strip()

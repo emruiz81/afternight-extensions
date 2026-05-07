@@ -52,6 +52,14 @@ class CosmicClarityLoggingTests(unittest.TestCase):
                 self.assertIn("AfterNight extension maintainer: Ezequiel Ruiz", text)
                 self.assertIn("https://github.com/setiastro/cosmicclarity", text)
 
+    def test_process_window_meta_uses_descriptive_header(self):
+        params = CosmicClarityDenoiseExtension(None).get_params()
+        meta = params[0]
+
+        self.assertEqual(meta["id"], "window_meta")
+        self.assertIn("Seti Astro Cosmic Clarity helper", meta["header_description"])
+        self.assertIn("external suite folder", meta["header_description"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -491,14 +491,18 @@ class _GraXpertBase(ui.ProcessWindow):
         ]
 
     def _meta_params(self):
-        return [
-            ui.process_window_meta(
-                size=self.window_size,
-                fixed_size=True,
-                target_selector=True,
-                target_channel_filter=[1, 3],
-            )
-        ]
+        meta = ui.process_window_meta(
+            size=self.window_size,
+            fixed_size=True,
+            target_selector=True,
+            target_channel_filter=[1, 3],
+        )
+        meta["header_description"] = (
+            "GraXpert AI processing hosted by AfterNight. Select a target image, "
+            "choose the model/version controls, and run background extraction, "
+            "denoise, or deconvolution from the shared GraXpert environment."
+        )
+        return [meta]
 
     def _inference_params(self):
         selected_version = self._stored_ai_version()

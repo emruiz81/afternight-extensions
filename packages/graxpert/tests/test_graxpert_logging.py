@@ -50,6 +50,14 @@ class GraXpertLoggingTests(unittest.TestCase):
                 self.assertIn("AfterNight extension maintainer: Ezequiel Ruiz", text)
                 self.assertIn("https://github.com/Steffenhir/GraXpert", text)
 
+    def test_process_window_meta_uses_descriptive_header(self):
+        params = GraXpertBackgroundExtension(None).get_params()
+        meta = params[0]
+
+        self.assertEqual(meta["id"], "window_meta")
+        self.assertIn("GraXpert AI processing hosted by AfterNight", meta["header_description"])
+        self.assertIn("shared GraXpert environment", meta["header_description"])
+
 
 if __name__ == "__main__":
     unittest.main()
