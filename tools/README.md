@@ -39,6 +39,16 @@ python3 tools/build_repository_assets.py --output-dir dist
 
 Packages with `"publish": false` in `packages/<extension_id>/repository.json` are source-staged but omitted from repository asset builds and `index.json`.
 
+The package validator enforces host-mode policy from
+`docs/HOST_MODES_AND_LICENSING.md`:
+
+- every manifest must declare `sdk_backend`
+- `runtime` packages must use a GPL-3.0-compatible package license
+- `protocol` packages must not import `_afternight_runtime` or Engine-backed
+  `afternight` modules
+- `rpc` packages are rejected until the target AfterNight release ships RPC
+  extension hosting
+
 ## Build GraXpert Assets
 
 GraXpert's official asset is thin and PyPI-backed:

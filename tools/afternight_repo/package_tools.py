@@ -1,3 +1,4 @@
+import ast
 import fnmatch
 import hashlib
 import json
@@ -26,8 +27,32 @@ SCHEMA_VERSION = 1
 PACKAGE_FORMAT_VERSION = 1
 PROTOCOL_VERSION = 1
 SDK_VERSION = 1
-DEFAULT_SDK_BACKEND = "runtime"
 DEFAULT_SIGNATURE_STATE = "unsigned"
+
+SDK_BACKENDS = ("runtime", "protocol", "rpc")
+RPC_BACKEND_AVAILABLE = False
+
+GPL_RUNTIME_LICENSES = {
+    "GPL-3.0",
+    "GPL-3.0-only",
+    "GPL-3.0-or-later",
+}
+
+ENGINE_BACKED_IMPORTS = {
+    "_afternight_runtime",
+    "afternight.calibration",
+    "afternight.core",
+    "afternight.io",
+    "afternight.registration",
+    "afternight.stacking",
+}
+
+NATIVE_CONTROL_CAPABILITY_KEYS = {
+    "afternight_controls",
+    "native_controls",
+    "native_process_controls",
+    "native_process_window",
+}
 
 EXCLUDED_NAMES = {
     ".DS_Store",
@@ -158,6 +183,7 @@ def load_valid_manifest(package_dir):
         "entry_point",
         "category",
         "launch_mode",
+        "sdk_backend",
     )
     for key in required_strings:
         _require_string(manifest, key, manifest_path)
@@ -175,14 +201,17 @@ def load_valid_manifest(package_dir):
         raise PackageToolError(f"{manifest_path}: only python extension packages are supported")
     if manifest["launch_mode"] not in ("single_image", "workflow"):
         raise PackageToolError(f"{manifest_path}: launch_mode must be single_image or workflow")
-    if manifest.get("sdk_backend", DEFAULT_SDK_BACKEND) not in ("runtime", "rpc"):
-        raise PackageToolError(f"{manifest_path}: sdk_backend must be runtime or rpc")
+    if manifest["sdk_backend"] not in SDK_BACKENDS:
+        raise PackageToolError(
+            f"{manifest_path}: sdk_backend must be runtime, protocol, or rpc"
+        )
 
     _validate_identifier(manifest["id"], manifest_path)
     _validate_runtime_targets(manifest.get("runtime_targets"), manifest_path, allow_empty=True)
     _validate_tags(manifest.get("tags"), manifest_path)
     _validate_entry_point(package_dir, manifest["entry_point"])
     _validate_license(package_dir)
+    _validate_host_mode_policy(package_dir, manifest, manifest_path)
     return manifest
 
 
@@ -294,7 +323,7 @@ def _generate_release_entry(manifest, release_metadata, assets_by_version, metad
         "package_format_version": PACKAGE_FORMAT_VERSION,
         "protocol_version": PROTOCOL_VERSION,
         "sdk_version": SDK_VERSION,
-        "sdk_backend": manifest.get("sdk_backend", DEFAULT_SDK_BACKEND),
+        "sdk_backend": manifest["sdk_backend"],
         "launch_mode": manifest["launch_mode"],
         "runtime_targets": release_targets,
         "assets": assets,
@@ -501,6 +530,113 @@ def _validate_entry_point(package_dir, entry_point):
 def _validate_license(package_dir):
     if not any((package_dir / name).is_file() for name in ("LICENSE", "LICENSE.md", "LICENSE.txt")):
         raise PackageToolError(f"{package_dir}: package-local LICENSE file is required")
+
+
+def _validate_host_mode_policy(package_dir, manifest, manifest_path):
+    sdk_backend = manifest["sdk_backend"]
+    license_id = manifest["license"].strip()
+
+    if sdk_backend == "runtime" and license_id not in GPL_RUNTIME_LICENSES:
+        allowed = ", ".join(sorted(GPL_RUNTIME_LICENSES))
+        raise PackageToolError(
+            f"{manifest_path}: sdk_backend runtime packages must use a GPL-3.0 "
+            f"compatible package license ({allowed})"
+        )
+
+    if sdk_backend == "rpc" and not RPC_BACKEND_AVAILABLE:
+        raise PackageToolError(
+            f"{manifest_path}: sdk_backend rpc is reserved until the target "
+            "AfterNight release ships RPC extension hosting"
+        )
+
+    if sdk_backend == "protocol":
+        native_capability = _find_native_control_capability(manifest)
+        if native_capability:
+            raise PackageToolError(
+                f"{manifest_path}: sdk_backend protocol packages must not declare "
+                f"native-control capability {native_capability}"
+            )
+
+        engine_import = _find_engine_backed_import(package_dir)
+        if engine_import:
+            source_path, module_name = engine_import
+            raise PackageToolError(
+                f"{source_path}: sdk_backend protocol packages must not import "
+                f"Engine-backed module {module_name}"
+            )
+
+
+def _find_engine_backed_import(package_dir):
+    for source_path in _iter_python_sources(package_dir):
+        try:
+            tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+        except SyntaxError as exc:
+            raise PackageToolError(f"{source_path}: Python syntax error: {exc.msg}") from exc
+
+        for node in ast.walk(tree):
+            module_name = _engine_backed_import_name(node)
+            if module_name:
+                return source_path, module_name
+    return None
+
+
+def _engine_backed_import_name(node):
+    if isinstance(node, ast.Import):
+        for alias in node.names:
+            matched = _match_engine_backed_module(alias.name)
+            if matched:
+                return matched
+    elif isinstance(node, ast.ImportFrom):
+        module = node.module or ""
+        matched = _match_engine_backed_module(module)
+        if matched:
+            return matched
+        if module == "afternight":
+            for alias in node.names:
+                candidate = f"afternight.{alias.name}"
+                matched = _match_engine_backed_module(candidate)
+                if matched:
+                    return matched
+        elif module.startswith("afternight."):
+            for alias in node.names:
+                candidate = f"{module}.{alias.name}"
+                matched = _match_engine_backed_module(candidate)
+                if matched:
+                    return matched
+    return None
+
+
+def _match_engine_backed_module(module_name):
+    if module_name in ENGINE_BACKED_IMPORTS:
+        return module_name
+    for banned in ENGINE_BACKED_IMPORTS:
+        if module_name.startswith(banned + "."):
+            return banned
+    return None
+
+
+def _iter_python_sources(package_dir):
+    for path in Path(package_dir).rglob("*.py"):
+        if _should_skip(path):
+            continue
+        yield path
+
+
+def _find_native_control_capability(manifest):
+    for key, value in _walk_manifest_values(manifest):
+        if key in NATIVE_CONTROL_CAPABILITY_KEYS and value is True:
+            return key
+    return None
+
+
+def _walk_manifest_values(value):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield key, child
+            yield from _walk_manifest_values(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_manifest_values(child)
 
 
 def _should_skip(path):

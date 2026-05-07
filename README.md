@@ -117,6 +117,8 @@ Every publishable package must include:
 - `extension.json` at the package root
 - a package-local Python entry point declared by `entry_point`
 - `summary`, `description`, `author`, `license`, and `publisher_id`
+- explicit `sdk_backend` selecting full hosted `runtime`, lite hosted
+  `protocol`, or future lite hosted `rpc`
 - `package_format_version: 1`, `protocol_version: 1`, and `sdk_version: 1`
 - `LICENSE`
 - `THIRD_PARTY_NOTICES.md` when dependencies, models, helper binaries, copied
@@ -130,10 +132,11 @@ source-staged and absent from the public index.
 
 ## Licensing
 
-The repository tooling, documentation, and AfterNight-maintained adapter code are
-distributed under GPL-3.0 unless a file or package says otherwise. See
-`LICENSE` for the GPL-3.0 text and `docs/LICENSING.md` for the package license
-summary.
+The repository tooling, documentation, and current AfterNight-maintained runtime
+adapter code are distributed under GPL-3.0 unless a file or package says
+otherwise. See `LICENSE` for the GPL-3.0 text, `docs/LICENSING.md` for the
+package license summary, and `docs/HOST_MODES_AND_LICENSING.md` for full vs lite
+hosted extension rules.
 
 Each package also carries package-local licensing:
 
@@ -147,6 +150,11 @@ Each package also carries package-local licensing:
 
 Unclear ownership, missing license metadata, incompatible terms, secrets, local
 machine paths, or private download URLs block publication.
+
+Host mode matters for licensing review: `sdk_backend = runtime` packages must use
+a GPL-3.0-family license; `sdk_backend = protocol` packages may use non-GPL
+licenses only when they avoid AfterNight Engine/native-control imports;
+`sdk_backend = rpc` is reserved until AfterNight ships RPC extension hosting.
 
 ## Related Repository
 

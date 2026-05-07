@@ -40,6 +40,7 @@ Repository-ready packages must declare:
 - `entry_point`
 - `category`
 - `launch_mode`
+- `sdk_backend`
 - `package_format_version`
 - `protocol_version`
 - `sdk_version`
@@ -70,6 +71,40 @@ Current target IDs:
 - `windows-msvc-x86_64`
 
 Pure Python packages may omit `runtime_targets` or publish one asset that supports multiple targets.
+
+## Host Mode and SDK Backend
+
+Every repository-ready package must declare `sdk_backend` explicitly. AfterNight
+uses this field to choose the host process:
+
+| `sdk_backend` | Host mode | Intended use |
+| --- | --- | --- |
+| `runtime` | Full hosted | GPL-3.0-family packages that use AfterNight Engine and/or native process controls |
+| `protocol` | Lite hosted | Packages that use only app/view protocol services and own their UI/processing |
+| `rpc` | Lite hosted + SDK sidecar | Future Engine SDK over RPC; unavailable until AfterNight ships the RPC backend |
+
+Examples:
+
+```json
+{
+  "license": "GPL-3.0-or-later",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime"
+}
+```
+
+```json
+{
+  "license": "MIT",
+  "launch_mode": "single_image",
+  "sdk_backend": "protocol"
+}
+```
+
+`runtime` packages must use a GPL-3.0-family license. `protocol` packages must not import
+`_afternight_runtime`, Engine-backed `afternight` modules, or native AfterNight
+controls. `rpc` packages are rejected until the target AfterNight release
+advertises RPC support. See [Host Modes and Licensing](HOST_MODES_AND_LICENSING.md).
 
 ## Repository Release Metadata
 

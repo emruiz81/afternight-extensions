@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from afternight_repo.package_tools import (  # noqa: E402
+    PackageToolError,
     build_package,
     generate_index,
     is_package_published,
@@ -24,6 +25,124 @@ from afternight_repo.package_tools import (  # noqa: E402
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def create_policy_package(root, *, license_id="MIT", sdk_backend="protocol", source_text=None, capabilities=None):
+    package_dir = root / "package"
+    package_dir.mkdir(parents=True)
+    manifest = {
+        "id": "policy_ext",
+        "name": "Policy Extension",
+        "version": "1.0.0",
+        "summary": "Policy fixture.",
+        "description": "A host-mode policy fixture.",
+        "author": "AfterNight Tests",
+        "license": license_id,
+        "publisher_id": "afternight.tests",
+        "type": "python",
+        "entry_point": "policy_ext",
+        "process_class": "PolicyExtension",
+        "category": "filters",
+        "launch_mode": "single_image",
+        "sdk_backend": sdk_backend,
+        "package_format_version": 1,
+        "protocol_version": 1,
+        "sdk_version": 1,
+    }
+    if capabilities is not None:
+        manifest["capabilities"] = capabilities
+    write_json(package_dir / "extension.json", manifest)
+    (package_dir / "policy_ext.py").write_text(
+        source_text or "from afternight import views\n\nclass PolicyExtension: pass\n",
+        encoding="utf-8",
+    )
+    (package_dir / "LICENSE").write_text(license_id + "\n", encoding="utf-8")
+    return package_dir
+
+
+class ManifestHostModePolicyTests(unittest.TestCase):
+    def test_protocol_backend_allows_non_gpl_package_without_engine_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(Path(tmp), license_id="MIT", sdk_backend="protocol")
+
+            manifest = load_valid_manifest(package_dir)
+
+            self.assertEqual(manifest["sdk_backend"], "protocol")
+            self.assertEqual(manifest["license"], "MIT")
+
+    def test_manifest_requires_explicit_sdk_backend(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(Path(tmp))
+            manifest = read_json(package_dir / "extension.json")
+            del manifest["sdk_backend"]
+            write_json(package_dir / "extension.json", manifest)
+
+            with self.assertRaisesRegex(PackageToolError, "sdk_backend must be a non-empty string"):
+                load_valid_manifest(package_dir)
+
+    def test_runtime_backend_rejects_non_gpl_license(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(Path(tmp), license_id="MIT", sdk_backend="runtime")
+
+            with self.assertRaisesRegex(PackageToolError, "runtime packages must use"):
+                load_valid_manifest(package_dir)
+
+    def test_runtime_backend_accepts_gpl_license(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(
+                Path(tmp),
+                license_id="GPL-3.0-or-later",
+                sdk_backend="runtime",
+                source_text="from afternight import io\n\nclass PolicyExtension: pass\n",
+            )
+
+            manifest = load_valid_manifest(package_dir)
+
+            self.assertEqual(manifest["sdk_backend"], "runtime")
+
+    def test_protocol_backend_rejects_engine_backed_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(
+                Path(tmp),
+                sdk_backend="protocol",
+                source_text="from afternight import registration\n\nclass PolicyExtension: pass\n",
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "Engine-backed module afternight.registration"):
+                load_valid_manifest(package_dir)
+
+    def test_protocol_backend_rejects_runtime_module_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(
+                Path(tmp),
+                sdk_backend="protocol",
+                source_text="import _afternight_runtime\n\nclass PolicyExtension: pass\n",
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "Engine-backed module _afternight_runtime"):
+                load_valid_manifest(package_dir)
+
+    def test_protocol_backend_rejects_native_control_capability(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(
+                Path(tmp),
+                sdk_backend="protocol",
+                capabilities={"native_process_window": True},
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "native-control capability"):
+                load_valid_manifest(package_dir)
+
+    def test_rpc_backend_is_reserved_until_supported_by_afternight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = create_policy_package(
+                Path(tmp),
+                license_id="Apache-2.0",
+                sdk_backend="rpc",
+            )
+
+            with self.assertRaisesRegex(PackageToolError, "rpc is reserved"):
+                load_valid_manifest(package_dir)
 
 
 class PackageToolTests(unittest.TestCase):
@@ -58,6 +177,7 @@ class PackageToolTests(unittest.TestCase):
                 "process_class": "ExampleExtension",
                 "category": "filters",
                 "launch_mode": "single_image",
+                "sdk_backend": "protocol",
                 "package_format_version": 1,
                 "protocol_version": 1,
                 "sdk_version": 1,
@@ -167,6 +287,7 @@ class PackageToolTests(unittest.TestCase):
             release = package["releases"][0]
             self.assertEqual(release["runtime_targets"], ["linux-clang-x86_64"])
             self.assertEqual(release["min_app_version"], "2.0.0")
+            self.assertEqual(release["sdk_backend"], "protocol")
             self.assertEqual(release["assets"][0]["name"], asset["name"])
             self.assertEqual(release["assets"][0]["package_hash"], asset["package_hash"])
             self.assertEqual(

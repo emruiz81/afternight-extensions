@@ -4,6 +4,9 @@ Cosmic Clarity exposes Seti Astro's Cosmic Clarity suite inside AfterNight throu
 
 This package contains the AfterNight adapter only. Users still configure the location of their Cosmic Clarity installation from the process window. The upstream helper executables and their model/runtime payloads are not redistributed in this repository package.
 
+This is a full hosted extension package (`sdk_backend = runtime`) and is
+distributed under GPL-3.0.
+
 ## Processes
 
 - Cosmic Clarity Denoise

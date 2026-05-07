@@ -46,6 +46,9 @@ Release validation and signoff notes are documented in
 `packaging/PUBLICATION_READINESS.md`. Automated upstream quality coverage and
 known first-pass parity limits are documented in `package/QUALITY_VALIDATION.md`.
 
+This is a full hosted extension package (`sdk_backend = runtime`) because it uses
+AfterNight runtime SDK domains and native process-window schemas.
+
 The broader extension-author porting notes for this suite are captured in
 `../../docs/VERALUX_PORTING_CASE_STUDY.md`.
 

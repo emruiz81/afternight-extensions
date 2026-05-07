@@ -49,14 +49,27 @@ Reserved/future states:
 
 ## License Policy
 
-Repository-level terms are summarized in `docs/LICENSING.md`; the GPL-3.0 text
-is available at the repository root in `LICENSE`.
+Repository-level terms are summarized in `docs/LICENSING.md`; host-mode rules are
+defined in `docs/HOST_MODES_AND_LICENSING.md`; the GPL-3.0 text is available at
+the repository root in `LICENSE`.
 
-Each package must include license metadata in `extension.json` and a package-local `LICENSE` file.
+Each package must include license metadata, explicit `sdk_backend` metadata, and
+a package-local `LICENSE` file.
 
 Packages that include dependencies, copied upstream source, models, helper tools, or binary artifacts must include `THIRD_PARTY_NOTICES.md` or equivalent notices.
 
-Packages may use individual licenses, but they must be compatible with official AfterNight extension distribution. Unclear or missing license information blocks publication.
+Packages may use individual licenses, but they must be compatible with official
+AfterNight extension distribution and the selected host mode. Unclear or missing
+license information blocks publication.
+
+Backend-specific rules:
+
+- `sdk_backend = runtime` packages are full hosted and must use a GPL-3.0-family license.
+- `sdk_backend = protocol` packages are lite hosted and may use non-GPL licenses
+  only when they avoid `_afternight_runtime`, Engine-backed `afternight` modules,
+  and native AfterNight controls.
+- `sdk_backend = rpc` packages are blocked until AfterNight ships RPC extension
+  hosting for the target release.
 
 ## Binary And Wheel Policy
 

@@ -4,6 +4,9 @@ GraXpert AI exposes GraXpert background extraction, denoise, and deconvolution i
 
 This directory stores source and packaging metadata only. Official release assets are thin: they contain the AfterNight adapter, manifest, and hash-locked requirements file, while GraXpert and public dependency wheels are downloaded from official PyPI during host-managed install.
 
+This is a full hosted extension package (`sdk_backend = runtime`) and is
+distributed under GPL-3.0.
+
 ## Processes
 
 - GraXpert AI Background Extraction
