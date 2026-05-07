@@ -45,6 +45,14 @@ class PackageToolTests(unittest.TestCase):
                 "author": "AfterNight Tests",
                 "license": "MIT",
                 "publisher_id": "afternight.tests",
+                "attribution": (
+                    "AfterNight port of Example Extension, originally authored by "
+                    "Fixture Author."
+                ),
+                "original_author": "Fixture Author",
+                "original_project": "Fixture Suite",
+                "original_source_url": "https://example.invalid/upstream/example_ext.py",
+                "upstream_commit": "0123456789abcdef",
                 "type": "python",
                 "entry_point": "example_ext",
                 "process_class": "ExampleExtension",
@@ -145,6 +153,17 @@ class PackageToolTests(unittest.TestCase):
             package = index["extensions"][0]
             self.assertEqual(package["id"], "example_ext")
             self.assertEqual(package["latest_version"], "1.0.0")
+            self.assertEqual(
+                package["attribution"],
+                "AfterNight port of Example Extension, originally authored by Fixture Author.",
+            )
+            self.assertEqual(package["original_author"], "Fixture Author")
+            self.assertEqual(package["original_project"], "Fixture Suite")
+            self.assertEqual(
+                package["original_source_url"],
+                "https://example.invalid/upstream/example_ext.py",
+            )
+            self.assertEqual(package["upstream_commit"], "0123456789abcdef")
             release = package["releases"][0]
             self.assertEqual(release["runtime_targets"], ["linux-clang-x86_64"])
             self.assertEqual(release["min_app_version"], "2.0.0")
@@ -211,6 +230,185 @@ class RepositoryPackageTests(unittest.TestCase):
 
                 self.assertIn(manifest["version"], versions)
                 self.assertIn(repository_metadata.get("latest_version", manifest["version"]), versions)
+
+    def test_veralux_package_declares_suite_processes_and_port_provenance(self):
+        package_dir = REPO_ROOT / "packages" / "veralux" / "package"
+        self.assertTrue(package_dir.is_dir())
+
+        required_fields = (
+            "attribution",
+            "original_author",
+            "original_project",
+            "original_source_url",
+            "upstream_commit",
+        )
+        manifest = load_valid_manifest(package_dir)
+        self.assertEqual(manifest["id"], "veralux")
+        self.assertNotIn("process_class", manifest)
+        self.assertEqual(manifest["entry_point"], "veralux_extension")
+        self.assertEqual(manifest["dependencies"]["dependency_context"], "private")
+        self.assertEqual(len(manifest["processes"]), 8)
+        processes = {process["id_suffix"]: process for process in manifest["processes"]}
+        self.assertEqual(processes["alchemy"]["class"], "VeraLuxAlchemyExtension")
+        self.assertEqual(processes["alchemy"]["category"], "color")
+        self.assertEqual(processes["curves"]["class"], "VeraLuxCurvesExtension")
+        self.assertEqual(processes["curves"]["category"], "transforms")
+        self.assertEqual(
+            processes["hypermetric_stretch"]["class"],
+            "VeraLuxHyperMetricStretchExtension",
+        )
+        self.assertEqual(processes["hypermetric_stretch"]["category"], "transforms")
+        self.assertEqual(processes["nox"]["class"], "VeraLuxNoxExtension")
+        self.assertEqual(processes["nox"]["category"], "background_extraction")
+        self.assertEqual(processes["starcomposer"]["class"], "VeraLuxStarComposerExtension")
+        self.assertEqual(processes["starcomposer"]["category"], "star_object")
+        self.assertEqual(
+            processes["starcomposer"]["capabilities"],
+            {"execute": True, "preview": True, "keep_open": True},
+        )
+        self.assertEqual(processes["vectra"]["class"], "VeraLuxVectraExtension")
+        self.assertEqual(processes["vectra"]["category"], "color")
+        self.assertEqual(processes["revela"]["class"], "VeraLuxRevelaExtension")
+        self.assertEqual(processes["revela"]["category"], "sharpening_enhancement")
+        self.assertEqual(processes["silentium"]["class"], "VeraLuxSilentiumExtension")
+        self.assertEqual(processes["silentium"]["category"], "denoising")
+
+        for field in required_fields:
+            self.assertTrue(manifest.get(field), f"{field} is required")
+        self.assertEqual(manifest["original_author"], "Riccardo Paterniti")
+        self.assertEqual(manifest["original_project"], "VeraLux")
+        self.assertTrue((package_dir / "UPSTREAM.md").is_file())
+        quality_notes = (package_dir / "QUALITY_VALIDATION.md").read_text(encoding="utf-8")
+        self.assertIn("Automated Upstream Checks", quality_notes)
+        self.assertIn("Alchemy", quality_notes)
+        self.assertIn("HyperMetric Stretch", quality_notes)
+        self.assertIn("First-Pass Intentional Divergences", quality_notes)
+        upstream = read_json(package_dir / "UPSTREAM.json")
+        self.assertEqual(
+            sorted(source["tool"] for source in upstream["sources"]),
+            [
+                "Alchemy",
+                "Curves",
+                "HyperMetric Stretch",
+                "Nox",
+                "Revela",
+                "Silentium",
+                "StarComposer",
+                "Starting Point",
+                "Vectra",
+            ],
+        )
+
+    def test_veralux_publication_readiness_keeps_visual_qa_gate_closed(self):
+        package_root = REPO_ROOT / "packages" / "veralux"
+        repository_metadata = read_json(package_root / "repository.json")
+        readiness = (package_root / "packaging" / "PUBLICATION_READINESS.md").read_text(
+            encoding="utf-8"
+        )
+        packaging_notes = (package_root / "packaging" / "README.md").read_text(encoding="utf-8")
+
+        self.assertFalse(repository_metadata.get("publish", True))
+        self.assertIn("Status: source-staged, not publishable yet.", readiness)
+        self.assertIn('"publish": false', readiness)
+        self.assertIn("Representative real-image visual QA and release signoff", readiness)
+        self.assertIn("- [ ] Representative real-image visual QA", readiness)
+        self.assertIn("PUBLICATION_READINESS.md", packaging_notes)
+        self.assertIn("visual QA signoff", packaging_notes)
+
+    def test_veralux_package_asset_smoke_contains_one_suite_and_all_processes(self):
+        if shutil.which("zstd") is None:
+            self.skipTest("zstd CLI is required for VeraLux package smoke test")
+
+        package_dir = REPO_ROOT / "packages" / "veralux" / "package"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+
+            self.assertEqual(asset["package_id"], "veralux")
+            self.assertEqual(asset["name"], "veralux-0.1.0-all.tar.zst")
+            self.assertEqual(
+                asset["runtime_targets"],
+                ["linux-clang-x86_64", "windows-msvc-x86_64"],
+            )
+
+            tar_bytes = subprocess.check_output(
+                ["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])]
+            )
+            tar_path = root / "veralux-package.tar"
+            tar_path.write_bytes(tar_bytes)
+
+            with tarfile.open(tar_path, "r") as archive:
+                names = archive.getnames()
+                self.assertTrue(
+                    all(name == "veralux" or name.startswith("veralux/") for name in names)
+                )
+                self.assertIn("veralux/extension.json", names)
+                self.assertIn("veralux/requirements.lock", names)
+                self.assertIn("veralux/STARTING_POINT.md", names)
+                self.assertIn("veralux/UPSTREAM.json", names)
+                self.assertIn("veralux/QUALITY_VALIDATION.md", names)
+                self.assertIn("veralux/THIRD_PARTY_NOTICES.md", names)
+
+                for split_root in (
+                    "veralux_revela",
+                    "veralux_alchemy",
+                    "veralux_hypermetric_stretch",
+                    "veralux_vectra",
+                    "veralux_starcomposer",
+                    "veralux_curves",
+                    "veralux_silentium",
+                    "veralux_nox",
+                ):
+                    self.assertNotIn(split_root, names)
+                    self.assertFalse(any(name.startswith(split_root + "/") for name in names))
+
+                manifest_member = archive.extractfile("veralux/extension.json")
+                self.assertIsNotNone(manifest_member)
+                manifest = json.loads(manifest_member.read().decode("utf-8"))
+
+        self.assertEqual(manifest["id"], "veralux")
+        self.assertEqual(manifest["entry_point"], "veralux_extension")
+        self.assertNotIn("process_class", manifest)
+        self.assertEqual(manifest["dependencies"]["dependency_context"], "private")
+        self.assertEqual(manifest["dependencies"]["requirements_file"], "requirements.lock")
+        self.assertTrue(manifest["dependencies"]["pip"]["require_hashes"])
+        self.assertEqual(
+            sorted(process["id_suffix"] for process in manifest["processes"]),
+            [
+                "alchemy",
+                "curves",
+                "hypermetric_stretch",
+                "nox",
+                "revela",
+                "silentium",
+                "starcomposer",
+                "vectra",
+            ],
+        )
+
+    def test_veralux_starting_point_guide_documents_workflow_order(self):
+        package_dir = REPO_ROOT / "packages" / "veralux" / "package"
+        guide_path = package_dir / "STARTING_POINT.md"
+        self.assertTrue(guide_path.is_file())
+
+        guide = guide_path.read_text(encoding="utf-8")
+        self.assertIn("AfterNight adaptation of VeraLux Starting Point", guide)
+        self.assertIn("Starting Point is not registered as a processing process", guide)
+        self.assertIn("VeraLux Nox", guide)
+        self.assertIn("VeraLux Silentium", guide)
+        self.assertIn("VeraLux Alchemy", guide)
+        self.assertIn("VeraLux HyperMetric Stretch", guide)
+        self.assertIn("VeraLux Curves", guide)
+        self.assertIn("VeraLux Revela", guide)
+        self.assertIn("VeraLux Vectra", guide)
+        self.assertIn("VeraLux StarComposer", guide)
+        self.assertLess(guide.index("VeraLux Nox"), guide.index("VeraLux Silentium"))
+        self.assertLess(guide.index("VeraLux Silentium"), guide.index("VeraLux Alchemy"))
+        self.assertLess(guide.index("VeraLux Alchemy"), guide.index("VeraLux HyperMetric Stretch"))
+        self.assertLess(guide.index("VeraLux HyperMetric Stretch"), guide.index("VeraLux Curves"))
+        self.assertLess(guide.index("VeraLux Curves"), guide.index("VeraLux Revela"))
+        self.assertLess(guide.index("VeraLux Revela"), guide.index("VeraLux Vectra"))
+        self.assertLess(guide.index("VeraLux Vectra"), guide.index("VeraLux StarComposer"))
 
 
 if __name__ == "__main__":

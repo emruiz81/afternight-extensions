@@ -3,6 +3,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 from pathlib import Path
@@ -11,6 +12,14 @@ from pathlib import Path
 SUPPORTED_RUNTIME_TARGETS = (
     "linux-clang-x86_64",
     "windows-msvc-x86_64",
+)
+
+PROVENANCE_FIELDS = (
+    "attribution",
+    "original_author",
+    "original_project",
+    "original_source_url",
+    "upstream_commit",
 )
 
 SCHEMA_VERSION = 1
@@ -237,7 +246,7 @@ def _generate_package_index_entry(package_source, assets_dir, base_url):
         "tags": manifest.get("tags", []),
         "releases": releases,
     }
-    for key in ("homepage_url", "repository_url", "support_url", "icon_url"):
+    for key in (*PROVENANCE_FIELDS, "homepage_url", "repository_url", "support_url", "icon_url"):
         if manifest.get(key):
             package[key] = manifest[key]
     return package
@@ -347,9 +356,50 @@ def _apply_stable_tar_metadata(info):
     info.gname = ""
 
 
+def _ensure_zstd():
+    if shutil.which("zstd") is not None:
+        return
+    if sys.platform == "win32" and shutil.which("winget") is not None:
+        print("zstd not found — installing via winget (Meta.Zstandard)...", flush=True)
+        result = subprocess.run(
+            ["winget", "install", "--id", "Meta.Zstandard", "--silent", "--accept-package-agreements", "--accept-source-agreements"],
+            check=False,
+        )
+        # winget exits 0 on success, but also uses non-zero for "no upgrade available" or
+        # "already installed" — treat those as success too (REBOOT_REQUIRED = 0x3010, etc.)
+        # We rely on the subsequent shutil.which check rather than the exit code.
+
+        # winget modifies the user or machine PATH; refresh the current process PATH so shutil.which can find it
+        import os
+        for scope in ("Machine", "User"):
+            reg_path = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 f"[System.Environment]::GetEnvironmentVariable('PATH', '{scope}')"],
+                check=False, stdout=subprocess.PIPE, text=True,
+            ).stdout.strip()
+            if reg_path:
+                os.environ["PATH"] = reg_path + os.pathsep + os.environ.get("PATH", "")
+        # winget also installs a CLI alias into %LOCALAPPDATA%\Microsoft\WinGet\Links
+        winget_links = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Links")
+        if os.path.isdir(winget_links):
+            os.environ["PATH"] = winget_links + os.pathsep + os.environ.get("PATH", "")
+        if shutil.which("zstd") is None:
+            raise PackageToolError("zstd was installed but is not yet on PATH; open a new terminal and retry")
+    elif sys.platform == "win32":
+        raise PackageToolError(
+            "zstd is required but was not found. "
+            "Install it with: winget install Meta.Zstandard  "
+            "(or via Chocolatey: choco install zstandard, or Scoop: scoop install zstd)"
+        )
+    else:
+        raise PackageToolError(
+            "zstd is required but was not found. "
+            "Install it with your package manager (e.g. apt-get install zstd)"
+        )
+
+
 def _compress_with_zstd(tar_path, archive_path, compression_level):
-    if shutil.which("zstd") is None:
-        raise PackageToolError("zstd executable is required to build package assets")
+    _ensure_zstd()
     result = subprocess.run(
         [
             "zstd",

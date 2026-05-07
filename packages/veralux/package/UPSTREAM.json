@@ -1,0 +1,181 @@
+{
+  "upstream_repo_url": "https://gitlab.com/free-astro/siril-scripts.git",
+  "upstream_commit": "4ce0af52926e071caef55f4d17ac17ae8d8b4aac",
+  "upstream_veralux_directory_commit": "730814465d3c742a3e99a192083fc9d7b1bd0e59",
+  "port_package_version": "0.1.0",
+  "original_author": "Riccardo Paterniti",
+  "license": "GPL-3.0-or-later",
+  "sources": [
+    {
+      "tool": "Revela",
+      "port_modules": [
+        "veralux_revela_core.py",
+        "veralux_revela_adapter.py",
+        "veralux_revela_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Revela.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Revela.py",
+      "original_file_sha256": "3c094fbda2d9b6810af15604c5c7110a3f1c80dfe4d61acc32e3d68349298cd4",
+      "original_file_last_commit": "15940a9e12b1700ae4c3e8aee8f00c7303e19b7f",
+      "original_version": "1.0.2",
+      "intentional_divergences": [
+        "Replace sirilpy host operations with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 process window with native AfterNight parameter schema.",
+        "Keep OpenCV as the preferred runtime while retaining a NumPy fallback for tests and diagnostics.",
+        "Expose Revela as an AfterNight RT-preview process with native sub-area preview; host autostretch display controls are intentionally not enabled for this process."
+      ]
+    },
+    {
+      "tool": "Alchemy",
+      "port_modules": [
+        "veralux_alchemy_core.py",
+        "veralux_alchemy_adapter.py",
+        "veralux_alchemy_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Alchemy.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Alchemy.py",
+      "original_file_sha256": "0b627b4bd5ae3836c7d823cf5a10017e64ba594995f605c73ebb420347b0be3e",
+      "original_file_last_commit": "cd4c8a6600455985d6764bbd61831728d11ac36a",
+      "original_version": "1.0.3",
+      "intentional_divergences": [
+        "Replace sirilpy image loading, image locking, save/load, and logging with AfterNight SDK image handles and metadata.",
+        "Replace the PyQt6 workstation with native AfterNight parameter definitions.",
+        "Keep Alchemy strictly array-based so the package does not need astropy for this first native process port.",
+        "Expose Alchemy as an AfterNight RT-preview process with native sub-area preview and host-side autostretch display controls."
+      ]
+    },
+    {
+      "tool": "HyperMetric Stretch",
+      "port_modules": [
+        "veralux_hypermetric_stretch_core.py",
+        "veralux_hypermetric_stretch_adapter.py",
+        "veralux_hypermetric_stretch_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_HyperMetric_Stretch.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_HyperMetric_Stretch.py",
+      "original_file_sha256": "5b9704c0dac81dac71fb0be4b5c0efae7276cf68a7285f777f341b62fb90c571",
+      "original_file_last_commit": "730814465d3c742a3e99a192083fc9d7b1bd0e59",
+      "original_version": "1.5.2",
+      "intentional_divergences": [
+        "Replace sirilpy shared-memory image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 live preview windows with native AfterNight parameter definitions for the first process port.",
+        "Keep the core processing path NumPy-only and preserve input array layout at the SDK boundary.",
+        "Defer live preview, histogram overlay, and re-entrant solver UI parity to a later native-preview polish slice."
+      ]
+    },
+    {
+      "tool": "Curves",
+      "port_modules": [
+        "veralux_curves_core.py",
+        "veralux_curves_adapter.py",
+        "veralux_curves_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Curves.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Curves.py",
+      "original_file_sha256": "bd5f2b41e7f19ac8276438fdc20742c6990cedb3e1d9eef66d194113d16ce00b",
+      "original_file_last_commit": "2f5687449a88bf0681430a3f577a044634ba5647",
+      "original_version": "1.0.1",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 arbitrary point-curve editor and histogram preview with an AfterNight native curve editor parameter.",
+        "Use the upstream SciPy Akima interpolation and OpenCV Lab/HSV conversion paths when runtime dependencies are installed, with a package-local NumPy fallback only for minimal diagnostics.",
+        "Preserve RGB/K, channel, luminance, chrominance, saturation, and luminance-range behavior while deferring pipette and applied-stage stack UI parity to a later native UI slice."
+      ]
+    },
+    {
+      "tool": "Nox",
+      "port_modules": [
+        "veralux_nox_core.py",
+        "veralux_nox_adapter.py",
+        "veralux_nox_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Nox.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Nox.py",
+      "original_file_sha256": "89ff9da4fea181b1d3742cd325748ee7decf78ebe36061d7f0f6e93a385f52d8",
+      "original_file_last_commit": "a9fb2c7f505c488f5cfef5b7fa5022097551e06e",
+      "original_version": "1.0.1",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, user dialogs, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 BVI/manual-mask UI with native AfterNight parameter definitions and host mask input.",
+        "Use the upstream Zenith sparse membrane solver, dual-scale variance protection, PSF veto, iterative positive-residual rejection, and smart pedestal path when SciPy/OpenCV runtime dependencies are installed, with a NumPy fallback only for minimal diagnostics.",
+        "Expose Nox as an AfterNight RT-preview process gated by an explicit Update Preview action, with display choices for input protection, corrected output, and extracted gradient model.",
+        "Save the extracted gradient model as a separate AfterNight image while always applying the corrected gradient-removed image to the source."
+      ]
+    },
+    {
+      "tool": "Silentium",
+      "port_modules": [
+        "veralux_silentium_core.py",
+        "veralux_silentium_adapter.py",
+        "veralux_silentium_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Silentium.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Silentium.py",
+      "original_file_sha256": "62e9db5e1f470d38d8e635da9d1f892ee59ab6b6477e471b69d2725de5d655f8",
+      "original_file_last_commit": "f70698e25f7c00d32593ba7ad3f1eb68ffe6a218",
+      "original_version": "1.0.3",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, Siril findstar side effects, and logging with AfterNight SDK image handles, metadata, and star profiling.",
+        "Replace PyQt6 loupe/progress UI with native AfterNight RT-preview parameter definitions.",
+        "Expose host-side Linear/Autostretch preview display controls, default the native preview to Autostretch like the original Siril preview, and keep applied Silentium output linear.",
+        "Use the upstream PyWavelets SWT/db2 coefficient-thresholding path and SciPy edge morphology when runtime dependencies are installed, with a NumPy fallback for minimal test environments.",
+        "Use AfterNight star profiling for the stellar protection mask and FWHM map that feed the wavelet threshold path; remaining exact-output drift can come from host star profiling and FWHM-map generation versus Siril findstar/list.lst side effects.",
+        "Preserve the original noise-intensity, linear signal-probability, detail-guard, shadow-smoothness, LAB chroma-denoise, star-protection, and auto-starless controls while deferring loupe UI parity to later host integration."
+      ]
+    },
+    {
+      "tool": "Vectra",
+      "port_modules": [
+        "veralux_vectra_core.py",
+        "veralux_vectra_adapter.py",
+        "veralux_vectra_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_Vectra.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Vectra.py",
+      "original_file_sha256": "eca04c83e51815cfd69894c5526ecea8ec0a0f3345a6a77c63f787306cfed9a9",
+      "original_file_last_commit": "c418d44a734d51a4cc4d7a51b0bb798d98582c2b",
+      "original_version": "1.0.3",
+      "intentional_divergences": [
+        "Replace sirilpy image retrieval, undo, and logging with AfterNight SDK image handles and metadata.",
+        "Replace PyQt6 tabs, vector scope, and preview widgets with native AfterNight parameter definitions for the first process port.",
+        "Use the upstream SciPy reflect-convolution path when runtime dependencies are installed, with a package-local NumPy helper only as a minimal diagnostic fallback.",
+        "Preserve input array layout at the SDK boundary and defer live vector-scope preview parity to a later native-preview polish slice."
+      ]
+    },
+    {
+      "tool": "StarComposer",
+      "port_modules": [
+        "veralux_starcomposer_core.py",
+        "veralux_starcomposer_adapter.py",
+        "veralux_starcomposer_ui.py"
+      ],
+      "original_path": "VeraLux/VeraLux_StarComposer.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_StarComposer.py",
+      "original_file_sha256": "280230908a7547d82c86c386f0d820b037147c46fe6f51148359ecd804008a23",
+      "original_file_last_commit": "85fc3c17f9df8920dac7b0c867609a25e3415a1c",
+      "original_version": "2.1.0",
+      "intentional_divergences": [
+        "Replace sirilpy FITS loading, save/reload, ICC cleanup, and logging with AfterNight SDK image handles and metadata.",
+        "Use the active AfterNight target as the starless base and a second selected open view as the stars/star-mask input via host view snapshots.",
+        "Use the upstream OpenCV blur/morphology paths when runtime dependencies are installed, preserve the post-surgery star-layer range before composition, and retain package-local NumPy helpers only for minimal diagnostics."
+      ]
+    },
+    {
+      "tool": "Starting Point",
+      "source_type": "workflow_guide",
+      "port_modules": [
+        "STARTING_POINT.md"
+      ],
+      "original_path": "VeraLux/VeraLux_Starting_Point.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/4ce0af52926e071caef55f4d17ac17ae8d8b4aac/VeraLux/VeraLux_Starting_Point.py",
+      "original_file_sha256": "1342e6fdcb5c33dcee541e372d959c460de6166b253a7fbba73fd9a11f76a3fb",
+      "original_file_last_commit": "667be9dcd9a6bebeab6805168d30e91485566d94",
+      "original_version": "1.0.0",
+      "intentional_divergences": [
+        "Adapt the PyQt6 interactive guide into package-local Markdown documentation instead of registering it as an executable AfterNight process.",
+        "Replace Siril-specific workflow directions with AfterNight native process-window terminology.",
+        "Document the first-pass native workflow order and deferred parity items for richer help panes and specialized preview widgets."
+      ]
+    }
+  ]
+}

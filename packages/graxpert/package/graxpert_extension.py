@@ -33,10 +33,40 @@ def _run_callable_directly(fn):
     return fn()
 
 
+def _log_launch_banner(process_name, subtitle, *, component):
+    afternight.log_info(
+        "\n".join([
+            "",
+            "##############################################",
+            f"# GraXpert AI - {process_name}",
+            f"# {subtitle}",
+            "# Wrapped process authors: GraXpert Development Team",
+            "# AfterNight extension maintainer: Ezequiel Ruiz",
+            "# Upstream: https://github.com/Steffenhir/GraXpert",
+            "##############################################",
+        ]),
+        component=component,
+    )
+
+
 class _GraXpertBase(ui.ProcessWindow):
     component = "extension.graxpert"
     _REMOTE_MODEL_CACHE_TTL_SECONDS = 12 * 60 * 60
     window_size = (600, 400)
+    process_name = "GraXpert"
+    process_subtitle = "AI astrophotography processing"
+
+    def on_process_launch(self):
+        _log_launch_banner(
+            self.process_name,
+            self.process_subtitle,
+            component=self.component,
+        )
+        afternight.log_info(
+            "GraXpert: model cache, GPU provider diagnostics, and download state "
+            "are managed by the AfterNight extension host.",
+            component=self.component,
+        )
 
     def _patch_ai_model_handling(self, ai_model_handling):
         if getattr(ai_model_handling, "_afternight_run_in_process_patch", False):
@@ -575,6 +605,10 @@ class _GraXpertBase(ui.ProcessWindow):
         model_path = model_dir_path / "model.onnx"
         model_zip_path = model_dir_path / "model.zip"
         response = None
+        afternight.log_info(
+            f"GraXpert: downloading AI model '{target_version}' from bucket '{remote_bucket}'.",
+            component=self.component,
+        )
 
         try:
             total_bytes = 0
@@ -631,6 +665,10 @@ class _GraXpertBase(ui.ProcessWindow):
 
         progress.set_value(100.0)
         self._clear_progress_value(progress)
+        afternight.log_info(
+            f"GraXpert: AI model '{target_version}' is installed at {model_path}.",
+            component=self.component,
+        )
 
     def _resolve_model_path(self, model_dir_key, bucket_name_attr, progress, params=None):
         imported = self._import_graxpert()
@@ -648,6 +686,10 @@ class _GraXpertBase(ui.ProcessWindow):
 
         model_path = imported["ai_model_path_from_version"](model_dir, target_version)
         if model_path and pathlib.Path(model_path).exists():
+            afternight.log_info(
+                f"GraXpert: found installed AI model '{target_version}' at {model_path}.",
+                component=self.component,
+            )
             return model_path, target_version
 
         self._download_model_version(
@@ -766,21 +808,14 @@ class _GraXpertBase(ui.ProcessWindow):
 
 
 class GraXpertBackgroundExtension(_GraXpertBase):
+    process_name = "Background Extraction"
+    process_subtitle = "AI background model generation and correction"
+
     def _inference_model_dir_keys(self):
         return ["bge_ai_models_dir"]
 
     def _version_setting_key(self):
         return "background_ai_version"
-
-    def _background_gpu_enabled(self, params=None):
-        requested_gpu = self._gpu_enabled(params)
-        if requested_gpu:
-            afternight.log_warning(
-                "GraXpert background extraction currently forces CPU inference because "
-                "CUDA execution in the bundled runtime can produce divergent backgrounds.",
-                component=self.component,
-            )
-        return False
 
     def get_params(self):
         return self._meta_params() + [
@@ -825,7 +860,15 @@ class GraXpertBackgroundExtension(_GraXpertBase):
             params,
         )
         progress_adapter = _ProgressAdapter(progress)
-        gpu_enabled = self._background_gpu_enabled(params)
+        gpu_enabled = self._gpu_enabled(params)
+        correction_mode = str(params.get("correction_mode", "Subtraction"))
+        smoothing = float(params.get("smoothing", 0.0))
+        afternight.log_info(
+            "GraXpert background extraction: "
+            f"correction={correction_mode}, smoothing={smoothing:.3f}, "
+            f"background artifact={'enabled' if bool(params.get('output_background_model', False)) else 'disabled'}.",
+            component=self.component,
+        )
         progress.set_text(f"Using GraXpert model {target_version} for background extraction...")
         self._log_model_selection("background extraction", target_version, model_path, gpu_enabled)
         self._log_inference_backend("background extraction", gpu_enabled)
@@ -846,13 +889,17 @@ class GraXpertBackgroundExtension(_GraXpertBase):
             25,
             "thin_plate",
             3,
-            str(params.get("correction_mode", "Subtraction")),
+            correction_mode,
             model_path,
             progress=progress_adapter,
             ai_gpu_acceleration=gpu_enabled,
         )
         result_image = source_array
         dst_image.from_numpy(result_image)
+        afternight.log_info(
+            "GraXpert background extraction: correction image copied to destination.",
+            component=self.component,
+        )
 
         if bool(params.get("output_background_model", False)):
             artifacts_dir = afternight.session_paths().artifacts_dir()
@@ -878,6 +925,9 @@ class GraXpertBackgroundExtension(_GraXpertBase):
 
 
 class GraXpertDenoiseExtension(_GraXpertBase):
+    process_name = "Denoise"
+    process_subtitle = "AI noise reduction"
+
     def _inference_model_dir_keys(self):
         return ["denoise_ai_models_dir"]
 
@@ -919,6 +969,12 @@ class GraXpertDenoiseExtension(_GraXpertBase):
         )
         progress_adapter = _ProgressAdapter(progress)
         gpu_enabled = self._gpu_enabled(params)
+        strength = float(params.get("strength", 0.9))
+        batch_size = self._batch_size(params)
+        afternight.log_info(
+            f"GraXpert denoise: strength={strength:.3f}, batch_size={batch_size}.",
+            component=self.component,
+        )
         progress.set_text(f"Using GraXpert model {target_version} for denoise...")
         self._log_model_selection("denoise", target_version, model_path, gpu_enabled)
         self._log_inference_backend("denoise", gpu_enabled)
@@ -931,18 +987,21 @@ class GraXpertDenoiseExtension(_GraXpertBase):
         result = denoise(
             self._source_array(src_image),
             model_path,
-            float(params.get("strength", 0.9)),
-            batch_size=self._batch_size(params),
+            strength,
+            batch_size=batch_size,
             progress=progress_adapter,
             ai_gpu_acceleration=gpu_enabled,
         )
         if result is None:
             raise RuntimeError("GraXpert denoise did not return an output image.")
         dst_image.from_numpy(result)
+        afternight.log_info("GraXpert denoise: output image written.", component=self.component)
 
 
 class GraXpertDeconvolutionExtension(_GraXpertBase):
     window_size = (600, 500)
+    process_name = "Deconvolution"
+    process_subtitle = "AI object and stellar deconvolution"
 
     def _inference_model_dir_keys(self):
         return [
@@ -1021,6 +1080,13 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
         )
         progress_adapter = _ProgressAdapter(progress)
         gpu_enabled = self._gpu_enabled(params)
+        strength = float(params.get("strength", 0.9))
+        batch_size = self._batch_size(params)
+        afternight.log_info(
+            f"GraXpert deconvolution: method={method}, strength={strength:.3f}, "
+            f"batch_size={batch_size}, auto_fwhm={'enabled' if bool(params.get('auto_detect_fwhm', True)) else 'disabled'}.",
+            component=self.component,
+        )
         progress.set_text(f"Using GraXpert model {target_version} for deconvolution...")
         self._log_model_selection("deconvolution", target_version, model_path, gpu_enabled)
         self._log_inference_backend("deconvolution", gpu_enabled)
@@ -1057,12 +1123,16 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
         result = deconvolve(
             self._source_array(src_image),
             model_path,
-            float(params.get("strength", 0.9)),
+            strength,
             fwhm,
-            batch_size=self._batch_size(params),
+            batch_size=batch_size,
             progress=progress_adapter,
             ai_gpu_acceleration=gpu_enabled,
         )
         if result is None:
             raise RuntimeError("GraXpert deconvolution did not return an output image.")
         dst_image.from_numpy(result)
+        afternight.log_info(
+            f"GraXpert deconvolution: output image written with FWHM {fwhm:.3f} px.",
+            component=self.component,
+        )

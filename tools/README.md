@@ -60,6 +60,30 @@ python3 packages/graxpert/packaging/refresh_requirements_lock.py \
 
 New extensions must not redistribute public PyPI wheels inside package assets; use explicit indexes plus hash-locked requirements instead.
 
+## Check VeraLux Upstream Provenance
+
+VeraLux ports keep a machine-readable source baseline in
+`packages/veralux/package/UPSTREAM.json`. To verify the pinned hashes, source
+versions, and file-specific commits against a local `siril-scripts` checkout:
+
+```bash
+python3 tools/check_veralux_upstream.py \
+  --upstream-checkout /path/to/siril-scripts
+```
+
+To review what changed in a newer upstream checkout before rebasing the local
+ports, inspect another ref:
+
+```bash
+python3 tools/check_veralux_upstream.py \
+  --upstream-checkout /path/to/siril-scripts \
+  --ref HEAD
+```
+
+The command exits with `0` when every captured source matches, `2` when a source
+differs, and `1` for local tooling or git errors. Use `--json` for machine-readable
+output in review scripts.
+
 ## Generate The Index
 
 ```bash

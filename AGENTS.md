@@ -93,6 +93,7 @@ LD_LIBRARY_PATH=bin/clang/release ./bin/clang/release/Test_ProcessFramework --gt
 - Do not rewrite generated package archives by hand.
 - Prefer deterministic packaging: sorted entries, stable metadata, pinned hashes.
 - Use ASCII by default.
+- When an extension needs a new native AfterNight control, add it to the sibling app as a generic reusable control. Do not use extension- or process-specific names for app-side classes, ParamDef types, object names, files, or helpers; keep process-specific wording in the extension schema/configuration.
 
 ## Definition Of Done
 

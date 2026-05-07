@@ -113,6 +113,22 @@ def _reported_progress_percent(percent, two_pass_progress, phase):
     return 50.0 + percent * 0.5
 
 
+def _log_launch_banner(process_name, subtitle, *, component):
+    afternight.log_info(
+        "\n".join([
+            "",
+            "##############################################",
+            f"# Cosmic Clarity - {process_name}",
+            f"# {subtitle}",
+            "# Wrapped process author: Seti Astro",
+            "# AfterNight extension maintainer: Ezequiel Ruiz",
+            "# Upstream: https://github.com/setiastro/cosmicclarity",
+            "##############################################",
+        ]),
+        component=component,
+    )
+
+
 class _Workspace:
     def __init__(self, root=None):
         if root is None:
@@ -157,9 +173,23 @@ class _Workspace:
 class _CosmicClarityBase(ui.ProcessWindow):
     component = "extension.cosmic_clarity"
     window_size = (600, 400)
+    process_name = "Cosmic Clarity"
+    process_subtitle = "External astrophotography helper process"
     not_configured_text = (
         "Cosmic Clarity is not configured. Click Configure to select the installation folder."
     )
+
+    def on_process_launch(self):
+        _log_launch_banner(
+            self.process_name,
+            self.process_subtitle,
+            component=self.component,
+        )
+        afternight.log_info(
+            "Cosmic Clarity: helper executables run out-of-process from the "
+            "user-configured suite folder.",
+            component=self.component,
+        )
 
     def get_settings_params(self):
         return [
@@ -243,6 +273,10 @@ class _CosmicClarityBase(ui.ProcessWindow):
         tool_dir = pathlib.Path(raw_path)
         if not tool_dir.is_dir():
             raise RuntimeError(f"Configured CosmicClarity directory does not exist: {tool_dir}")
+        afternight.log_info(
+            f"Cosmic Clarity: using configured suite folder {tool_dir}.",
+            component=self.component,
+        )
         return tool_dir
 
     def _resolve_tool_executable(self, executable_name):
@@ -439,6 +473,10 @@ class _CosmicClarityBase(ui.ProcessWindow):
                         allow_auto_psf_retry=False,
                     )
                 raise RuntimeError(_process_failure_message(process.returncode, output_lines))
+            afternight.log_info(
+                f"CosmicClarity helper completed successfully: {pathlib.Path(executable).name}",
+                component=self.component,
+            )
         finally:
             if process.stdout is not None:
                 process.stdout.close()
@@ -449,6 +487,10 @@ class _CosmicClarityBase(ui.ProcessWindow):
 
         result = io.load(path)
         dst_image.copy_from(result)
+        afternight.log_info(
+            f"Cosmic Clarity: loaded result image from {path}.",
+            component=self.component,
+        )
 
     def _resolve_output_path(self, expected_path, input_path, output_suffix):
         if expected_path.exists():
@@ -472,6 +514,8 @@ class _CosmicClarityBase(ui.ProcessWindow):
 
 
 class CosmicClarityDenoiseExtension(_CosmicClarityBase):
+    process_name = "Denoise"
+    process_subtitle = "Seti Astro noise reduction helper"
     not_configured_text = (
         "Cosmic Clarity Denoise 6.5+ is required. Click Configure to select the "
         "Cosmic Clarity installation folder."
@@ -505,6 +549,12 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
                 output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Denoise...")
+        afternight.log_info(
+            f"Cosmic Clarity Denoise: strength={float(params.get('strength', 0.9)):.3f}, "
+            f"mode={params.get('denoise_mode', 'full')}, "
+            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            component=self.component,
+        )
 
         workspace = _Workspace(self._tool_dir())
         try:
@@ -536,6 +586,8 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
 
 
 class CosmicClarityDarkStarExtension(_CosmicClarityBase):
+    process_name = "Dark Star"
+    process_subtitle = "Seti Astro star separation helper"
     not_configured_text = (
         "Cosmic Clarity Dark Star is required. Click Configure to select the "
         "Cosmic Clarity installation folder."
@@ -580,6 +632,14 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
                 output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Dark Star...")
+        afternight.log_info(
+            f"Cosmic Clarity Dark Star: mode={params.get('star_removal_mode', 'additive')}, "
+            f"chunk_size={int(params.get('chunk_size', 256))}, "
+            f"pre_stretch={'enabled' if bool(params.get('pre_stretch_linear_image', False)) else 'disabled'}, "
+            f"stars_artifact={'enabled' if bool(params.get('show_extracted_stars', False)) else 'disabled'}, "
+            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            component=self.component,
+        )
 
         workspace = _Workspace(self._tool_dir())
         try:
@@ -618,7 +678,7 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
                     artifact_path = pathlib.Path(artifacts_dir) / stars_path.name
                     io.save(io.load(stars_path), artifact_path)
                     afternight.log_info(
-                        f"Saved extracted stars artifact to {artifact_path}",
+                        f"Cosmic Clarity Dark Star: saved extracted stars artifact to {artifact_path}",
                         component=self.component,
                     )
         finally:
@@ -627,6 +687,8 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
 
 class CosmicClaritySharpeningExtension(_CosmicClarityBase):
     window_size = (600, 400)
+    process_name = "Sharpening"
+    process_subtitle = "Seti Astro stellar and non-stellar sharpening helper"
     not_configured_text = (
         "Cosmic Clarity Sharpen 6.5+ is required. Click Configure to select the "
         "Cosmic Clarity installation folder."
@@ -691,6 +753,16 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
                 output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Sharpening...")
+        afternight.log_info(
+            f"Cosmic Clarity Sharpening: mode={params.get('sharpening_mode', 'both')}, "
+            f"non_stellar_strength={float(params.get('non_stellar_strength', 3.0)):.3f}, "
+            f"non_stellar_amount={float(params.get('non_stellar_amount', 0.5)):.3f}, "
+            f"stellar_amount={float(params.get('stellar_amount', 0.5)):.3f}, "
+            f"auto_psf={'enabled' if bool(params.get('auto_detect_psf', True)) else 'disabled'}, "
+            f"rgb_channels={'enabled' if bool(params.get('process_rgb_channels', False)) else 'disabled'}, "
+            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            component=self.component,
+        )
 
         workspace = _Workspace(self._tool_dir())
         try:
@@ -741,6 +813,8 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
 
 
 class CosmicClaritySuperResExtension(_CosmicClarityBase):
+    process_name = "Super Resolution"
+    process_subtitle = "Seti Astro upscaling helper"
     not_configured_text = (
         "Cosmic Clarity Super-Resolution 1.1+ is required. Click Configure to select "
         "the Cosmic Clarity installation folder."
@@ -766,11 +840,16 @@ class CosmicClaritySuperResExtension(_CosmicClarityBase):
                 output_masks=None):
         del target, masks, weights, output_masks, dst_image
         progress.set_text("Preparing Cosmic Clarity Super Resolution...")
+        scale = str(params.get("scale", "2"))
+        afternight.log_info(
+            f"Cosmic Clarity Super Resolution: scale={scale}x, "
+            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            component=self.component,
+        )
 
         workspace = _Workspace()
         try:
             input_path = workspace.input_dir / f"afternight_{uuid.uuid4().hex}.tiff"
-            scale = str(params.get("scale", "2"))
             output_path = workspace.output_dir / f"{input_path.stem}_upscaled{scale}x.fit"
             workspace.track(input_path, output_path)
             io.save(src_image, input_path)
@@ -808,6 +887,10 @@ class CosmicClaritySuperResExtension(_CosmicClarityBase):
                 )
                 progress.set_value(100.0)
                 progress.set_text("Cosmic Clarity Super Resolution complete")
+                afternight.log_info(
+                    f"Cosmic Clarity Super Resolution: committed {scale}x result from {resolved_output_path}.",
+                    component=self.component,
+                )
                 return
 
             raise RuntimeError(
