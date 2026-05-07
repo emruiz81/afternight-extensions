@@ -37,7 +37,7 @@
             {
               "name": "cosmic_clarity-1.0.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:4fc7e90c65442959bd3e332b0c732889c48efa9006d5dbfd7cbe7538873cb26d",
+              "package_hash": "sha256:257536653933044bab05c5b4ba78475c78205f3183d9d3bd3c3e267fc3f922b5",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -87,7 +87,7 @@
             {
               "name": "graxpert-1.0.1-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.1/graxpert-1.0.1-all.tar.zst",
-              "package_hash": "sha256:11234bf8c9136afd281ed234973487ffef341abc61eaf11b8c52824c095baa26",
+              "package_hash": "sha256:384b1c87700792b41a0e5cc849a78cec6ab0d21523d6b18fdbaa367963549cd5",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",

@@ -10,7 +10,7 @@ The original VeraLux Starting Point script is adapted as
 `package/STARTING_POINT.md`. It is a workflow guide rather than a process, and
 documents the recommended order for applying the suite inside AfterNight.
 
-The staged processes are:
+The suite registers these processes when published:
 
 - VeraLux Revela, which enhances post-stretch local contrast and texture
   through a modified ATWT frequency-separation core while preserving a

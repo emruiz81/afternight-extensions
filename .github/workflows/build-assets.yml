@@ -61,7 +61,7 @@ jobs:
           sha256sum dist/*.tar.zst
 
       - name: Generate candidate index for published packages
-        if: ${{ inputs.package == 'published' || inputs.package == 'cosmic_clarity' }}
+        if: ${{ inputs.package == 'published' }}
         run: |
           updated_at="$(python3 -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')"
           python3 tools/generate_index.py \

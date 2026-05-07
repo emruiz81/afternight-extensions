@@ -12,12 +12,10 @@ This directory stores source and packaging metadata only. Official release asset
 
 ## Runtime Targets
 
-Current staged targets:
+Supported targets:
 
 - `linux-clang-x86_64`
 - `windows-msvc-x86_64`
-
-The Windows MSYS2 target is not published until compatible wheel availability and runtime behavior are validated.
 
 ## Packaging
 

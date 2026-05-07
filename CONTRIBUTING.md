@@ -16,7 +16,7 @@ This repository is curated. Pull requests are reviewed for package behavior, sou
 8. Run `python3 tools/build_package.py packages/<extension_id>/package --output-dir dist`.
 9. Regenerate `index.json` with `tools/generate_index.py`.
 10. Run validation.
-11. Open a pull request with a short description, target platforms, dependencies, and license summary.
+11. Open a pull request with a short description, target platforms, dependency behavior, bundled artifacts, and license summary.
 
 ## Updating A Package
 
@@ -37,4 +37,16 @@ Every official package must have:
 - no secrets or local machine paths
 - no unreviewed network behavior during import or discovery
 
-Initial Phase 6 accepts only packages distributed from this official repository. Third-party repository support is future work.
+Packages remain source-staged with `"publish": false` until release assets,
+license/notice review, and validation are complete.
+
+## Licensing Expectations
+
+The repository-level license is documented in `LICENSE` and
+`docs/LICENSING.md`. Package-level terms live in each package's
+`extension.json`, package-local `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
+
+Derived works must keep upstream attribution and provenance visible. Dependency
+locks must distinguish between public package-index artifacts that the host
+downloads during install and any extension-specific artifacts that are bundled in
+the package asset.

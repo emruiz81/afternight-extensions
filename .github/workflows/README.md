@@ -1,6 +1,7 @@
 # Workflows
 
-`validate.yml` is the first Phase 6 repository gate. It:
+`validate.yml` is the repository gate for pull requests and pushes to `main`.
+It:
 
 - installs `zstd`
 - runs package-tool unit tests
@@ -9,12 +10,15 @@
 - verifies generated sidecar hashes against compressed assets
 - regenerates `index.json` and diffs it against the checked-in file
 
-Release publication workflows are still future work. They should reuse the same builder and generator instead of creating archives directly in workflow shell.
-
-`build-assets.yml` is a manual workflow for producing package assets before the repository is public. It can build:
+`build-assets.yml` is a manual workflow for producing package assets. It can
+build:
 
 - all currently published packages
 - Cosmic Clarity by itself
 - GraXpert's thin PyPI-backed asset without redistributing public wheels
 
-The workflow uploads `.tar.zst` files and sidecars as GitHub Actions artifacts. It does not create a GitHub Release.
+The workflow uploads `.tar.zst` files and sidecars as GitHub Actions artifacts.
+It does not create a GitHub Release or modify `index.json` on its own.
+
+Release publication should reuse the repository builder and index generator so
+that compressed asset hashes in `index.json` match the exact released files.

@@ -4,7 +4,10 @@ This repository is the official curated source for AfterNight Extension Manager 
 
 ## Scope
 
-Initial Phase 6 supports only the official `afternight-extensions` repository. User-configured third-party repositories, third-party trust prompts, and third-party badges are deferred to a later milestone.
+This repository contains the official package feed consumed by AfterNight's
+Extension Manager. Packages become installable through the official feed only
+after their source, release metadata, license files, dependency locks, generated
+assets, and index entries pass review.
 
 ## Index Policy
 
@@ -45,6 +48,9 @@ Reserved/future states:
 - `unknown` - should not be emitted by official repository CI
 
 ## License Policy
+
+Repository-level terms are summarized in `docs/LICENSING.md`; the GPL-3.0 text
+is available at the repository root in `LICENSE`.
 
 Each package must include license metadata in `extension.json` and a package-local `LICENSE` file.
 

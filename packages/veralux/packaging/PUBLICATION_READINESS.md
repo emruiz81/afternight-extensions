@@ -18,7 +18,7 @@ hash-verified release asset.
 - Automated quality checks: package-local tests cover process adapters,
   numerical regression metrics, and upstream quality parity for the ported
   VeraLux algorithms.
-- Host integration checks: the main AfterNight Phase 9 tests exercise VeraLux
+- Host integration checks: the main AfterNight host tests exercise VeraLux
   process discovery, native parameter schemas, runtime host execution, and
   large NumPy image round-trips.
 
@@ -42,14 +42,18 @@ intentional and documented in `package/QUALITY_VALIDATION.md` or release notes.
 
 ## Release Checklist
 
-1. Run package tests:
+1. Provision the VeraLux runtime dependency set for local testing. A clean Python
+   needs `numpy` from the host scientific runtime plus the packages declared in
+   `package/requirements.lock`.
+
+2. Run package tests:
 
    ```bash
    python3 -m unittest discover -s packages/veralux/tests
    python3 -m unittest tests/test_package_tools.py tests/test_veralux_upstream_tools.py
    ```
 
-2. Verify upstream provenance and quality parity with the local Siril scripts
+3. Verify upstream provenance and quality parity with the local Siril scripts
    checkout:
 
    ```bash
@@ -58,16 +62,16 @@ intentional and documented in `package/QUALITY_VALIDATION.md` or release notes.
      python3 -m unittest packages/veralux/tests/test_veralux_upstream_quality.py
    ```
 
-3. Build the deterministic release asset:
+4. Build the deterministic release asset:
 
    ```bash
    python3 tools/build_package.py packages/veralux/package --output-dir dist-veralux
    ```
 
-4. Publish the `.tar.zst` asset and sidecar metadata as release assets.
-5. Record the release asset URL in release metadata if needed.
-6. Remove `"publish": false` from `packages/veralux/repository.json`.
-7. Regenerate and review the repository index:
+5. Publish the `.tar.zst` asset and sidecar metadata as release assets.
+6. Record the release asset URL in release metadata if needed.
+7. Remove `"publish": false` from `packages/veralux/repository.json`.
+8. Regenerate and review the repository index:
 
    ```bash
    python3 tools/generate_index.py \

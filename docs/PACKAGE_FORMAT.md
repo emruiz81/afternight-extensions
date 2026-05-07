@@ -1,6 +1,6 @@
 # Package Format
 
-AfterNight Phase 6 packages are distributed as zstd-compressed tar archives (`.tar.zst`) referenced by the repository `index.json`.
+AfterNight extension packages are distributed as zstd-compressed tar archives (`.tar.zst`) referenced by the repository `index.json`.
 
 ## Archive Layout
 
