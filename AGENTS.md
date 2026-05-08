@@ -65,6 +65,14 @@ wheels in new extension packages.
   blockers
 - `packages/README.md` - package folder layout and repository-ready checklist
 
+## Copilot Review Customization
+
+GitHub Copilot code review on GitHub.com reads `.github/copilot-instructions.md`
+and `.github/instructions/*.instructions.md`, not this file. Keep those review
+instructions aligned with this guide and the canonical `docs/` references.
+When policy details conflict, treat `docs/` as canonical and update the review
+instruction files together with this guide.
+
 ## Package Rules
 
 Every repository-ready package must have:
