@@ -49,6 +49,7 @@ jobs:
     name: Publish GitHub Release for ${{ inputs.package_id }} ${{ inputs.version }}
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: signed-release
 
     steps:
       - name: Check out repository
