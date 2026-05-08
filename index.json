@@ -2,7 +2,7 @@
   "schema_version": 1,
   "repository": "afternight-extensions",
   "official": true,
-  "updated_at": "2026-05-07T03:24:38Z",
+  "updated_at": "2026-05-08T21:16:18Z",
   "extensions": [
     {
       "id": "cosmic_clarity",
@@ -37,13 +37,16 @@
             {
               "name": "cosmic_clarity-1.0.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:7a0aa0fb6330b29bb3f68c5420c0f2197a2d40020ec05cb0b2aea0cac09ce785",
-              "signature_state": "unsigned",
+              "package_hash": "sha256:15e2ba085481af0d364b650c53b29068b5f3f70256e79b7ee1ee00d1c8f63f07",
+              "signature_state": "verified",
               "runtime_targets": [
                 "linux-clang-x86_64",
                 "windows-msvc-x86_64"
               ],
-              "signature_detail": "Unsigned official package; SHA-256 verified from index"
+              "signature_detail": "Verified official AfterNight package signature (Ed25519 key afternight-official-ed25519-v1).",
+              "signature_algorithm": "ed25519",
+              "signature_key_id": "afternight-official-ed25519-v1",
+              "signature": "kDkkVC41CtR0eeghwWGOn3ODAd53wiXbk6H1hAeM+QATVuEFDEUuqrt8FI5X27egihYg3ITLi1gP25uXmn3ADw=="
             }
           ],
           "changelog": "Initial official repository release of the Cosmic Clarity adapter.",
