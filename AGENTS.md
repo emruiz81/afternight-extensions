@@ -176,9 +176,9 @@ For every release asset:
 
 - `package_hash` is mandatory and authoritative
 - hash the downloadable `.tar.zst` asset, not the intermediate uncompressed tar
-- official launch assets may use `signature_state: "unsigned"`
-- do not emit `signature_state: "verified"` until real signing and verification
-  exist
+- official migration assets may use `signature_state: "unsigned"`
+- emit `signature_state: "verified"` only from signed asset sidecars generated
+  by `tools/sign_repository_assets.py` and verified by the maintainer workflow
 - `signature_state: "failed"` blocks installation
 
 The generated index describes the current publishable release for each package.

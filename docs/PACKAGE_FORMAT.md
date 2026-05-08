@@ -148,7 +148,7 @@ Example:
       "published_at": "2026-04-27T00:00:00Z",
       "asset_base_url": "https://github.com/emruiz81/afternight-extensions/releases/download/example_extension-v1.0.0",
       "signature_state": "unsigned",
-      "signature_detail": "Official repository asset."
+      "signature_detail": "Unsigned official package; SHA-256 verified from index."
     }
   ]
 }
@@ -166,6 +166,41 @@ Set `"publish": false` in `repository.json` for source-staged packages that
 should validate locally but remain absent from generated indexes until their
 release assets are available. After release assets are uploaded, the maintainer
 publish workflow updates the client-facing `live` index.
+
+For non-draft maintainer publication, `tools/sign_repository_assets.py` signs
+the built asset sidecar and `tools/generate_index.py` emits verified asset
+metadata from that sidecar:
+
+```json
+{
+  "name": "example_extension-1.0.0-all.tar.zst",
+  "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/example_extension-v1.0.0/example_extension-1.0.0-all.tar.zst",
+  "package_hash": "sha256:...",
+  "signature_state": "verified",
+  "signature_detail": "Verified official AfterNight package signature (Ed25519 key afternight-official-ed25519-2026-05).",
+  "signature_algorithm": "ed25519",
+  "signature_key_id": "afternight-official-ed25519-2026-05",
+  "signature": "base64-ed25519-detached-signature",
+  "runtime_targets": ["linux-clang-x86_64", "windows-msvc-x86_64"]
+}
+```
+
+The detached Ed25519 signature covers this canonical UTF-8 payload:
+
+```text
+afternight-extension-asset-signature-v1
+package_id=<extension id>
+version=<release version>
+asset_name=<asset filename>
+package_hash=sha256:<lowercase hex>
+runtime_targets=<comma-joined sorted runtime targets>
+signature_algorithm=ed25519
+signature_key_id=<key id>
+```
+
+`package_hash` remains mandatory and is checked before extraction. Do not set
+`signature_state: "verified"` in `repository.json`; verified signatures are
+generated only by the signing tool from release sidecars.
 
 ## Dependency Metadata
 

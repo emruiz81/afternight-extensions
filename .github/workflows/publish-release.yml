@@ -67,6 +67,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends zstd
 
+      - name: Install Python signing dependencies
+        run: python3 -m pip install --require-hashes -r tools/signing/requirements.lock
+
       - name: Resolve release metadata and tag
         id: release
         run: |
@@ -89,11 +92,32 @@ jobs:
             --output /tmp/index.json
           diff -u index.json /tmp/index.json
 
+      - name: Sign release asset sidecars
+        if: ${{ inputs.draft == false }}
+        env:
+          PACKAGE_ID: ${{ inputs.package_id }}
+          VERSION: ${{ inputs.version }}
+          SIGNING_KEY_ID: ${{ vars.AFTERNIGHT_EXTENSION_SIGNING_KEY_ID }}
+          AFTERNIGHT_EXTENSION_SIGNING_KEY_ED25519_SEED_B64: ${{ secrets.AFTERNIGHT_EXTENSION_SIGNING_KEY_ED25519_SEED_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGNING_KEY_ID:-}" ]; then
+            echo "AFTERNIGHT_EXTENSION_SIGNING_KEY_ID repository variable is required for non-draft publication." >&2
+            exit 1
+          fi
+          python3 tools/sign_repository_assets.py \
+            --assets-dir dist \
+            --package-id "$PACKAGE_ID" \
+            --version "$VERSION" \
+            --key-id "$SIGNING_KEY_ID" \
+            --public-keys tools/signing/official_keys.json
+
       - name: Select release archive and metadata sidecar
         id: assets
         env:
           PACKAGE_ID: ${{ inputs.package_id }}
           VERSION: ${{ inputs.version }}
+          DRAFT_RELEASE: ${{ inputs.draft }}
         run: |
           python3 - <<'PY'
           import json
@@ -115,6 +139,11 @@ jobs:
                   raise SystemExit(f"Missing archive for {metadata_path}: {archive_path}")
               files.append(str(archive_path))
               files.append(str(metadata_path))
+              signature_path = pathlib.Path(str(archive_path) + ".sig")
+              if signature_path.is_file():
+                  files.append(str(signature_path))
+              elif os.environ.get("DRAFT_RELEASE") != "true":
+                  raise SystemExit(f"Missing signature sidecar for non-draft release asset: {signature_path}")
 
           if not files:
               raise SystemExit(f"No built assets found for {package_id} {version}")
@@ -240,6 +269,110 @@ jobs:
 
           for local_path in asset_files:
               existing = release_assets.get(local_path.name)
+              if existing is not None:
+                  delete_result = subprocess.run(
+                      [
+                          "gh",
+                          "api",
+                          "--method",
+                          "DELETE",
+                          f"repos/{repository}/releases/assets/{existing['id']}",
+                      ],
+                      check=False,
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,
+                      text=True,
+                  )
+                  if delete_result.returncode != 0:
+                      print(delete_result.stderr, file=sys.stderr)
+                      raise SystemExit(delete_result.returncode)
+
+              upload_url = (
+                  f"https://uploads.github.com/repos/{repository}/releases/"
+                  f"{release_id}/assets?name={urllib.parse.quote(local_path.name)}"
+              )
+              upload_result = subprocess.run(
+                  [
+                      "curl",
+                      "--fail",
+                      "--silent",
+                      "--show-error",
+                      "--location",
+                      "--request",
+                      "POST",
+                      "--header",
+                      f"Authorization: Bearer {os.environ['GH_TOKEN']}",
+                      "--header",
+                      "X-GitHub-Api-Version: 2022-11-28",
+                      "--header",
+                      "Content-Type: application/octet-stream",
+                      "--data-binary",
+                      f"@{local_path}",
+                      upload_url,
+                  ],
+                  check=False,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+                  text=True,
+              )
+              if upload_result.returncode != 0:
+                  print(upload_result.stderr, file=sys.stderr)
+                  raise SystemExit(upload_result.returncode)
+          PY
+
+      - name: Refresh signed metadata sidecars on existing GitHub Release
+        if: steps.existing.outputs.exists == 'true' && inputs.replace_existing_assets == false && inputs.draft == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.existing.outputs.release_id }}
+          ASSET_FILES: ${{ steps.assets.outputs.asset_files }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          import urllib.parse
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          release_id = os.environ["RELEASE_ID"]
+          asset_files = [
+              pathlib.Path(line)
+              for line in os.environ["ASSET_FILES"].splitlines()
+              if line.strip()
+          ]
+
+          assets_result = subprocess.run(
+              [
+                  "gh",
+                  "api",
+                  f"repos/{repository}/releases/{release_id}/assets?per_page=100",
+              ],
+              check=False,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+              text=True,
+          )
+          if assets_result.returncode != 0:
+              print(assets_result.stderr, file=sys.stderr)
+              raise SystemExit(assets_result.returncode)
+          release_assets = {
+              asset.get("name"): asset
+              for asset in json.loads(assets_result.stdout)
+              if isinstance(asset, dict)
+          }
+
+          for local_path in asset_files:
+              existing = release_assets.get(local_path.name)
+              if local_path.name.endswith(".tar.zst"):
+                  if existing is None:
+                      raise SystemExit(
+                          f"{local_path.name}: existing release is missing the archive; "
+                          "re-run with replace_existing_assets=true only if it is safe to upload archives"
+                      )
+                  continue
+
               if existing is not None:
                   delete_result = subprocess.run(
                       [
@@ -467,6 +600,42 @@ jobs:
               --package-id "$PACKAGE_ID" \
               --output /tmp/live-index.json
           fi
+
+      - name: Verify selected live index entry is signed
+        if: ${{ inputs.draft == false }}
+        env:
+          PACKAGE_ID: ${{ inputs.package_id }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          package_id = os.environ["PACKAGE_ID"]
+          index = json.loads(pathlib.Path("/tmp/live-index.json").read_text(encoding="utf-8"))
+          package = next(
+              (item for item in index.get("extensions", []) if item.get("id") == package_id),
+              None,
+          )
+          if package is None:
+              raise SystemExit(f"live index does not contain selected package {package_id}")
+          latest_version = package.get("latest_version")
+          release = next(
+              (item for item in package.get("releases", []) if item.get("version") == latest_version),
+              None,
+          )
+          if release is None:
+              raise SystemExit(f"live index selected package {package_id} has no latest release {latest_version}")
+          failures = []
+          for asset in release.get("assets", []):
+              if asset.get("signature_state") != "verified":
+                  failures.append(f"{asset.get('name', '<unknown>')}: signature_state is not verified")
+              for key in ("signature_algorithm", "signature_key_id", "signature"):
+                  if not asset.get(key):
+                      failures.append(f"{asset.get('name', '<unknown>')}: missing {key}")
+          if failures:
+              raise SystemExit("\n".join(failures))
+          PY
 
       - name: Verify live index download URLs
         if: ${{ inputs.draft == false }}

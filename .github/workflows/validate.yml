@@ -25,6 +25,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends zstd
 
+      - name: Install Python signing dependencies
+        run: python3 -m pip install --require-hashes -r tools/signing/requirements.lock
+
       - name: Run tool tests
         run: python3 -m unittest discover -s tests
 

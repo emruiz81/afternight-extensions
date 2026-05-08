@@ -109,8 +109,10 @@ The `asset_base_url` should point to the expected GitHub Release download URL:
 https://github.com/emruiz81/afternight-extensions/releases/download/<extension_id>-v<version>
 ```
 
-Official packages remain `signature_state: "unsigned"` until a real signing
-pipeline exists. Do not use `verified` for unsigned packages.
+Keep `repository.json` entries `unsigned` unless a package is intentionally
+staged out of publication. Non-draft maintainer publication signs the generated
+asset sidecars and promotes the live index entry to `signature_state:
+"verified"` only when the signing key secret and committed public key match.
 
 The generated client index is latest-source metadata, not a historical archive
 catalog. For an existing package update, bump `extension.json.version`, set
@@ -165,6 +167,7 @@ Pull requests and pushes to `main` run `.github/workflows/validate.yml`.
 The validation workflow:
 
 - installs Python and `zstd`
+- installs pinned Python signing dependencies
 - runs repository tooling tests
 - builds all currently published package assets
 - regenerates `index.json` and diffs it against the checked-in file
@@ -228,13 +231,20 @@ The publish workflow:
 - builds all published package assets from `main`
 - regenerates the candidate `index.json` and requires it to match the checked-in
   file
+- for non-draft publication, signs the selected package asset sidecars with the
+  Ed25519 seed in `AFTERNIGHT_EXTENSION_SIGNING_KEY_ED25519_SEED_B64`; the
+  derived public key must match `tools/signing/official_keys.json` for
+  `AFTERNIGHT_EXTENSION_SIGNING_KEY_ID`
 - selects the `.tar.zst` asset and metadata sidecar for the requested package
   and version
 - creates or updates the GitHub Release
-- uploads the asset and `.metadata.json` sidecar
+- uploads the asset, `.metadata.json` sidecar, and generated `.sig` audit
+  sidecar
 - when the release already exists, reuses it only if every selected release
   asset byte-matches the local build, unless `replace_existing_assets` is
   explicitly enabled
+- when the release already exists and archive bytes match, may refresh only the
+  signed metadata sidecar and `.sig` without replacing the `.tar.zst`
 - promotes a previously drafted release when the workflow is re-run with
   `draft` disabled and the existing uploaded assets still match the build
 - regenerates the repository index candidate
@@ -242,14 +252,30 @@ The publish workflow:
   live index containing only the selected package when the `live` branch does
   not exist yet
 - verifies every asset `download_url` in the live index is reachable
+- verifies the selected live package's latest assets are signed before
+  publishing `live`
 - pushes `index.json` to the `live` branch for clients to consume
 
-If the release already exists and its assets already match the rebuilt package,
-the workflow continues without re-uploading them. If any existing asset differs
-or is missing, the workflow fails unless `replace_existing_assets` is enabled.
-Use replacement only before a release has been announced or consumed. Once users
-may have installed a public asset, publish a new version instead of replacing
-it.
+If the release already exists and its archive assets already match the rebuilt
+package, the workflow may refresh generated signature sidecars without
+re-uploading archives. If any existing archive differs or is missing, the
+workflow fails unless `replace_existing_assets` is enabled. Use archive
+replacement only before a release has been announced or consumed. Once users may
+have installed a public asset, publish a new version instead of replacing it.
+
+Before the first verified release, perform a key ceremony:
+
+1. Run `python3 tools/generate_signing_key.py --key-id <official-key-id>`.
+2. Store the printed seed only in the GitHub secret
+   `AFTERNIGHT_EXTENSION_SIGNING_KEY_ED25519_SEED_B64`.
+3. Commit the public key entry to `tools/signing/official_keys.json`.
+4. Add the same public key id and public key to the AfterNight app verifier and
+   release an app build containing that trusted key.
+5. Set repository variable `AFTERNIGHT_EXTENSION_SIGNING_KEY_ID` to the
+   committed key id.
+
+Rotate keys by adding a new public key id to both repositories, publishing an
+app build that trusts it, then switching the GitHub variable to the new id.
 
 Draft releases do not update the `live` branch. This prevents the Extension
 Manager from seeing release metadata whose GitHub assets are not publicly

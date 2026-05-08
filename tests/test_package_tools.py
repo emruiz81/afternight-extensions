@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Ezequiel Ruiz
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,13 @@ from afternight_repo.package_tools import (  # noqa: E402
     load_valid_manifest,
     read_json,
     sha256_file,
+)
+from afternight_repo.signing import (  # noqa: E402
+    SIGNATURE_ALGORITHM,
+    canonical_asset_signature_payload,
+    signed_metadata,
+    signing_payload_for_metadata,
+    verify_payload_signature,
 )
 from release_metadata import (  # noqa: E402
     list_available_release_metadata,
@@ -66,6 +74,105 @@ def create_policy_package(root, *, license_id="MIT", sdk_backend="protocol", sou
     )
     (package_dir / "LICENSE").write_text(license_id + "\n", encoding="utf-8")
     return package_dir
+
+
+TEST_SIGNING_KEY_ID = "afternight-test-ed25519-v1"
+TEST_SIGNING_SEED_B64 = "nWGxne/9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A="
+TEST_SIGNING_PUBLIC_KEY_B64 = "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="
+
+
+class SigningToolTests(unittest.TestCase):
+    def test_canonical_payload_is_stable_and_sorts_runtime_targets(self):
+        payload = canonical_asset_signature_payload(
+            package_id="example_ext",
+            version="1.0.0",
+            asset_name="example_ext-1.0.0-all.tar.zst",
+            package_hash="SHA256:" + ("A" * 64),
+            runtime_targets=["windows-msvc-x86_64", "linux-clang-x86_64"],
+            signature_key_id=TEST_SIGNING_KEY_ID,
+        )
+
+        self.assertEqual(
+            payload.decode("utf-8"),
+            "\n".join(
+                (
+                    "afternight-extension-asset-signature-v1",
+                    "package_id=example_ext",
+                    "version=1.0.0",
+                    "asset_name=example_ext-1.0.0-all.tar.zst",
+                    "package_hash=sha256:" + ("a" * 64),
+                    "runtime_targets=linux-clang-x86_64,windows-msvc-x86_64",
+                    "signature_algorithm=ed25519",
+                    f"signature_key_id={TEST_SIGNING_KEY_ID}",
+                )
+            ),
+        )
+
+    def test_canonical_payload_rejects_newline_fields(self):
+        with self.assertRaisesRegex(RuntimeError, "must not contain newlines"):
+            canonical_asset_signature_payload(
+                package_id="example_ext\nbad",
+                version="1.0.0",
+                asset_name="example_ext-1.0.0-all.tar.zst",
+                package_hash="sha256:" + ("a" * 64),
+                runtime_targets=["linux-clang-x86_64"],
+                signature_key_id=TEST_SIGNING_KEY_ID,
+            )
+
+    def test_sign_repository_assets_updates_metadata_and_emits_signature_sidecar(self):
+        if shutil.which("zstd") is None:
+            self.skipTest("zstd CLI is required for package builder tests")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = PackageToolTests().create_package(root)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+            keys_path = root / "public_keys.json"
+            write_json(
+                keys_path,
+                {
+                    "keys": [
+                        {
+                            "key_id": TEST_SIGNING_KEY_ID,
+                            "algorithm": "ed25519",
+                            "public_key_base64": TEST_SIGNING_PUBLIC_KEY_B64,
+                        }
+                    ]
+                },
+            )
+
+            env = os.environ.copy()
+            env["AFTERNIGHT_EXTENSION_SIGNING_KEY_ED25519_SEED_B64"] = TEST_SIGNING_SEED_B64
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "tools" / "sign_repository_assets.py"),
+                    "--assets-dir",
+                    str(root / "dist"),
+                    "--package-id",
+                    "example_ext",
+                    "--version",
+                    "1.0.0",
+                    "--key-id",
+                    TEST_SIGNING_KEY_ID,
+                    "--public-keys",
+                    str(keys_path),
+                ],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            signed = read_json(root / "dist" / f"{asset['name']}.metadata.json")
+            self.assertEqual(signed["signature_state"], "verified")
+            self.assertEqual(signed["signature_algorithm"], SIGNATURE_ALGORITHM)
+            self.assertEqual(signed["signature_key_id"], TEST_SIGNING_KEY_ID)
+            self.assertTrue((root / "dist" / f"{asset['name']}.sig").is_file())
+            payload = signing_payload_for_metadata(signed, TEST_SIGNING_KEY_ID)
+            self.assertTrue(verify_payload_signature(payload, TEST_SIGNING_PUBLIC_KEY_B64, signed["signature"]))
 
 
 class ManifestHostModePolicyTests(unittest.TestCase):
@@ -449,6 +556,87 @@ class PackageToolTests(unittest.TestCase):
                 "https://example.invalid/releases/" + asset["name"],
             )
 
+    def test_generate_index_uses_signed_asset_sidecar_signature_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+            metadata_path = root / "dist" / f"{asset['name']}.metadata.json"
+            metadata = read_json(metadata_path)
+            metadata = signed_metadata(
+                metadata,
+                signature_key_id=TEST_SIGNING_KEY_ID,
+                seed_base64=TEST_SIGNING_SEED_B64,
+                public_key_base64=TEST_SIGNING_PUBLIC_KEY_B64,
+            )
+            write_json(metadata_path, metadata)
+
+            index = generate_index(
+                packages_root=root / "packages",
+                assets_dir=root / "dist",
+                repository="afternight-extensions",
+                updated_at="2026-04-27T00:00:00Z",
+                base_url="https://example.invalid/releases",
+            )
+
+            signed_asset = index["extensions"][0]["releases"][0]["assets"][0]
+            self.assertEqual(signed_asset["signature_state"], "verified")
+            self.assertEqual(signed_asset["signature_algorithm"], SIGNATURE_ALGORITHM)
+            self.assertEqual(signed_asset["signature_key_id"], TEST_SIGNING_KEY_ID)
+            self.assertEqual(signed_asset["signature"], metadata["signature"])
+            self.assertIn("Verified official AfterNight", signed_asset["signature_detail"])
+
+    def test_generate_index_rejects_verified_release_metadata_without_signed_sidecar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            build_package(package_dir, root / "dist", compression_level=3)
+            repository_metadata = read_json(package_dir.parent / "repository.json")
+            repository_metadata["releases"][0]["signature_state"] = "verified"
+            write_json(package_dir.parent / "repository.json", repository_metadata)
+
+            with self.assertRaisesRegex(PackageToolError, "must not declare signature_state verified"):
+                generate_index(
+                    packages_root=root / "packages",
+                    assets_dir=root / "dist",
+                    repository="afternight-extensions",
+                    updated_at="2026-04-27T00:00:00Z",
+                )
+
+    def test_generate_index_rejects_malformed_signature_sidecars(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_dir = self.create_package(root)
+            asset = build_package(package_dir, root / "dist", compression_level=3)
+            metadata_path = root / "dist" / f"{asset['name']}.metadata.json"
+            metadata = read_json(metadata_path)
+            metadata["signature_state"] = "unsigned"
+            metadata["signature"] = "not allowed"
+            write_json(metadata_path, metadata)
+
+            with self.assertRaisesRegex(PackageToolError, "must not declare generated signature field signature"):
+                generate_index(
+                    packages_root=root / "packages",
+                    assets_dir=root / "dist",
+                    repository="afternight-extensions",
+                    updated_at="2026-04-27T00:00:00Z",
+                )
+
+            metadata.pop("signature")
+            metadata["signature_state"] = "verified"
+            metadata["signature_algorithm"] = SIGNATURE_ALGORITHM
+            metadata["signature_key_id"] = TEST_SIGNING_KEY_ID
+            metadata["signature_detail"] = "verified fixture"
+            write_json(metadata_path, metadata)
+
+            with self.assertRaisesRegex(PackageToolError, "verified assets must declare signature"):
+                generate_index(
+                    packages_root=root / "packages",
+                    assets_dir=root / "dist",
+                    repository="afternight-extensions",
+                    updated_at="2026-04-27T00:00:00Z",
+                )
+
     def test_generate_index_allows_release_specific_asset_base_url(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -614,33 +802,48 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertIn("LIVE_INDEX_PATH: index.json", workflow)
         self.assertIn("--expected-github-repository", workflow)
         self.assertIn("releases?per_page=100", workflow)
+        self.assertIn("Install Python signing dependencies", workflow)
+        self.assertIn("Sign release asset sidecars", workflow)
+        self.assertIn("tools/sign_repository_assets.py", workflow)
+        self.assertIn("AFTERNIGHT_EXTENSION_SIGNING_KEY_ED25519_SEED_B64", workflow)
+        self.assertIn("tools/signing/official_keys.json", workflow)
         self.assertIn("Verify selected GitHub Release assets match local files", workflow)
+        self.assertIn("Refresh signed metadata sidecars on existing GitHub Release", workflow)
         self.assertIn("Update existing GitHub Release metadata and visibility", workflow)
         self.assertIn("target_draft", workflow)
         self.assertIn("gh api --method PATCH", workflow)
         self.assertIn("Generate repository index candidate", workflow)
         self.assertIn("Build live index update", workflow)
         self.assertIn("tools/update_live_index.py", workflow)
+        self.assertIn("Verify selected live index entry is signed", workflow)
         self.assertIn("Verify live index download URLs", workflow)
         self.assertIn("Publish live repository index", workflow)
         self.assertIn("git -C \"$worktree\" rm -r -f --ignore-unmatch .", workflow)
         self.assertIn("if: ${{ inputs.draft == false }}", workflow)
 
+        sign_index = workflow.index("Sign release asset sidecars")
+        select_index = workflow.index("Select release archive and metadata sidecar")
         upload_index = workflow.index("Create GitHub Release and upload assets")
         replace_index = workflow.index("Replace GitHub Release assets in place")
+        refresh_signature_index = workflow.index("Refresh signed metadata sidecars on existing GitHub Release")
         asset_verify_index = workflow.index("Verify selected GitHub Release assets match local files")
         release_update_index = workflow.index("Update existing GitHub Release metadata and visibility")
         live_candidate_index = workflow.index("Generate repository index candidate")
         live_update_index = workflow.index("Build live index update")
+        live_signed_index = workflow.index("Verify selected live index entry is signed")
         live_verify_index = workflow.index("Verify live index download URLs")
         live_publish_index = workflow.index("Publish live repository index")
 
+        self.assertLess(sign_index, select_index)
+        self.assertLess(select_index, upload_index)
         self.assertLess(upload_index, asset_verify_index)
         self.assertLess(replace_index, asset_verify_index)
+        self.assertLess(refresh_signature_index, asset_verify_index)
         self.assertLess(asset_verify_index, release_update_index)
         self.assertLess(release_update_index, live_candidate_index)
         self.assertLess(live_candidate_index, live_update_index)
-        self.assertLess(live_update_index, live_verify_index)
+        self.assertLess(live_update_index, live_signed_index)
+        self.assertLess(live_signed_index, live_verify_index)
         self.assertLess(live_verify_index, live_publish_index)
 
     def test_cosmic_clarity_processes_have_specific_categories(self):
