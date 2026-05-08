@@ -67,6 +67,33 @@ class GraXpertLoggingTests(unittest.TestCase):
                 self.assertIn(detail, meta["header_description"])
                 self.assertIn("shared GraXpert environment", meta["header_description"])
 
+    def test_gpu_override_is_not_exposed_for_background_extraction(self):
+        process_params = {
+            extension_class.__name__: {param.get("id") for param in extension_class(None).get_params()}
+            for extension_class in (
+                GraXpertBackgroundExtension,
+                GraXpertDenoiseExtension,
+                GraXpertDeconvolutionExtension,
+            )
+        }
+
+        self.assertNotIn("gpu_enabled", process_params["GraXpertBackgroundExtension"])
+        self.assertIn("gpu_enabled", process_params["GraXpertDenoiseExtension"])
+        self.assertIn("gpu_enabled", process_params["GraXpertDeconvolutionExtension"])
+
+        settings_params = {
+            extension_class.__name__: {param.get("id") for param in extension_class(None).get_settings_params()}
+            for extension_class in (
+                GraXpertBackgroundExtension,
+                GraXpertDenoiseExtension,
+                GraXpertDeconvolutionExtension,
+            )
+        }
+
+        self.assertNotIn("gpu_enabled", settings_params["GraXpertBackgroundExtension"])
+        self.assertIn("gpu_enabled", settings_params["GraXpertDenoiseExtension"])
+        self.assertIn("gpu_enabled", settings_params["GraXpertDeconvolutionExtension"])
+
 
 if __name__ == "__main__":
     unittest.main()

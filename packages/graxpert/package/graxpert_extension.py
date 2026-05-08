@@ -505,9 +505,9 @@ class _GraXpertBase(ui.ProcessWindow):
         )
         return [meta]
 
-    def _inference_params(self):
+    def _inference_params(self, include_gpu=True):
         selected_version = self._stored_ai_version()
-        return [
+        params = [
             {"id": "inference", "type": "section", "label": "Inference"},
             {
                 "id": "ai_version",
@@ -517,14 +517,16 @@ class _GraXpertBase(ui.ProcessWindow):
                 "tooltip": "Override the saved GraXpert model version for this run. Use 'latest' to resolve the newest available model.",
                 "options": self._ai_version_options(self._inference_model_dir_keys(), selected_version),
             },
-            {
+        ]
+        if include_gpu:
+            params.append({
                 "id": "gpu_enabled",
                 "type": "bool",
                 "label": "GPU Acceleration",
                 "default": bool(self.settings.get("gpu_enabled", True)),
                 "tooltip": "Override the saved GPU acceleration preference for this run.",
-            },
-        ]
+            })
+        return params
 
     def _import_graxpert(self):
         try:
@@ -826,6 +828,11 @@ class GraXpertBackgroundExtension(_GraXpertBase):
     def _version_setting_key(self):
         return "background_ai_version"
 
+    def get_settings_params(self):
+        # Background extraction is pinned to CPU for now (see execute), so hide
+        # the shared GPU setting here while denoise/deconvolution keep it.
+        return [param for param in super().get_settings_params() if param.get("id") != "gpu_enabled"]
+
     def get_params(self):
         return self._meta_params() + [
             {"id": "general", "type": "section", "label": "Background Extraction"},
@@ -855,7 +862,7 @@ class GraXpertBackgroundExtension(_GraXpertBase):
                 "default": False,
                 "tooltip": "Save the generated background model artifact and open it in the main UI.",
             },
-        ] + self._inference_params()
+        ] + self._inference_params(include_gpu=False)
 
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
                 output_masks=None):
@@ -869,7 +876,12 @@ class GraXpertBackgroundExtension(_GraXpertBase):
             params,
         )
         progress_adapter = _ProgressAdapter(progress)
-        gpu_enabled = self._gpu_enabled(params)
+        # GPU acceleration is intentionally commented out for background extraction:
+        # the current GraXpert background model path can produce incorrect results
+        # when the ONNX GPU provider is enabled. Denoise and deconvolution still
+        # use the shared per-run GPU option through self._gpu_enabled(params).
+        # gpu_enabled = self._gpu_enabled(params)
+        gpu_enabled = False
         correction_mode = str(params.get("correction_mode", "Subtraction"))
         smoothing = float(params.get("smoothing", 0.0))
         afternight.log_info(
