@@ -88,12 +88,15 @@
               "name": "graxpert-1.0.1-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.1/graxpert-1.0.1-all.tar.zst",
               "package_hash": "sha256:81a4cd10aa465f7f8c063743c1a0f9d3d1a86e9c1b0185c64147e24d7bea79e5",
-              "signature_state": "unsigned",
+              "signature_state": "verified",
               "runtime_targets": [
                 "linux-clang-x86_64",
                 "windows-msvc-x86_64"
               ],
-              "signature_detail": "Unsigned official package; SHA-256 verified from index"
+              "signature_detail": "Verified official AfterNight package signature (Ed25519 key afternight-official-ed25519-v1).",
+              "signature_algorithm": "ed25519",
+              "signature_key_id": "afternight-official-ed25519-v1",
+              "signature": "tZ7igZSFDcPSn+v0sPYhv4KtY7MEO+nPcrI+QWYfy+jUHZrqTIutNTaghrdE7p5w1J/NXlVLSpluoWB277vBAg=="
             }
           ],
           "changelog": "Switch GraXpert to a thin PyPI-backed package. Official PyPI wheels are hash-locked and downloaded by the host during install instead of being redistributed as release-asset payload.",
