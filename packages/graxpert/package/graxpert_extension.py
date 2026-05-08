@@ -35,16 +35,18 @@ def _run_callable_directly(fn):
 
 def _log_launch_banner(process_name, subtitle, *, component):
     afternight.log_info(
-        "\n".join([
-            "",
-            "##############################################",
-            f"# GraXpert AI - {process_name}",
-            f"# {subtitle}",
-            "# Wrapped process authors: GraXpert Development Team",
-            "# AfterNight extension maintainer: Ezequiel Ruiz",
-            "# Upstream: https://github.com/Steffenhir/GraXpert",
-            "##############################################",
-        ]),
+        "\n".join(
+            [
+                "",
+                "##############################################",
+                f"# GraXpert AI - {process_name}",
+                f"# {subtitle}",
+                "# Wrapped process authors: GraXpert Development Team",
+                "# AfterNight extension maintainer: Ezequiel Ruiz",
+                "# Upstream: https://github.com/Steffenhir/GraXpert",
+                "##############################################",
+            ]
+        ),
         component=component,
     )
 
@@ -204,10 +206,7 @@ class _GraXpertBase(ui.ProcessWindow):
                 except InvalidVersion:
                     return (1, version)
 
-            return [
-                version
-                for version in sorted(versions, key=sort_key, reverse=True)
-            ]
+            return [version for version in sorted(versions, key=sort_key, reverse=True)]
         except Exception:
             return sorted(versions, reverse=True)
 
@@ -343,9 +342,7 @@ class _GraXpertBase(ui.ProcessWindow):
             try:
                 bucket_versions = set()
                 for remote_object in client.list_objects(bucket_name):
-                    version = self._remote_model_version_from_object_name(
-                        getattr(remote_object, "object_name", "")
-                    )
+                    version = self._remote_model_version_from_object_name(getattr(remote_object, "object_name", ""))
                     if version is None:
                         try:
                             tags = client.get_object_tags(bucket_name, remote_object.object_name)
@@ -377,9 +374,7 @@ class _GraXpertBase(ui.ProcessWindow):
 
         local_versions = tuple(self._collect_local_model_versions(None, model_dir_keys))
         remote_versions = tuple(self._collect_remote_model_versions(None, model_dir_keys))
-        all_versions = tuple(
-            self._sorted_model_versions(set(local_versions).union(remote_versions))
-        )
+        all_versions = tuple(self._sorted_model_versions(set(local_versions).union(remote_versions)))
         inventory = {
             "local": local_versions,
             "remote": remote_versions,
@@ -404,10 +399,12 @@ class _GraXpertBase(ui.ProcessWindow):
 
         for version in versions:
             if version != "latest":
-                options.append([
-                    self._model_version_option_label(version, version in installed_versions),
-                    version,
-                ])
+                options.append(
+                    [
+                        self._model_version_option_label(version, version in installed_versions),
+                        version,
+                    ]
+                )
 
         current_value = str(current_version or "latest")
         if current_value != "latest" and all(value != current_value for _, value in options):
@@ -461,10 +458,12 @@ class _GraXpertBase(ui.ProcessWindow):
                 "default": "latest",
                 "group": "Inference",
                 "tooltip": "Default model version for GraXpert deconvolution.",
-                "options": self._ai_version_options([
-                    "deconvolution_object_ai_models_dir",
-                    "deconvolution_stars_ai_models_dir",
-                ]),
+                "options": self._ai_version_options(
+                    [
+                        "deconvolution_object_ai_models_dir",
+                        "deconvolution_stars_ai_models_dir",
+                    ]
+                ),
             },
         ]
 
@@ -519,13 +518,15 @@ class _GraXpertBase(ui.ProcessWindow):
             },
         ]
         if include_gpu:
-            params.append({
-                "id": "gpu_enabled",
-                "type": "bool",
-                "label": "GPU Acceleration",
-                "default": bool(self.settings.get("gpu_enabled", True)),
-                "tooltip": "Override the saved GPU acceleration preference for this run.",
-            })
+            params.append(
+                {
+                    "id": "gpu_enabled",
+                    "type": "bool",
+                    "label": "GPU Acceleration",
+                    "default": bool(self.settings.get("gpu_enabled", True)),
+                    "tooltip": "Override the saved GPU acceleration preference for this run.",
+                }
+            )
         return params
 
     def _import_graxpert(self):
@@ -568,12 +569,7 @@ class _GraXpertBase(ui.ProcessWindow):
         except Exception:
             return
 
-    def _download_model_version(self,
-                                imported,
-                                model_dir,
-                                bucket_name,
-                                target_version,
-                                progress):
+    def _download_model_version(self, imported, model_dir, bucket_name, target_version, progress):
         try:
             from minio import Minio
         except Exception as exc:
@@ -596,9 +592,7 @@ class _GraXpertBase(ui.ProcessWindow):
         remote_bucket = str(remote_version.get("bucket") or bucket_name)
         remote_object = str(remote_version.get("object") or "")
         if not remote_object:
-            raise RuntimeError(
-                f"GraXpert remote model metadata for '{target_version}' is missing an object name."
-            )
+            raise RuntimeError(f"GraXpert remote model metadata for '{target_version}' is missing an object name.")
 
         endpoint = getattr(imported["s3_secrets"], "endpoint", None)
         access_key = getattr(imported["s3_secrets"], "ro_access_key", None)
@@ -648,9 +642,7 @@ class _GraXpertBase(ui.ProcessWindow):
                 archive.extractall(model_dir_path)
 
             if not model_path.exists():
-                raise RuntimeError(
-                    f"Could not find GraXpert model payload after extracting {model_zip_path}."
-                )
+                raise RuntimeError(f"Could not find GraXpert model payload after extracting {model_zip_path}.")
         except Exception:
             shutil.rmtree(model_dir_path, ignore_errors=True)
             raise
@@ -681,10 +673,7 @@ class _GraXpertBase(ui.ProcessWindow):
         imported = self._import_graxpert()
         model_dir = imported[model_dir_key]
         bucket_name = getattr(imported["s3_secrets"], bucket_name_attr)
-        requested_version = str(
-            (params or {}).get("ai_version", self._stored_ai_version())
-            or "latest"
-        )
+        requested_version = str((params or {}).get("ai_version", self._stored_ai_version()) or "latest")
         target_version = requested_version
         if requested_version == "latest":
             target_version = imported["latest_version"](model_dir, bucket_name)
@@ -721,9 +710,7 @@ class _GraXpertBase(ui.ProcessWindow):
         if array.ndim == 2:
             return np.expand_dims(array, axis=-1)
         if array.ndim != 3 or array.shape[2] not in (1, 3):
-            raise RuntimeError(
-                f"GraXpert expects mono or RGB images, got array shape {array.shape}."
-            )
+            raise RuntimeError(f"GraXpert expects mono or RGB images, got array shape {array.shape}.")
         return array
 
     def _batch_size(self, params):
@@ -817,10 +804,7 @@ class _GraXpertBase(ui.ProcessWindow):
 class GraXpertBackgroundExtension(_GraXpertBase):
     process_name = "Background Extraction"
     process_subtitle = "AI background model generation and correction"
-    process_header_detail = (
-        "Generate and apply an AI background model, with optional background-model "
-        "artifact output."
-    )
+    process_header_detail = "Generate and apply an AI background model, with optional background-model artifact output."
 
     def _inference_model_dir_keys(self):
         return ["bge_ai_models_dir"]
@@ -834,38 +818,41 @@ class GraXpertBackgroundExtension(_GraXpertBase):
         return [param for param in super().get_settings_params() if param.get("id") != "gpu_enabled"]
 
     def get_params(self):
-        return self._meta_params() + [
-            {"id": "general", "type": "section", "label": "Background Extraction"},
-            {
-                "id": "correction_mode",
-                "type": "choice",
-                "label": "Correction Mode",
-                "default": "Subtraction",
-                "options": [
-                    ["Subtraction", "Subtraction"],
-                    ["Division", "Division"],
-                ],
-            },
-            {
-                "id": "smoothing",
-                "type": "float",
-                "label": "Smoothing",
-                "default": 0.0,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.05,
-            },
-            {
-                "id": "output_background_model",
-                "type": "bool",
-                "label": "Generate Background Model Image",
-                "default": False,
-                "tooltip": "Save the generated background model artifact and open it in the main UI.",
-            },
-        ] + self._inference_params(include_gpu=False)
+        return (
+            self._meta_params()
+            + [
+                {"id": "general", "type": "section", "label": "Background Extraction"},
+                {
+                    "id": "correction_mode",
+                    "type": "choice",
+                    "label": "Correction Mode",
+                    "default": "Subtraction",
+                    "options": [
+                        ["Subtraction", "Subtraction"],
+                        ["Division", "Division"],
+                    ],
+                },
+                {
+                    "id": "smoothing",
+                    "type": "float",
+                    "label": "Smoothing",
+                    "default": 0.0,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05,
+                },
+                {
+                    "id": "output_background_model",
+                    "type": "bool",
+                    "label": "Generate Background Model Image",
+                    "default": False,
+                    "tooltip": "Save the generated background model artifact and open it in the main UI.",
+                },
+            ]
+            + self._inference_params(include_gpu=False)
+        )
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del masks, weights, output_masks
         progress.set_text("Running GraXpert AI Background Extraction...")
 
@@ -948,10 +935,7 @@ class GraXpertBackgroundExtension(_GraXpertBase):
 class GraXpertDenoiseExtension(_GraXpertBase):
     process_name = "Denoise"
     process_subtitle = "AI noise reduction"
-    process_header_detail = (
-        "Apply GraXpert's denoise model with strength, batch-size, GPU, and model "
-        "version controls."
-    )
+    process_header_detail = "Apply GraXpert's denoise model with strength, batch-size, GPU, and model version controls."
 
     def _inference_model_dir_keys(self):
         return ["denoise_ai_models_dir"]
@@ -960,29 +944,32 @@ class GraXpertDenoiseExtension(_GraXpertBase):
         return "denoise_ai_version"
 
     def get_params(self):
-        return self._meta_params() + [
-            {"id": "general", "type": "section", "label": "Denoise"},
-            {
-                "id": "strength",
-                "type": "float",
-                "label": "Strength",
-                "default": 0.9,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.05,
-            },
-            {
-                "id": "batch_size",
-                "type": "int",
-                "label": "Batch Size",
-                "default": int(self.settings.get("default_batch_size", 4)),
-                "min": 1,
-                "max": 32,
-            },
-        ] + self._inference_params()
+        return (
+            self._meta_params()
+            + [
+                {"id": "general", "type": "section", "label": "Denoise"},
+                {
+                    "id": "strength",
+                    "type": "float",
+                    "label": "Strength",
+                    "default": 0.9,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05,
+                },
+                {
+                    "id": "batch_size",
+                    "type": "int",
+                    "label": "Batch Size",
+                    "default": int(self.settings.get("default_batch_size", 4)),
+                    "min": 1,
+                    "max": 32,
+                },
+            ]
+            + self._inference_params()
+        )
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Running GraXpert AI Denoise...")
 
@@ -1027,10 +1014,7 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
     window_size = (600, 500)
     process_name = "Deconvolution"
     process_subtitle = "AI object and stellar deconvolution"
-    process_header_detail = (
-        "Run object or stellar deconvolution with FWHM controls and the matching "
-        "GraXpert AI model."
-    )
+    process_header_detail = "Run object or stellar deconvolution with FWHM controls and the matching GraXpert AI model."
 
     def _inference_model_dir_keys(self):
         return [
@@ -1042,55 +1026,58 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
         return "deconvolution_ai_version"
 
     def get_params(self):
-        return self._meta_params() + [
-            {"id": "general", "type": "section", "label": "Deconvolution"},
-            {
-                "id": "method",
-                "type": "choice",
-                "label": "Method",
-                "default": "object_only",
-                "options": [
-                    ["Object-Only", "object_only"],
-                    ["Stars-Only", "stars_only"],
-                ],
-            },
-            {
-                "id": "strength",
-                "type": "float",
-                "label": "Strength",
-                "default": 0.9,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.05,
-            },
-            {
-                "id": "batch_size",
-                "type": "int",
-                "label": "Batch Size",
-                "default": int(self.settings.get("default_batch_size", 4)),
-                "min": 1,
-                "max": 32,
-            },
-            {
-                "id": "auto_detect_fwhm",
-                "type": "bool",
-                "label": "Auto Detect FWHM",
-                "default": True,
-            },
-            {
-                "id": "fwhm",
-                "type": "float",
-                "label": "FWHM",
-                "default": 3.0,
-                "min": 0.5,
-                "max": 20.0,
-                "step": 0.1,
-                "enabled_when": "auto_detect_fwhm == false",
-            },
-        ] + self._inference_params()
+        return (
+            self._meta_params()
+            + [
+                {"id": "general", "type": "section", "label": "Deconvolution"},
+                {
+                    "id": "method",
+                    "type": "choice",
+                    "label": "Method",
+                    "default": "object_only",
+                    "options": [
+                        ["Object-Only", "object_only"],
+                        ["Stars-Only", "stars_only"],
+                    ],
+                },
+                {
+                    "id": "strength",
+                    "type": "float",
+                    "label": "Strength",
+                    "default": 0.9,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05,
+                },
+                {
+                    "id": "batch_size",
+                    "type": "int",
+                    "label": "Batch Size",
+                    "default": int(self.settings.get("default_batch_size", 4)),
+                    "min": 1,
+                    "max": 32,
+                },
+                {
+                    "id": "auto_detect_fwhm",
+                    "type": "bool",
+                    "label": "Auto Detect FWHM",
+                    "default": True,
+                },
+                {
+                    "id": "fwhm",
+                    "type": "float",
+                    "label": "FWHM",
+                    "default": 3.0,
+                    "min": 0.5,
+                    "max": 20.0,
+                    "step": 0.1,
+                    "enabled_when": "auto_detect_fwhm == false",
+                },
+            ]
+            + self._inference_params()
+        )
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Running GraXpert AI Deconvolution...")
 

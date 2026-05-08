@@ -36,7 +36,7 @@ def _points_from_curve_editor(raw_points):
 
         try:
             points.append((_clamp_unit(x), _clamp_unit(y)))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
 
     if len(points) < 2:

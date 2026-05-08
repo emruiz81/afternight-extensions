@@ -206,6 +206,9 @@ environment.
 Run repository tooling tests:
 
 ```bash
+python3 -m pip install --require-hashes -r tools/quality/requirements.lock
+python3 -m ruff format --check .
+python3 -m ruff check .
 python3 -m unittest discover -s tests
 ```
 
@@ -259,12 +262,17 @@ LD_LIBRARY_PATH=bin/clang/release ./bin/clang/release/Test_ProcessFramework --gt
   hashes, and generated sidecars.
 - Use structured JSON tooling/parsers for manifests, repository metadata, and
   index data instead of ad hoc string manipulation.
+- When changing Python code, repository tooling, tests, or Python validation
+  config, agents must run the Ruff format and lint checks locally before
+  finishing or explicitly call out why they could not.
 - Use ASCII by default.
 
 ## Definition Of Done
 
 A package or repository change is ready when:
 
+- Python format and lint checks pass when Python files or validation config
+  change
 - manifests validate
 - repository tooling tests pass
 - relevant package tests pass locally or are explicitly called out if skipped

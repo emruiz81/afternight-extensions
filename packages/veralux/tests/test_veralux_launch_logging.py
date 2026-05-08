@@ -38,7 +38,11 @@ class VeraLuxLaunchLoggingTests(unittest.TestCase):
     def test_each_native_process_launch_hook_emits_original_style_banner(self):
         cases = [
             (VeraLuxAlchemyExtension, "VeraLux - Alchemy", "Linear-Phase Narrowband Normalization & Mixing"),
-            (VeraLuxHyperMetricStretchExtension, "VeraLux - HyperMetric Stretch", "Photometric Hyperbolic Stretch Engine"),
+            (
+                VeraLuxHyperMetricStretchExtension,
+                "VeraLux - HyperMetric Stretch",
+                "Photometric Hyperbolic Stretch Engine",
+            ),
             (VeraLuxCurvesExtension, "VeraLux - Curves", "Spline-Based Photometric Sculpting Engine"),
             (VeraLuxRevelaExtension, "VeraLux - Revela", "Photometric Local Contrast & Texture Engine"),
             (VeraLuxVectraExtension, "VeraLux - Vectra", "Vector Color Grading Engine"),

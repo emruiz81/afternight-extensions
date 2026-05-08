@@ -150,19 +150,18 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
         self.assertEqual(vector_slope["label"], "Vector Slope")
         self.assertEqual(vector_slope["height"], 220)
 
-        saturation_params = {
-            param["id"]: param
-            for param in params
-            if str(param.get("id", "")).endswith("_saturation")
-        }
-        self.assertEqual(set(saturation_params), {
-            "red_saturation",
-            "green_saturation",
-            "blue_saturation",
-            "yellow_saturation",
-            "cyan_saturation",
-            "magenta_saturation",
-        })
+        saturation_params = {param["id"]: param for param in params if str(param.get("id", "")).endswith("_saturation")}
+        self.assertEqual(
+            set(saturation_params),
+            {
+                "red_saturation",
+                "green_saturation",
+                "blue_saturation",
+                "yellow_saturation",
+                "cyan_saturation",
+                "magenta_saturation",
+            },
+        )
         for param in saturation_params.values():
             self.assertEqual(param["label"], "Saturation")
             self.assertEqual(param["min"], -100.0)

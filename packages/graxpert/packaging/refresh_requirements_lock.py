@@ -133,12 +133,8 @@ def requirement_to_spec(requirement: Requirement) -> str:
 
 def read_wheel_metadata(wheel_path: Path) -> tuple[str, str, list[str]]:
     with zipfile.ZipFile(wheel_path) as archive:
-        metadata_name = next(
-            name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
-        )
-        metadata = Parser().parsestr(
-            archive.read(metadata_name).decode("utf-8", "replace")
-        )
+        metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
+        metadata = Parser().parsestr(archive.read(metadata_name).decode("utf-8", "replace"))
 
     name = metadata.get("Name")
     version = metadata.get("Version")
@@ -156,9 +152,9 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def applicable_requirement(requirement_line: str,
-                           target: WheelTarget,
-                           active_extras: set[str] | None = None) -> Requirement | None:
+def applicable_requirement(
+    requirement_line: str, target: WheelTarget, active_extras: set[str] | None = None
+) -> Requirement | None:
     requirement = Requirement(requirement_line)
     if requirement.marker is not None:
         if requirement.marker.evaluate(environment=target.marker_environment):
@@ -183,8 +179,7 @@ def validate_requirement(selected_versions: dict[str, str], requirement: Require
     selected_version = Version(selected_versions[package_name])
     if selected_version not in requirement.specifier:
         raise RuntimeError(
-            f"Resolved {package_name}=={selected_versions[package_name]} does not satisfy "
-            f"{requirement.specifier}"
+            f"Resolved {package_name}=={selected_versions[package_name]} does not satisfy {requirement.specifier}"
         )
 
 
@@ -232,9 +227,7 @@ def pip_download_single(target: WheelTarget, spec: str, destination: Path) -> Pa
                 shutil.copy2(wheel_path, destination_path)
             return destination_path
 
-    raise RuntimeError(
-        f"Failed to download a wheel for {spec} on {target.runtime_target}.\n{last_error}"
-    )
+    raise RuntimeError(f"Failed to download a wheel for {spec} on {target.runtime_target}.\n{last_error}")
 
 
 def resolve_target(target: WheelTarget, download_dir: Path) -> None:
@@ -289,9 +282,7 @@ def resolve_target(target: WheelTarget, download_dir: Path) -> None:
 
             validate_requirement(selected_versions, dependency)
 
-            dependency_spec = OVERRIDE_SPECS.get(
-                dependency_name, requirement_to_spec(dependency)
-            )
+            dependency_spec = OVERRIDE_SPECS.get(dependency_name, requirement_to_spec(dependency))
             if dependency_spec in queued_specs:
                 continue
 
@@ -314,10 +305,7 @@ def collect_lock_entries(
 
         existing_version = versions.get(package_name)
         if existing_version is not None and existing_version != version:
-            raise RuntimeError(
-                f"Multiple versions downloaded for {package_name}: "
-                f"{existing_version} and {version}"
-            )
+            raise RuntimeError(f"Multiple versions downloaded for {package_name}: {existing_version} and {version}")
 
         versions[package_name] = version
         hashes[package_name].add(sha256_file(wheel_path))
@@ -336,18 +324,14 @@ def write_lockfile(
         "",
     ]
     for package_name in sorted(versions):
-        hash_args = " ".join(
-            f"--hash=sha256:{hash_value}" for hash_value in sorted(hashes[package_name])
-        )
+        hash_args = " ".join(f"--hash=sha256:{hash_value}" for hash_value in sorted(hashes[package_name]))
         lines.append(f"{package_name}=={versions[package_name]} {hash_args}".rstrip())
     lines.append("")
     lock_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Resolve GraXpert wheels and generate requirements.lock."
-    )
+    parser = argparse.ArgumentParser(description="Resolve GraXpert wheels and generate requirements.lock.")
     parser.add_argument(
         "--target",
         dest="targets",
@@ -382,9 +366,7 @@ def main() -> int:
 
     lockfile.parent.mkdir(parents=True, exist_ok=True)
     download_context = (
-        tempfile.TemporaryDirectory()
-        if args.download_dir is None
-        else nullcontext(str(args.download_dir.resolve()))
+        tempfile.TemporaryDirectory() if args.download_dir is None else nullcontext(str(args.download_dir.resolve()))
     )
 
     with download_context as download_root:
@@ -407,10 +389,7 @@ def main() -> int:
             print(f"Downloaded wheel artifacts in {download_dir}")
 
     if excluded_names:
-        print(
-            "Skipped bundled-runtime wheels from requirements.lock: "
-            f"{', '.join(sorted(set(excluded_names)))}"
-        )
+        print(f"Skipped bundled-runtime wheels from requirements.lock: {', '.join(sorted(set(excluded_names)))}")
     return 0
 
 

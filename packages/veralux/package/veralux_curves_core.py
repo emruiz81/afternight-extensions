@@ -138,9 +138,7 @@ def _akima_derivatives(x_values, y_values):
         weight_right = abs(extended[index + 1] - extended[index])
         total = weight_left + weight_right
         if total > 1e-12:
-            derivatives[index] = (
-                (weight_left * extended[index + 1]) + (weight_right * extended[index + 2])
-            ) / total
+            derivatives[index] = ((weight_left * extended[index + 1]) + (weight_right * extended[index + 2])) / total
         else:
             derivatives[index] = 0.5 * (extended[index + 1] + extended[index + 2])
     return derivatives

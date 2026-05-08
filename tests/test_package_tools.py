@@ -288,12 +288,8 @@ class ManifestHostModePolicyTests(unittest.TestCase):
                 },
             }
             write_json(package_dir / "extension.json", manifest)
-            (package_dir / "THIRD_PARTY_NOTICES.md").write_text(
-                "Dependency notices.\n", encoding="utf-8"
-            )
-            (package_dir / "requirements.lock").write_text(
-                "example-dependency==1.0.0\n", encoding="utf-8"
-            )
+            (package_dir / "THIRD_PARTY_NOTICES.md").write_text("Dependency notices.\n", encoding="utf-8")
+            (package_dir / "requirements.lock").write_text("example-dependency==1.0.0\n", encoding="utf-8")
 
             with self.assertRaisesRegex(PackageToolError, "at least one --hash=sha256"):
                 load_valid_manifest(package_dir)
@@ -311,9 +307,7 @@ class ManifestHostModePolicyTests(unittest.TestCase):
                 },
             }
             write_json(package_dir / "extension.json", manifest)
-            (package_dir / "THIRD_PARTY_NOTICES.md").write_text(
-                "Dependency notices.\n", encoding="utf-8"
-            )
+            (package_dir / "THIRD_PARTY_NOTICES.md").write_text("Dependency notices.\n", encoding="utf-8")
             (package_dir / "requirements.lock").write_text(
                 "example-dependency==1.0.0 --hash=sha256:" + ("a" * 64) + "\n",
                 encoding="utf-8",
@@ -336,9 +330,7 @@ class ManifestHostModePolicyTests(unittest.TestCase):
                 },
             }
             write_json(package_dir / "extension.json", manifest)
-            (package_dir / "THIRD_PARTY_NOTICES.md").write_text(
-                "Dependency notices.\n", encoding="utf-8"
-            )
+            (package_dir / "THIRD_PARTY_NOTICES.md").write_text("Dependency notices.\n", encoding="utf-8")
             (package_dir / "requirements.lock").write_text(
                 "example-dependency==1.0.0 --hash=sha256:" + ("a" * 64) + "\n",
                 encoding="utf-8",
@@ -425,10 +417,7 @@ class PackageToolTests(unittest.TestCase):
                 "author": "AfterNight Tests",
                 "license": "MIT",
                 "publisher_id": "afternight.tests",
-                "attribution": (
-                    "AfterNight port of Example Extension, originally authored by "
-                    "Fixture Author."
-                ),
+                "attribution": ("AfterNight port of Example Extension, originally authored by Fixture Author."),
                 "original_author": "Fixture Author",
                 "original_project": "Fixture Suite",
                 "original_source_url": "https://example.invalid/upstream/example_ext.py",
@@ -446,9 +435,7 @@ class PackageToolTests(unittest.TestCase):
                 "tags": ["fixture"],
             },
         )
-        (package_dir / "example_ext.py").write_text(
-            "class ExampleExtension: pass\n", encoding="utf-8"
-        )
+        (package_dir / "example_ext.py").write_text("class ExampleExtension: pass\n", encoding="utf-8")
         (package_dir / "LICENSE").write_text("MIT\n", encoding="utf-8")
         write_json(
             root / "packages" / "example_ext" / "repository.json",
@@ -480,9 +467,7 @@ class PackageToolTests(unittest.TestCase):
             )
             self.assertEqual(first["package_hash"], "sha256:" + sha256_file(root / "dist-a" / first["name"]))
 
-            tar_bytes = subprocess.check_output(
-                ["zstd", "-q", "-d", "-c", str(root / "dist-a" / first["name"])]
-            )
+            tar_bytes = subprocess.check_output(["zstd", "-q", "-d", "-c", str(root / "dist-a" / first["name"])])
             tar_path = root / "package.tar"
             tar_path.write_bytes(tar_bytes)
             with tarfile.open(tar_path, "r") as archive:
@@ -498,17 +483,12 @@ class PackageToolTests(unittest.TestCase):
             package_dir = self.create_package(root)
             wheelhouse = package_dir / "wheelhouse"
             wheelhouse.mkdir()
-            long_wheel_name = (
-                "nvidia_cuda_runtime_cu12-12.9.79-py3-none-"
-                "manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
-            )
+            long_wheel_name = "nvidia_cuda_runtime_cu12-12.9.79-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
             (wheelhouse / long_wheel_name).write_text("wheel fixture\n", encoding="utf-8")
 
             asset = build_package(package_dir, root / "dist", compression_level=3)
 
-            tar_bytes = subprocess.check_output(
-                ["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])]
-            )
+            tar_bytes = subprocess.check_output(["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])])
             tar_path = root / "package.tar"
             tar_path.write_bytes(tar_bytes)
             with tarfile.open(tar_path, "r") as archive:
@@ -643,9 +623,7 @@ class PackageToolTests(unittest.TestCase):
             package_dir = self.create_package(root)
             asset = build_package(package_dir, root / "dist", compression_level=3)
             repository_metadata = read_json(package_dir.parent / "repository.json")
-            repository_metadata["releases"][0]["asset_base_url"] = (
-                "https://example.invalid/releases/example_ext-v1.0.0"
-            )
+            repository_metadata["releases"][0]["asset_base_url"] = "https://example.invalid/releases/example_ext-v1.0.0"
             write_json(package_dir.parent / "repository.json", repository_metadata)
 
             index = generate_index(
@@ -781,8 +759,7 @@ class RepositoryPackageTests(unittest.TestCase):
             "publish-release.yml package_id dropdown must define at least one package option",
         )
         publishable_package_ids = [
-            item["package_id"]
-            for item in list_available_release_metadata(REPO_ROOT / "packages")
+            item["package_id"] for item in list_available_release_metadata(REPO_ROOT / "packages")
         ]
 
         self.assertEqual(
@@ -818,7 +795,7 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertIn("Verify selected live index entry is signed", workflow)
         self.assertIn("Verify live index download URLs", workflow)
         self.assertIn("Publish live repository index", workflow)
-        self.assertIn("git -C \"$worktree\" rm -r -f --ignore-unmatch .", workflow)
+        self.assertIn('git -C "$worktree" rm -r -f --ignore-unmatch .', workflow)
         self.assertIn("if: ${{ inputs.draft == false }}", workflow)
 
         sign_index = workflow.index("Sign release asset sidecars")
@@ -927,9 +904,7 @@ class RepositoryPackageTests(unittest.TestCase):
     def test_veralux_publication_readiness_records_release_state(self):
         package_root = REPO_ROOT / "packages" / "veralux"
         repository_metadata = read_json(package_root / "repository.json")
-        readiness = (package_root / "packaging" / "PUBLICATION_READINESS.md").read_text(
-            encoding="utf-8"
-        )
+        readiness = (package_root / "packaging" / "PUBLICATION_READINESS.md").read_text(encoding="utf-8")
         packaging_notes = (package_root / "packaging" / "README.md").read_text(encoding="utf-8")
 
         self.assertIsNot(repository_metadata.get("publish"), False)
@@ -973,17 +948,13 @@ class RepositoryPackageTests(unittest.TestCase):
                 ["linux-clang-x86_64", "windows-msvc-x86_64"],
             )
 
-            tar_bytes = subprocess.check_output(
-                ["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])]
-            )
+            tar_bytes = subprocess.check_output(["zstd", "-q", "-d", "-c", str(root / "dist" / asset["name"])])
             tar_path = root / "veralux-package.tar"
             tar_path.write_bytes(tar_bytes)
 
             with tarfile.open(tar_path, "r") as archive:
                 names = archive.getnames()
-                self.assertTrue(
-                    all(name == "veralux" or name.startswith("veralux/") for name in names)
-                )
+                self.assertTrue(all(name == "veralux" or name.startswith("veralux/") for name in names))
                 self.assertIn("veralux/extension.json", names)
                 self.assertIn("veralux/requirements.lock", names)
                 self.assertIn("veralux/STARTING_POINT.md", names)

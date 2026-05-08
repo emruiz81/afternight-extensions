@@ -109,9 +109,7 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
             stiffness_slider = round(float(stiffness), 1)
             rejection_slider = int(round(float(rejection_power)))
             sdk.log_info(
-                "VeraLux Nox auto-calculate: "
-                f"stiffness={stiffness_slider:.1f}, "
-                f"signal_rejection={rejection_slider}%",
+                f"VeraLux Nox auto-calculate: stiffness={stiffness_slider:.1f}, signal_rejection={rejection_slider}%",
                 component=self.component,
             )
             return {

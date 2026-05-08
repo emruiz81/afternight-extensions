@@ -48,9 +48,7 @@ def list_available_release_metadata(packages_root):
                 raise PackageToolError(f"{repository_metadata_path}: releases must contain objects")
             version = release.get("version")
             if not isinstance(version, str) or not version:
-                raise PackageToolError(
-                    f"{repository_metadata_path}: release.version must be a non-empty string"
-                )
+                raise PackageToolError(f"{repository_metadata_path}: release.version must be a non-empty string")
             versions.append(version)
 
         latest_version = repository_metadata.get("latest_version", manifest["version"])
@@ -86,9 +84,7 @@ def resolve_release_metadata(
     if not repository_metadata_path.is_file():
         raise PackageToolError(f"missing repository release metadata: {repository_metadata_path}")
     if not is_package_published(package_root):
-        raise PackageToolError(
-            f"{repository_metadata_path}: package is marked publish=false and cannot be released"
-        )
+        raise PackageToolError(f"{repository_metadata_path}: package is marked publish=false and cannot be released")
 
     manifest = load_valid_manifest(package_dir)
     if manifest["id"] != package_id:
@@ -117,19 +113,15 @@ def resolve_release_metadata(
 
     asset_base_url = release.get("asset_base_url")
     if not isinstance(asset_base_url, str) or not asset_base_url:
-        raise PackageToolError(
-            f"{repository_metadata_path}: release {version} must declare asset_base_url"
-        )
+        raise PackageToolError(f"{repository_metadata_path}: release {version} must declare asset_base_url")
 
     expected_release_tag = f"{package_id}-v{version}"
     expected_asset_base_url = (
-        f"https://github.com/{expected_github_repository}/releases/download/"
-        f"{expected_release_tag}"
+        f"https://github.com/{expected_github_repository}/releases/download/{expected_release_tag}"
     )
     if asset_base_url.rstrip("/") != expected_asset_base_url:
         raise PackageToolError(
-            f"{repository_metadata_path}: release {version} asset_base_url must be "
-            f"{expected_asset_base_url}"
+            f"{repository_metadata_path}: release {version} asset_base_url must be {expected_asset_base_url}"
         )
 
     return {
@@ -152,9 +144,7 @@ def _validate_package_id(value):
         or value[0] in "-_"
         or any(character not in allowed for character in value)
     ):
-        raise PackageToolError(
-            "package_id must use lowercase letters, numbers, dashes, or underscores"
-        )
+        raise PackageToolError("package_id must use lowercase letters, numbers, dashes, or underscores")
 
 
 def write_github_outputs(path, values):
@@ -189,11 +179,7 @@ def format_available_release_markdown(available):
         for item in available:
             versions = ", ".join(f"`{version}`" for version in item["versions"]) or "_none_"
             lines.append(
-                "| "
-                f"`{item['package_id']}` | "
-                f"{item['manifest_name']} | "
-                f"`{item['latest_version']}` | "
-                f"{versions} |"
+                f"| `{item['package_id']}` | {item['manifest_name']} | `{item['latest_version']}` | {versions} |"
             )
 
     return "\n".join(lines) + "\n"

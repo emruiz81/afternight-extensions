@@ -37,7 +37,7 @@
             {
               "name": "cosmic_clarity-1.0.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:7a0aa0fb6330b29bb3f68c5420c0f2197a2d40020ec05cb0b2aea0cac09ce785",
+              "package_hash": "sha256:15e2ba085481af0d364b650c53b29068b5f3f70256e79b7ee1ee00d1c8f63f07",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -87,7 +87,7 @@
             {
               "name": "graxpert-1.0.2-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.2/graxpert-1.0.2-all.tar.zst",
-              "package_hash": "sha256:1234a682598a150241bde441567b5fb226ab571d9f36981a8f53bae80406dab1",
+              "package_hash": "sha256:8f5f226a91137f0fe1c6d7dbbb179ccbf8f1487a22460c844788dd535aab50f4",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -150,7 +150,7 @@
             {
               "name": "veralux-0.1.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/veralux-v0.1.0/veralux-0.1.0-all.tar.zst",
-              "package_hash": "sha256:c8a1d9405fc8d96a4ac122443b61301a74714d3be331131cc59e4f1c3e4c3d9b",
+              "package_hash": "sha256:4b12ab5d36795d536008f821e0f116b6778aec247f5891878e16fe79fe458814",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",

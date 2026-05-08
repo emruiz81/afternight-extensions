@@ -68,6 +68,9 @@ virtual environments, or caches.
 Run repository tooling tests:
 
 ```bash
+python3 -m pip install --require-hashes -r tools/quality/requirements.lock
+python3 -m ruff format --check .
+python3 -m ruff check .
 python3 -m unittest discover -s tests
 ```
 

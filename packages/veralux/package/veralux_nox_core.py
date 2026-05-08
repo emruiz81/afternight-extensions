@@ -17,8 +17,6 @@ not been installed in the developer shell.
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
 _cv2 = None
@@ -208,12 +206,10 @@ def _resize_bilinear(image, out_h, out_w):
     wy = (ys - y0.astype(np.float32))[:, np.newaxis]
     wx = (xs - x0.astype(np.float32))[np.newaxis, :]
 
-    top = values[y0[:, np.newaxis], x0[np.newaxis, :]] * (1.0 - wx) + values[
-        y0[:, np.newaxis], x1[np.newaxis, :]
-    ] * wx
-    bottom = values[y1[:, np.newaxis], x0[np.newaxis, :]] * (1.0 - wx) + values[
-        y1[:, np.newaxis], x1[np.newaxis, :]
-    ] * wx
+    top = values[y0[:, np.newaxis], x0[np.newaxis, :]] * (1.0 - wx) + values[y0[:, np.newaxis], x1[np.newaxis, :]] * wx
+    bottom = (
+        values[y1[:, np.newaxis], x0[np.newaxis, :]] * (1.0 - wx) + values[y1[:, np.newaxis], x1[np.newaxis, :]] * wx
+    )
     return (top * (1.0 - wy) + bottom * wy).astype(np.float32, copy=False)
 
 
@@ -354,9 +350,7 @@ def luminance(image):
     if img.ndim != 3:
         raise ValueError("VeraLux Nox luminance expects a 2D mono or 3D RGB image")
     if img.shape[-1] >= 3:
-        return (
-            0.2126 * img[..., 0] + 0.7152 * img[..., 1] + 0.0722 * img[..., 2]
-        ).astype(np.float32)
+        return (0.2126 * img[..., 0] + 0.7152 * img[..., 1] + 0.0722 * img[..., 2]).astype(np.float32)
     if img.shape[0] >= 3:
         return (0.2126 * img[0] + 0.7152 * img[1] + 0.0722 * img[2]).astype(np.float32)
     return np.squeeze(img).astype(np.float32, copy=False)
@@ -672,7 +666,7 @@ def membrane_solve_channel(img_2d, mask_2d, precomputed_variance, stiffness_val,
         new_w_dyn = np.ones_like(w_flat)
         is_above = res > 0.0
         eff_i = min(i, 4)
-        p_curr = p_base / (10.0 ** eff_i)
+        p_curr = p_base / (10.0**eff_i)
         new_w_dyn[is_above] = p_curr
         new_w_dyn[~is_above] = 1.0
         w_flat = new_w_dyn * v_flat * mask_user.astype(np.float32)

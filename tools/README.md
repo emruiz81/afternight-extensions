@@ -128,6 +128,9 @@ containing only the package being published by that workflow run.
 ## Validate Locally
 
 ```bash
+python3 -m pip install --require-hashes -r tools/quality/requirements.lock
+python3 -m ruff format --check .
+python3 -m ruff check .
 python3 -m unittest discover -s tests
 mkdir -p dist
 python3 tools/build_repository_assets.py --output-dir dist

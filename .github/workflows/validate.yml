@@ -28,6 +28,14 @@ jobs:
       - name: Install Python signing dependencies
         run: python3 -m pip install --require-hashes -r tools/signing/requirements.lock
 
+      - name: Install Python style dependencies
+        run: python3 -m pip install --require-hashes -r tools/quality/requirements.lock
+
+      - name: Run Python style checks
+        run: |
+          python3 -m ruff format --check .
+          python3 -m ruff check .
+
       - name: Run tool tests
         run: python3 -m unittest discover -s tests
 

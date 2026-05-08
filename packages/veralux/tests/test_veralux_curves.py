@@ -100,7 +100,13 @@ class VeraLuxCurvesCoreTests(unittest.TestCase):
 
         luminance = np.mean(source, axis=2)
         shadow_delta = float(np.mean(np.abs(result[luminance < 0.30] - source[luminance < 0.30])))
-        midtone_delta = float(np.mean(np.abs(result[(luminance > 0.43) & (luminance < 0.57)] - source[(luminance > 0.43) & (luminance < 0.57)])))
+        midtone_delta = float(
+            np.mean(
+                np.abs(
+                    result[(luminance > 0.43) & (luminance < 0.57)] - source[(luminance > 0.43) & (luminance < 0.57)]
+                )
+            )
+        )
         highlight_delta = float(np.mean(np.abs(result[luminance > 0.72] - source[luminance > 0.72])))
         self.assertLess(shadow_delta, 1e-6)
         self.assertGreater(midtone_delta, 2e-2)

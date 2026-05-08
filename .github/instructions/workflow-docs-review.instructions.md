@@ -7,9 +7,9 @@ applyTo: ".github/workflows/**/*.yml,.github/workflows/**/*.yaml,docs/**/*.md,pa
 
 - Treat `docs/` as canonical when policy wording differs from summaries in
   `AGENTS.md`, package READMEs, or workflow notes.
-- Keep the workflow split intact: `validate.yml` is the PR/push gate,
-  `build-assets.yml` is preview-only, and `publish-release.yml` is the only
-  publication path.
+- Keep the workflow split intact: `validate.yml` is the PR/push gate with Ruff
+  Python style checks, `build-assets.yml` is preview-only, and
+  `publish-release.yml` is the only publication path.
 - Pull requests that add a new publishable package must update the static
   `package_id` dropdown in `.github/workflows/publish-release.yml` and keep
   repository tests green.

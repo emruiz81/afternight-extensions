@@ -167,7 +167,7 @@ def _min_filter_2d(image, size):
     windows = []
     for y_offset in range(size):
         for x_offset in range(size):
-            windows.append(padded[y_offset:y_offset + image.shape[0], x_offset:x_offset + image.shape[1]])
+            windows.append(padded[y_offset : y_offset + image.shape[0], x_offset : x_offset + image.shape[1]])
     return np.min(np.stack(windows), axis=0).astype(np.float32, copy=False)
 
 
@@ -204,7 +204,7 @@ def rational_tonemap(data, stretch_d, profile_hardness):
     profile_hardness = float(max(profile_hardness, 0.1))
     log_d = math.log10(stretch_d)
     stretch_factor = max(0.0, min((log_d - 1.0) / 2.0, 12.0))
-    k = 3.0 ** stretch_factor
+    k = 3.0**stretch_factor
 
     u = max(-1.5, min((profile_hardness - 50.0) / 50.0, 1.5))
     toe_shape = 1.0 + 0.60 * (u * u * u)
@@ -350,9 +350,8 @@ def normalize_blend_mode(blend_mode):
 
     mode = str(blend_mode or "screen").strip().lower()
     mode = mode.replace("-", "_").replace(" ", "_")
-    if (
-        mode in {"add", "linear", "linear_add", "linearadd", "linear_add_physical"}
-        or ("linear" in mode and "add" in mode)
+    if mode in {"add", "linear", "linear_add", "linearadd", "linear_add_physical"} or (
+        "linear" in mode and "add" in mode
     ):
         return "linear_add"
     return "screen"

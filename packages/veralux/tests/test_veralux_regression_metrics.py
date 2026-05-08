@@ -201,15 +201,13 @@ def synthetic_suite_rgb(size=64):
     star_a = 0.62 * np.exp(-(((x - 18.0) ** 2) + ((y - 20.0) ** 2)) / (2.0 * 1.55**2))
     star_b = 0.34 * np.exp(-(((x - 48.0) ** 2) + ((y - 47.0) ** 2)) / (2.0 * 2.3**2))
     texture = 0.012 * np.sin(x * 0.43) * np.cos(y * 0.37)
-    red = np.clip(background * 1.04 + nebula_a * 1.12 + nebula_b * 0.34 + star_a + star_b * 0.86 + texture,
-                  0.0,
-                  1.0)
-    green = np.clip(background * 0.96 + nebula_a * 0.60 + nebula_b * 0.88 + star_a * 0.88 + star_b + texture * 0.45,
-                    0.0,
-                    1.0)
-    blue = np.clip(background * 0.90 + nebula_a * 0.32 + nebula_b * 1.04 + star_a * 0.70 + star_b * 0.90 - texture * 0.30,
-                   0.0,
-                   1.0)
+    red = np.clip(background * 1.04 + nebula_a * 1.12 + nebula_b * 0.34 + star_a + star_b * 0.86 + texture, 0.0, 1.0)
+    green = np.clip(
+        background * 0.96 + nebula_a * 0.60 + nebula_b * 0.88 + star_a * 0.88 + star_b + texture * 0.45, 0.0, 1.0
+    )
+    blue = np.clip(
+        background * 0.90 + nebula_a * 0.32 + nebula_b * 1.04 + star_a * 0.70 + star_b * 0.90 - texture * 0.30, 0.0, 1.0
+    )
     return np.stack([red, green, blue], axis=-1).astype(np.float32)
 
 
@@ -272,14 +270,16 @@ def process_outputs():
         revela_core._cv2 = previous_cv2
 
     vectors = vectra_core.default_vectors()
-    vectors.update({
-        "R": (28.0, 0.45),
-        "G": (-18.0, 0.25),
-        "B": (22.0, 0.50),
-        "C": (-12.0, 0.20),
-        "M": (16.0, 0.30),
-        "Y": (-14.0, 0.25),
-    })
+    vectors.update(
+        {
+            "R": (28.0, 0.45),
+            "G": (-18.0, 0.25),
+            "B": (22.0, 0.50),
+            "C": (-12.0, 0.20),
+            "M": (16.0, 0.30),
+            "Y": (-14.0, 0.25),
+        }
+    )
 
     return {
         "alchemy": (

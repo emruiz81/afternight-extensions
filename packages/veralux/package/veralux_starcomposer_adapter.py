@@ -71,10 +71,10 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
     def _crop_array(array, x, y, width, height):
         data = np.asarray(array)
         if data.ndim == 2:
-            return data[y:y + height, x:x + width]
+            return data[y : y + height, x : x + width]
         if data.ndim == 3 and data.shape[0] in (1, 3) and data.shape[-1] not in (1, 3, 4):
-            return data[:, y:y + height, x:x + width]
-        return data[y:y + height, x:x + width, ...]
+            return data[:, y : y + height, x : x + width]
+        return data[y : y + height, x : x + width, ...]
 
     def _align_stars_to_starless_preview(self, stars, starless, src_image, *, preview):
         if not preview:
@@ -205,7 +205,9 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
             return self._preview_shaped_stars_cache
 
         if cache_key is None:
-            sdk.log_info("VeraLux StarComposer: Shaping stars with hybrid reconstruction engine.", component=self.component)
+            sdk.log_info(
+                "VeraLux StarComposer: Shaping stars with hybrid reconstruction engine.", component=self.component
+            )
         shaped_stars = core.process_star_mask(
             stars,
             log_d=float(params.get("log_d", 1.0)),

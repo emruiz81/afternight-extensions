@@ -365,16 +365,18 @@ def _auto_solver_subsample(data):
     return data.reshape(-1)[::step]
 
 
-def solve_log_d_for_image(image, target_median=0.2, protect_b=6.0, working_space=DEFAULT_PROFILE,
-                          use_adaptive_anchor=True, processing_mode="ready_to_use"):
+def solve_log_d_for_image(
+    image,
+    target_median=0.2,
+    protect_b=6.0,
+    working_space=DEFAULT_PROFILE,
+    use_adaptive_anchor=True,
+    processing_mode="ready_to_use",
+):
     data, _layout, _extras = _to_channels_first(image)
     weights = _profile_weights(working_space)
     sub_data = _auto_solver_subsample(data)
-    anchor = (
-        calculate_anchor_adaptive(sub_data, weights=weights)
-        if use_adaptive_anchor
-        else calculate_anchor(sub_data)
-    )
+    anchor = calculate_anchor_adaptive(sub_data, weights=weights) if use_adaptive_anchor else calculate_anchor(sub_data)
     luminance, _anchored = extract_luminance(sub_data, anchor, weights)
     star_pressure = estimate_star_pressure(luminance)
     valid = luminance.reshape(-1)
@@ -546,8 +548,9 @@ def apply_ready_to_use_soft_clip(img_data, threshold=0.98, rolloff=2.0):
     return soft_clip_channel(img)
 
 
-def effective_hybrid_params(processing_mode, color_strategy=0.0, color_grip=1.0,
-                            shadow_convergence=0.0, linear_expansion=0.0):
+def effective_hybrid_params(
+    processing_mode, color_strategy=0.0, color_grip=1.0, shadow_convergence=0.0, linear_expansion=0.0
+):
     if processing_mode == "ready_to_use":
         strategy = float(np.clip(color_strategy, -1.0, 1.0))
         if strategy < 0:
@@ -592,11 +595,7 @@ def process_hypermetric_stretch(
     if auto_log_d:
         log_d = solve_log_d_for_image(data, target_bg, protect_b, working_space, use_adaptive_anchor, mode)
 
-    anchor = (
-        calculate_anchor_adaptive(data, weights=weights)
-        if use_adaptive_anchor
-        else calculate_anchor(data)
-    )
+    anchor = calculate_anchor_adaptive(data, weights=weights) if use_adaptive_anchor else calculate_anchor(data)
     luminance, anchored = extract_luminance(data, anchor, weights)
 
     epsilon = 1e-9

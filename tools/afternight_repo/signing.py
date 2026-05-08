@@ -102,9 +102,7 @@ def _load_nacl_signing():
     try:
         from nacl import exceptions, signing  # type: ignore
     except ImportError as exc:
-        raise SigningError(
-            "PyNaCl is required for signing; install tools/signing/requirements.lock"
-        ) from exc
+        raise SigningError("PyNaCl is required for signing; install tools/signing/requirements.lock") from exc
     return signing, exceptions
 
 
@@ -177,8 +175,6 @@ def signed_metadata(metadata, *, signature_key_id, seed_base64, public_key_base6
     result["signature_key_id"] = signature_key_id
     result["signature"] = signature
     result["signature_detail"] = (
-        signature_detail
-        or f"Verified official AfterNight package signature (Ed25519 key {signature_key_id})."
+        signature_detail or f"Verified official AfterNight package signature (Ed25519 key {signature_key_id})."
     )
     return result
-

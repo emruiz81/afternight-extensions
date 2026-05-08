@@ -318,11 +318,7 @@ def _convolve2d_reflect(image, kernel):
 def _maximum_filter_2x2(image):
     values = np.asarray(image, dtype=np.float32)
     padded = np.pad(values, ((1, 0), (1, 0)), mode="edge")
-    windows = [
-        padded[y : y + values.shape[0], x : x + values.shape[1]]
-        for y in range(2)
-        for x in range(2)
-    ]
+    windows = [padded[y : y + values.shape[0], x : x + values.shape[1]] for y in range(2) for x in range(2)]
     return np.maximum.reduce(windows).astype(np.float32, copy=False)
 
 
@@ -353,7 +349,7 @@ def _soft_threshold(detail, threshold):
 def _pad_for_swt(image, level=_SWT_LEVELS):
     values = np.asarray(image, dtype=np.float32)
     h, w = values.shape
-    factor = 2**int(level)
+    factor = 2 ** int(level)
     pad_h = (factor - (h % factor)) % factor
     pad_w = (factor - (w % factor)) % factor
     if pad_h == 0 and pad_w == 0:
@@ -558,7 +554,9 @@ def process_noise_reduction(
         luminance = np.asarray(data, dtype=np.float32)
         signal_map = compute_signal_probability(luminance)
         edge_map = compute_edge_map(luminance)
-        sigma_map = estimate_noise_map(luminance) if adaptive_noise else np.full_like(luminance, robust_sigma(luminance))
+        sigma_map = (
+            estimate_noise_map(luminance) if adaptive_noise else np.full_like(luminance, robust_sigma(luminance))
+        )
         result = _multiscale_denoise_channel(
             luminance,
             sigma_map=sigma_map,

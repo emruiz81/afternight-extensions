@@ -126,8 +126,8 @@ class VeraLuxQualityFallbackWarningTests(unittest.TestCase):
         original_compose = starcomposer_core.compose_with_starless
         starcomposer_core.cv2 = None
         starcomposer_core.process_star_mask = lambda stars, **_kwargs: np.asarray(stars, dtype=np.float32)
-        starcomposer_core.compose_with_starless = (
-            lambda starless, _stars, **_kwargs: np.asarray(starless, dtype=np.float32)
+        starcomposer_core.compose_with_starless = lambda starless, _stars, **_kwargs: np.asarray(
+            starless, dtype=np.float32
         )
         try:
             VeraLuxStarComposerExtension(None).execute_preview(
@@ -232,8 +232,9 @@ class VeraLuxQualityFallbackWarningTests(unittest.TestCase):
         nox_core._scipy_import_attempted = True
         nox_core._scipy_spsolve = None
         nox_core._scipy_uniform_filter = None
-        nox_core.process_gradient_reduction = (
-            lambda image, **_kwargs: (np.asarray(image, dtype=np.float32), np.zeros_like(image, dtype=np.float32))
+        nox_core.process_gradient_reduction = lambda image, **_kwargs: (
+            np.asarray(image, dtype=np.float32),
+            np.zeros_like(image, dtype=np.float32),
         )
         try:
             VeraLuxNoxExtension(None).execute(

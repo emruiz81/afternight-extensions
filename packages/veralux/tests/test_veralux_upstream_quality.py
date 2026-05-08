@@ -370,14 +370,16 @@ class VeraLuxUpstreamQualityTests(unittest.TestCase):
     def test_vectra_matches_upstream_lch_core(self):
         source = synthetic_suite_rgb(64)
         vectors = vectra_core.default_vectors()
-        vectors.update({
-            "R": (28.0, 0.45),
-            "G": (-18.0, 0.25),
-            "B": (22.0, 0.50),
-            "C": (-12.0, 0.20),
-            "M": (16.0, 0.30),
-            "Y": (-14.0, 0.25),
-        })
+        vectors.update(
+            {
+                "R": (28.0, 0.45),
+                "G": (-18.0, 0.25),
+                "B": (22.0, 0.50),
+                "C": (-12.0, 0.20),
+                "M": (16.0, 0.30),
+                "Y": (-14.0, 0.25),
+            }
+        )
 
         cases = (
             (0.0, False),

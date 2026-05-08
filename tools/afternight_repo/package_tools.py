@@ -224,9 +224,7 @@ def load_valid_manifest(package_dir):
     if manifest["launch_mode"] not in ("single_image", "workflow"):
         raise PackageToolError(f"{manifest_path}: launch_mode must be single_image or workflow")
     if manifest["sdk_backend"] not in SDK_BACKENDS:
-        raise PackageToolError(
-            f"{manifest_path}: sdk_backend must be runtime, protocol, or rpc"
-        )
+        raise PackageToolError(f"{manifest_path}: sdk_backend must be runtime, protocol, or rpc")
 
     _validate_identifier(manifest["id"], manifest_path)
     _validate_runtime_targets(manifest.get("runtime_targets"), manifest_path, allow_empty=True)
@@ -294,9 +292,7 @@ def _generate_package_index_entry(package_source, assets_dir, base_url):
     if not isinstance(latest_version, str) or not latest_version:
         raise PackageToolError(f"{repository_metadata_path}: latest_version must be a non-empty string")
     if latest_version not in {release["version"] for release in releases}:
-        raise PackageToolError(
-            f"{repository_metadata_path}: latest_version {latest_version} has no matching release"
-        )
+        raise PackageToolError(f"{repository_metadata_path}: latest_version {latest_version} has no matching release")
 
     package = {
         "id": manifest["id"],
@@ -328,9 +324,7 @@ def _generate_release_entry(manifest, release_metadata, assets_by_version, metad
     if not matching_assets:
         raise PackageToolError(f"{metadata_path}: release {version} has no built assets")
 
-    release_targets = sorted(
-        {target for asset in matching_assets for target in asset.get("runtime_targets", [])}
-    )
+    release_targets = sorted({target for asset in matching_assets for target in asset.get("runtime_targets", [])})
     if not release_targets:
         release_targets = _normalize_runtime_targets(manifest.get("runtime_targets"), allow_empty=False)
 
@@ -447,8 +441,16 @@ def _ensure_zstd():
         return
     if sys.platform == "win32" and shutil.which("winget") is not None:
         print("zstd not found — installing via winget (Meta.Zstandard)...", flush=True)
-        result = subprocess.run(
-            ["winget", "install", "--id", "Meta.Zstandard", "--silent", "--accept-package-agreements", "--accept-source-agreements"],
+        subprocess.run(
+            [
+                "winget",
+                "install",
+                "--id",
+                "Meta.Zstandard",
+                "--silent",
+                "--accept-package-agreements",
+                "--accept-source-agreements",
+            ],
             check=False,
         )
         # winget exits 0 on success, but also uses non-zero for "no upgrade available" or
@@ -457,11 +459,18 @@ def _ensure_zstd():
 
         # winget modifies the user or machine PATH; refresh the current process PATH so shutil.which can find it
         import os
+
         for scope in ("Machine", "User"):
             reg_path = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 f"[System.Environment]::GetEnvironmentVariable('PATH', '{scope}')"],
-                check=False, stdout=subprocess.PIPE, text=True,
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    f"[System.Environment]::GetEnvironmentVariable('PATH', '{scope}')",
+                ],
+                check=False,
+                stdout=subprocess.PIPE,
+                text=True,
             ).stdout.strip()
             if reg_path:
                 os.environ["PATH"] = reg_path + os.pathsep + os.environ.get("PATH", "")
@@ -479,8 +488,7 @@ def _ensure_zstd():
         )
     else:
         raise PackageToolError(
-            "zstd is required but was not found. "
-            "Install it with your package manager (e.g. apt-get install zstd)"
+            "zstd is required but was not found. Install it with your package manager (e.g. apt-get install zstd)"
         )
 
 
@@ -532,9 +540,7 @@ def _load_asset_metadata(assets_dir):
 def _validate_asset_metadata_signature(asset, metadata_path):
     signature_state = asset.get("signature_state", DEFAULT_SIGNATURE_STATE)
     if signature_state not in SIGNATURE_STATES:
-        raise PackageToolError(
-            f"{metadata_path}: signature_state must be one of {', '.join(SIGNATURE_STATES)}"
-        )
+        raise PackageToolError(f"{metadata_path}: signature_state must be one of {', '.join(SIGNATURE_STATES)}")
 
     signature_fields = ("signature_algorithm", "signature_key_id", "signature")
     if signature_state == SIGNATURE_STATE_VERIFIED:
@@ -562,7 +568,9 @@ def _validate_index_asset_signature(asset, metadata_path, version):
     try:
         _validate_asset_metadata_signature(asset, metadata_path)
     except PackageToolError as exc:
-        raise PackageToolError(f"{metadata_path}: release {version} asset {asset.get('name', '<unknown>')}: {exc}") from exc
+        raise PackageToolError(
+            f"{metadata_path}: release {version} asset {asset.get('name', '<unknown>')}: {exc}"
+        ) from exc
 
 
 def _require_string(data, key, source):
@@ -574,9 +582,7 @@ def _require_string(data, key, source):
 def _validate_identifier(value, source):
     allowed = set("abcdefghijklmnopqrstuvwxyz0123456789_-")
     if any(character not in allowed for character in value) or value[0] in "-_":
-        raise PackageToolError(
-            f"{source}: id must use lowercase letters, numbers, dashes, or underscores"
-        )
+        raise PackageToolError(f"{source}: id must use lowercase letters, numbers, dashes, or underscores")
 
 
 def _validate_runtime_targets(value, source=None, allow_empty=False):
@@ -616,9 +622,7 @@ def _validate_entry_point(package_dir, entry_point):
     module_file = package_dir / module_path.with_suffix(".py")
     package_init = package_dir / module_path / "__init__.py"
     if not module_file.is_file() and not package_init.is_file():
-        raise PackageToolError(
-            f"{package_dir / 'extension.json'}: entry_point does not resolve to a package file"
-        )
+        raise PackageToolError(f"{package_dir / 'extension.json'}: entry_point does not resolve to a package file")
 
 
 def _validate_license(package_dir):
@@ -635,22 +639,16 @@ def _validate_dependencies(package_dir, manifest, manifest_path):
 
     context = dependencies.get("dependency_context")
     if not isinstance(context, str) or not context:
-        raise PackageToolError(
-            f"{manifest_path}: dependencies.dependency_context must be a non-empty string"
-        )
+        raise PackageToolError(f"{manifest_path}: dependencies.dependency_context must be a non-empty string")
     if context not in DEPENDENCY_CONTEXTS:
         allowed = ", ".join(DEPENDENCY_CONTEXTS)
-        raise PackageToolError(
-            f"{manifest_path}: dependencies.dependency_context must be one of {allowed}"
-        )
+        raise PackageToolError(f"{manifest_path}: dependencies.dependency_context must be one of {allowed}")
 
     if context == "shared_host":
         profile = dependencies.get("shared_host_profile")
         if profile not in SHARED_HOST_PROFILES:
             allowed = ", ".join(SHARED_HOST_PROFILES)
-            raise PackageToolError(
-                f"{manifest_path}: dependencies.shared_host_profile must be one of {allowed}"
-            )
+            raise PackageToolError(f"{manifest_path}: dependencies.shared_host_profile must be one of {allowed}")
         if dependencies.get("requirements_file"):
             raise PackageToolError(
                 f"{manifest_path}: shared_host dependencies must use a host-curated profile, "
@@ -659,9 +657,7 @@ def _validate_dependencies(package_dir, manifest, manifest_path):
     elif context == "shared_group":
         shared_group = dependencies.get("shared_group")
         if not isinstance(shared_group, str) or not shared_group:
-            raise PackageToolError(
-                f"{manifest_path}: shared_group dependencies must declare dependencies.shared_group"
-            )
+            raise PackageToolError(f"{manifest_path}: shared_group dependencies must declare dependencies.shared_group")
 
     pip = dependencies.get("pip")
     if pip is not None and not isinstance(pip, dict):
@@ -677,17 +673,13 @@ def _validate_dependencies(package_dir, manifest, manifest_path):
         )
         if not requirements_path.is_file():
             raise PackageToolError(
-                f"{manifest_path}: dependencies.requirements_file does not exist: "
-                f"{requirements_file}"
+                f"{manifest_path}: dependencies.requirements_file does not exist: {requirements_file}"
             )
         if not isinstance(pip, dict):
-            raise PackageToolError(
-                f"{manifest_path}: dependencies.pip is required when requirements_file is present"
-            )
+            raise PackageToolError(f"{manifest_path}: dependencies.pip is required when requirements_file is present")
         if pip.get("require_hashes") is not True:
             raise PackageToolError(
-                f"{manifest_path}: dependencies.pip.require_hashes must be true "
-                "when requirements_file is present"
+                f"{manifest_path}: dependencies.pip.require_hashes must be true when requirements_file is present"
             )
         _validate_requirements_lock(requirements_path)
 
@@ -703,9 +695,7 @@ def _validate_dependencies(package_dir, manifest, manifest_path):
 def _validate_third_party_notices(package_dir):
     notices_path = package_dir / "THIRD_PARTY_NOTICES.md"
     if not notices_path.is_file():
-        raise PackageToolError(
-            f"{package_dir}: THIRD_PARTY_NOTICES.md is required when dependencies are declared"
-        )
+        raise PackageToolError(f"{package_dir}: THIRD_PARTY_NOTICES.md is required when dependencies are declared")
 
 
 def _validate_pip_path_list(package_dir, manifest_path, pip, key, must_exist):
@@ -722,9 +712,7 @@ def _validate_pip_path_list(package_dir, manifest_path, pip, key, must_exist):
             f"dependencies.pip.{key}",
         )
         if must_exist and not path.exists():
-            raise PackageToolError(
-                f"{manifest_path}: dependencies.pip.{key} path does not exist: {value}"
-            )
+            raise PackageToolError(f"{manifest_path}: dependencies.pip.{key} path does not exist: {value}")
 
 
 def _validate_string_list(manifest_path, data, display_key, key):
@@ -761,14 +749,10 @@ def _validate_requirements_lock(path):
         requirement_count += 1
         requirement_part = line.split("--hash=", 1)[0]
         if "==" not in requirement_part:
-            raise PackageToolError(
-                f"{path}: hashed requirements must pin exact versions with =="
-            )
+            raise PackageToolError(f"{path}: hashed requirements must pin exact versions with ==")
         hashes = [part for part in line.split() if part.startswith("--hash=")]
         if not hashes:
-            raise PackageToolError(
-                f"{path}: every requirement must include at least one --hash=sha256: value"
-            )
+            raise PackageToolError(f"{path}: every requirement must include at least one --hash=sha256: value")
         if any(not item.startswith("--hash=sha256:") for item in hashes):
             raise PackageToolError(f"{path}: requirement hashes must use sha256")
 
@@ -798,8 +782,7 @@ def _validate_host_mode_policy(package_dir, manifest, manifest_path):
     if sdk_backend == "runtime" and license_id not in GPL_RUNTIME_LICENSES:
         allowed = ", ".join(sorted(GPL_RUNTIME_LICENSES))
         raise PackageToolError(
-            f"{manifest_path}: sdk_backend runtime packages must use a GPL-3.0 "
-            f"compatible package license ({allowed})"
+            f"{manifest_path}: sdk_backend runtime packages must use a GPL-3.0 compatible package license ({allowed})"
         )
 
     if sdk_backend == "rpc" and not RPC_BACKEND_AVAILABLE:
@@ -820,8 +803,7 @@ def _validate_host_mode_policy(package_dir, manifest, manifest_path):
         if engine_import:
             source_path, module_name = engine_import
             raise PackageToolError(
-                f"{source_path}: sdk_backend protocol packages must not import "
-                f"Engine-backed module {module_name}"
+                f"{source_path}: sdk_backend protocol packages must not import Engine-backed module {module_name}"
             )
 
         native_ui_import = _find_native_ui_import(package_dir)

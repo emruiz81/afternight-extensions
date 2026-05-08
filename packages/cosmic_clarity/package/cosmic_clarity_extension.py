@@ -34,9 +34,7 @@ _COSMIC_CLARITY_CUDA_FAILURE_MARKERS = (
     "no kernel image is available",
     "cuda kernel errors",
 )
-_COSMIC_CLARITY_AUTO_PSF_FAILURE_MARKERS = (
-    "zero-size array to reduction operation maximum",
-)
+_COSMIC_CLARITY_AUTO_PSF_FAILURE_MARKERS = ("zero-size array to reduction operation maximum",)
 _MAX_CAPTURED_PROCESS_OUTPUT_LINES = 400
 _MAX_PROCESS_FAILURE_OUTPUT_LINES = 40
 _MAX_PROCESS_FAILURE_OUTPUT_CHARS = 6000
@@ -115,16 +113,18 @@ def _reported_progress_percent(percent, two_pass_progress, phase):
 
 def _log_launch_banner(process_name, subtitle, *, component):
     afternight.log_info(
-        "\n".join([
-            "",
-            "##############################################",
-            f"# Cosmic Clarity - {process_name}",
-            f"# {subtitle}",
-            "# Wrapped process author: Seti Astro",
-            "# AfterNight extension maintainer: Ezequiel Ruiz",
-            "# Upstream: https://github.com/setiastro/cosmicclarity",
-            "##############################################",
-        ]),
+        "\n".join(
+            [
+                "",
+                "##############################################",
+                f"# Cosmic Clarity - {process_name}",
+                f"# {subtitle}",
+                "# Wrapped process author: Seti Astro",
+                "# AfterNight extension maintainer: Ezequiel Ruiz",
+                "# Upstream: https://github.com/setiastro/cosmicclarity",
+                "##############################################",
+            ]
+        ),
         component=component,
     )
 
@@ -176,9 +176,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
     process_name = "Cosmic Clarity"
     process_subtitle = "External astrophotography helper process"
     process_header_detail = "Run the selected Cosmic Clarity helper against the active image."
-    not_configured_text = (
-        "Cosmic Clarity is not configured. Click Configure to select the installation folder."
-    )
+    not_configured_text = "Cosmic Clarity is not configured. Click Configure to select the installation folder."
 
     def on_process_launch(self):
         _log_launch_banner(
@@ -187,8 +185,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
             component=self.component,
         )
         afternight.log_info(
-            "Cosmic Clarity: helper executables run out-of-process from the "
-            "user-configured suite folder.",
+            "Cosmic Clarity: helper executables run out-of-process from the user-configured suite folder.",
             component=self.component,
         )
 
@@ -249,14 +246,8 @@ class _CosmicClarityBase(ui.ProcessWindow):
                 ),
                 "update_page_url": "https://github.com/setiastro/cosmicclarity/releases",
                 "platform_update_api_urls": {
-                    "linux": (
-                        "https://api.github.com/repos/setiastro/cosmicclarity/"
-                        "releases/tags/Linux"
-                    ),
-                    "windows": (
-                        "https://api.github.com/repos/setiastro/cosmicclarity/"
-                        "releases/tags/Windows"
-                    ),
+                    "linux": ("https://api.github.com/repos/setiastro/cosmicclarity/releases/tags/Linux"),
+                    "windows": ("https://api.github.com/repos/setiastro/cosmicclarity/releases/tags/Windows"),
                 },
             },
         )
@@ -352,8 +343,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
     def _retry_on_cpu(self, executable, args, workspace, progress, allow_auto_psf_retry):
         workspace.cleanup_outputs()
         afternight.log_warning(
-            "CosmicClarity CUDA execution failed; retrying once on CPU "
-            "(--disable_gpu).",
+            "CosmicClarity CUDA execution failed; retrying once on CPU (--disable_gpu).",
             component=self.component,
         )
         progress.set_text("Cosmic Clarity CUDA failed; retrying on CPU...")
@@ -412,11 +402,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
                     self._terminate_process_tree(process)
                     raise RuntimeError("CosmicClarity processing was cancelled.")
 
-                if (
-                    allow_gpu_retry
-                    and "--disable_gpu" not in args
-                    and _is_cuda_failure(output_lines)
-                ):
+                if allow_gpu_retry and "--disable_gpu" not in args and _is_cuda_failure(output_lines):
                     self._terminate_process_tree(process, reason="CPU retry")
                     return self._retry_on_cpu(
                         executable,
@@ -445,11 +431,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
 
             process.wait()
             if process.returncode != 0:
-                if (
-                    allow_gpu_retry
-                    and "--disable_gpu" not in args
-                    and _is_cuda_failure(output_lines)
-                ):
+                if allow_gpu_retry and "--disable_gpu" not in args and _is_cuda_failure(output_lines):
                     return self._retry_on_cpu(
                         executable,
                         args,
@@ -457,11 +439,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
                         progress,
                         allow_auto_psf_retry=allow_auto_psf_retry,
                     )
-                if (
-                    allow_auto_psf_retry
-                    and "--auto_detect_psf" in args
-                    and _is_auto_psf_failure(output_lines)
-                ):
+                if allow_auto_psf_retry and "--auto_detect_psf" in args and _is_auto_psf_failure(output_lines):
                     workspace.cleanup_outputs()
                     afternight.log_warning(
                         "CosmicClarity auto PSF detection failed; retrying once with fixed PSF "
@@ -522,12 +500,10 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
     process_name = "Denoise"
     process_subtitle = "Seti Astro noise reduction helper"
     process_header_detail = (
-        "Reduce luminance or full-image noise with the configured Cosmic Clarity "
-        "Denoise executable."
+        "Reduce luminance or full-image noise with the configured Cosmic Clarity Denoise executable."
     )
     not_configured_text = (
-        "Cosmic Clarity Denoise 6.5+ is required. Click Configure to select the "
-        "Cosmic Clarity installation folder."
+        "Cosmic Clarity Denoise 6.5+ is required. Click Configure to select the Cosmic Clarity installation folder."
     )
 
     def get_params(self):
@@ -554,8 +530,7 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
             },
         ]
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Denoise...")
         afternight.log_info(
@@ -598,12 +573,10 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
     process_name = "Dark Star"
     process_subtitle = "Seti Astro star separation helper"
     process_header_detail = (
-        "Generate a starless result with optional extracted-stars output from the "
-        "configured Dark Star executable."
+        "Generate a starless result with optional extracted-stars output from the configured Dark Star executable."
     )
     not_configured_text = (
-        "Cosmic Clarity Dark Star is required. Click Configure to select the "
-        "Cosmic Clarity installation folder."
+        "Cosmic Clarity Dark Star is required. Click Configure to select the Cosmic Clarity installation folder."
     )
 
     def get_params(self):
@@ -641,8 +614,7 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
             },
         ]
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Dark Star...")
         afternight.log_info(
@@ -702,13 +674,9 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
     window_size = (600, 400)
     process_name = "Sharpening"
     process_subtitle = "Seti Astro stellar and non-stellar sharpening helper"
-    process_header_detail = (
-        "Sharpen stellar, non-stellar, or combined detail with optional automatic "
-        "PSF detection."
-    )
+    process_header_detail = "Sharpen stellar, non-stellar, or combined detail with optional automatic PSF detection."
     not_configured_text = (
-        "Cosmic Clarity Sharpen 6.5+ is required. Click Configure to select the "
-        "Cosmic Clarity installation folder."
+        "Cosmic Clarity Sharpen 6.5+ is required. Click Configure to select the Cosmic Clarity installation folder."
     )
 
     def get_params(self):
@@ -766,8 +734,7 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
             },
         ]
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Sharpening...")
         afternight.log_info(
@@ -800,15 +767,19 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
                 str(float(params.get("non_stellar_strength", 3.0))),
             ]
             if sharpening_mode in ("Both", "Non-Stellar Only"):
-                args.extend([
-                    "--nonstellar_amount",
-                    str(float(params.get("non_stellar_amount", 0.5))),
-                ])
+                args.extend(
+                    [
+                        "--nonstellar_amount",
+                        str(float(params.get("non_stellar_amount", 0.5))),
+                    ]
+                )
             if sharpening_mode in ("Both", "Stellar Only"):
-                args.extend([
-                    "--stellar_amount",
-                    str(float(params.get("stellar_amount", 0.5))),
-                ])
+                args.extend(
+                    [
+                        "--stellar_amount",
+                        str(float(params.get("stellar_amount", 0.5))),
+                    ]
+                )
             if bool(params.get("auto_detect_psf", True)):
                 args.append("--auto_detect_psf")
             if bool(params.get("process_rgb_channels", False)):
@@ -833,8 +804,7 @@ class CosmicClaritySuperResExtension(_CosmicClarityBase):
     process_name = "Super Resolution"
     process_subtitle = "Seti Astro upscaling helper"
     process_header_detail = (
-        "Upscale the active image with the configured Cosmic Clarity SuperRes "
-        "helper and open the resized result."
+        "Upscale the active image with the configured Cosmic Clarity SuperRes helper and open the resized result."
     )
     not_configured_text = (
         "Cosmic Clarity Super-Resolution 1.1+ is required. Click Configure to select "
@@ -857,8 +827,7 @@ class CosmicClaritySuperResExtension(_CosmicClarityBase):
             },
         ]
 
-    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None,
-                output_masks=None):
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks, dst_image
         progress.set_text("Preparing Cosmic Clarity Super Resolution...")
         scale = str(params.get("scale", "2"))
@@ -914,8 +883,6 @@ class CosmicClaritySuperResExtension(_CosmicClarityBase):
                 )
                 return
 
-            raise RuntimeError(
-                "CosmicClarity Super Resolution did not produce the expected output file."
-            )
+            raise RuntimeError("CosmicClarity Super Resolution did not produce the expected output file.")
         finally:
             workspace.cleanup()

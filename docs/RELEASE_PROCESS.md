@@ -128,6 +128,9 @@ The package builder requires `zstd` on `PATH`.
 Run repository tooling tests:
 
 ```bash
+python3 -m pip install --require-hashes -r tools/quality/requirements.lock
+python3 -m ruff format --check .
+python3 -m ruff check .
 python3 -m unittest discover -s tests
 ```
 
@@ -168,6 +171,7 @@ The validation workflow:
 
 - installs Python and `zstd`
 - installs pinned Python signing dependencies
+- installs pinned Ruff and checks Python formatting and lint
 - runs repository tooling tests
 - builds all currently published package assets
 - regenerates `index.json` and diffs it against the checked-in file

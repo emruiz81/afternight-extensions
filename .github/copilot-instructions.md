@@ -72,6 +72,6 @@ Prioritize correctness, safety, compatibility, determinism, and missing
 companion changes over style. Prefer actionable findings with local evidence
 and impact. Skip stylistic comments unless they hide a real defect, validation
 gap, or documentation gap. Remember that `validate.yml` rebuilds published
-assets, runs repository tooling tests, and verifies the generated candidate
-index; package-local tests needing `../afternight` are still expected locally
-when package behavior changes.
+assets, runs Ruff format/lint, runs repository tooling tests, and verifies the
+generated candidate index; package-local tests needing `../afternight` are still
+expected locally when package behavior changes.

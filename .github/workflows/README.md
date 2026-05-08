@@ -10,6 +10,7 @@ Use the workflows for different purposes:
 It:
 
 - installs `zstd`
+- installs pinned Ruff and checks Python formatting and lint
 - runs package-tool unit tests
 - builds published package source trees into deterministic `.tar.zst` assets
 - skips source-staged packages marked with `"publish": false`
