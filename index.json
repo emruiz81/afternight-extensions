@@ -65,7 +65,7 @@
       "author": "AfterNight / GraXpert Development Team",
       "license": "GPL-3.0",
       "publisher_id": "afternight",
-      "latest_version": "1.0.1",
+      "latest_version": "1.0.2",
       "tags": [
         "ai",
         "background-extraction",
@@ -75,7 +75,7 @@
       ],
       "releases": [
         {
-          "version": "1.0.1",
+          "version": "1.0.2",
           "min_app_version": "2.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
@@ -88,9 +88,9 @@
           ],
           "assets": [
             {
-              "name": "graxpert-1.0.1-all.tar.zst",
-              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.1/graxpert-1.0.1-all.tar.zst",
-              "package_hash": "sha256:81a4cd10aa465f7f8c063743c1a0f9d3d1a86e9c1b0185c64147e24d7bea79e5",
+              "name": "graxpert-1.0.2-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.2/graxpert-1.0.2-all.tar.zst",
+              "package_hash": "sha256:8f5f226a91137f0fe1c6d7dbbb179ccbf8f1487a22460c844788dd535aab50f4",
               "signature_state": "verified",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -99,11 +99,11 @@
               "signature_detail": "Verified official AfterNight package signature (Ed25519 key afternight-official-ed25519-v1).",
               "signature_algorithm": "ed25519",
               "signature_key_id": "afternight-official-ed25519-v1",
-              "signature": "tZ7igZSFDcPSn+v0sPYhv4KtY7MEO+nPcrI+QWYfy+jUHZrqTIutNTaghrdE7p5w1J/NXlVLSpluoWB277vBAg=="
+              "signature": "Jc6//VESlQF1bKrB3mywne9JZGx5nV5q12Fy4WK5dm6mTnm4JUwVBH44j2nH6zCpCVcDiieGxeQHF6/01/daAQ=="
             }
           ],
-          "changelog": "Switch GraXpert to a thin PyPI-backed package. Official PyPI wheels are hash-locked and downloaded by the host during install instead of being redistributed as release-asset payload.",
-          "published_at": "2026-04-28T00:00:00Z"
+          "changelog": "Switch GraXpert to a thin PyPI-backed package and disable GPU acceleration for background extraction while preserving GPU controls for denoise and deconvolution.",
+          "published_at": "2026-05-08T00:00:00Z"
         }
       ],
       "homepage_url": "https://graxpert.com/",
