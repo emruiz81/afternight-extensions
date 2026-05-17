@@ -8,6 +8,7 @@ import re
 import shutil
 import signal
 import subprocess
+import stat
 import tempfile
 import uuid
 
@@ -20,9 +21,7 @@ _PROGRESS_RE = re.compile(r".*(?:Progress|PROGRESS):\s+([0-9.]+)%")
 _COSMIC_CLARITY_SETTING_KEY = "executable_path"
 _COSMIC_CLARITY_REQUIRED_EXECUTABLES = [
     "setiastrocosmicclarity_denoise",
-    "setiastrocosmicclarity_superres",
     "setiastrocosmicclarity",
-    "setiastrocosmicclarity_darkstar",
 ]
 _SHARPENING_MODE_ARGS = {
     "both": "Both",
@@ -34,6 +33,13 @@ _COSMIC_CLARITY_CUDA_FAILURE_MARKERS = (
     "no kernel image is available",
     "cuda kernel errors",
 )
+_COSMIC_CLARITY_WINDOWS_RUNTIME_HINT = (
+    "Cosmic Clarity failed while importing its bundled PyTorch runtime. This usually means "
+    "the Windows helper executable and the _internal runtime folder came from different "
+    "Cosmic Clarity downloads. Download and extract a complete current Windows Cosmic Clarity "
+    "suite into a fresh folder, then configure AfterNight to use that folder. The GitHub "
+    "per-file update release excludes _internal and cannot repair an older starter-suite runtime."
+)
 _COSMIC_CLARITY_AUTO_PSF_FAILURE_MARKERS = ("zero-size array to reduction operation maximum",)
 _MAX_CAPTURED_PROCESS_OUTPUT_LINES = 400
 _MAX_PROCESS_FAILURE_OUTPUT_LINES = 40
@@ -42,6 +48,10 @@ _MAX_PROCESS_FAILURE_OUTPUT_CHARS = 6000
 
 def _known_failure_hint(output_lines):
     output_text = "\n".join(output_lines).casefold()
+    if (
+        "backendtype" in output_text and "xccl" in output_text and "_distributed_c10d" in output_text
+    ) or "failed to load python dll" in output_text:
+        return _COSMIC_CLARITY_WINDOWS_RUNTIME_HINT
     if "torch._c._sparse" in output_text and "_spsolve" in output_text:
         return (
             "Cosmic Clarity Super-Resolution failed while importing its bundled "
@@ -147,6 +157,19 @@ class _Workspace:
     def track(self, *paths):
         self._tracked_paths.extend(pathlib.Path(path) for path in paths if path)
 
+    def clear_input_dir(self):
+        if self._owns_root:
+            return
+
+        for path in self.input_dir.iterdir():
+            try:
+                if path.is_dir():
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
     def cleanup_outputs(self):
         for path in self._tracked_paths:
             path = pathlib.Path(path)
@@ -235,20 +258,16 @@ class _CosmicClarityBase(ui.ProcessWindow):
                     "Initial Cosmic Clarity downloads are hosted by Seti Astro. "
                     "After downloading the current platform suite, unzip it and "
                     "select the folder that contains the Cosmic Clarity executables. "
-                    "Existing installations can be checked and updated from the "
-                    "platform release files."
+                    "On Windows, install a full current suite when adding helpers "
+                    "that need a newer _internal runtime folder."
                 ),
                 "install_instructions": (
                     "Select the Cosmic Clarity suite folder containing "
-                    "SetiAstroCosmicClarity, SetiAstroCosmicClarity_denoise, "
-                    "setiastrocosmicclarity_superres, and "
-                    "setiastrocosmicclarity_darkstar."
+                    "SetiAstroCosmicClarity and SetiAstroCosmicClarity_denoise. "
+                    "On Windows, use a complete current suite for Dark Star and "
+                    "Super Resolution because the individual update files exclude "
+                    "the _internal runtime folder."
                 ),
-                "update_page_url": "https://github.com/setiastro/cosmicclarity/releases",
-                "platform_update_api_urls": {
-                    "linux": ("https://api.github.com/repos/setiastro/cosmicclarity/releases/tags/Linux"),
-                    "windows": ("https://api.github.com/repos/setiastro/cosmicclarity/releases/tags/Windows"),
-                },
             },
         )
         meta["header_description"] = (
@@ -296,6 +315,9 @@ class _CosmicClarityBase(ui.ProcessWindow):
         executable = self._resolve_tool_executable(f"{base_name}{suffix}")
         if not executable.exists():
             raise RuntimeError(f"CosmicClarity executable not found: {executable}")
+        if os.name != "nt":
+            mode = executable.stat().st_mode
+            executable.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         return executable
 
     def _terminate_process_tree(self, process, reason="cancellation"):
@@ -474,6 +496,16 @@ class _CosmicClarityBase(ui.ProcessWindow):
             f"Cosmic Clarity: loaded result image from {path}.",
             component=self.component,
         )
+        return result
+
+    def _open_result_image(self, image, target, suffix):
+        view_name = getattr(target, "view_name", "") or "Image"
+        title = f"{view_name} - {suffix}"
+        if ui.open_image(image, title=title):
+            afternight.log_info(
+                f"Cosmic Clarity: opened result image '{title}'.",
+                component=self.component,
+            )
 
     def _resolve_output_path(self, expected_path, input_path, output_suffix):
         if expected_path.exists():
@@ -607,27 +639,36 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
                 "max": 2048,
             },
             {
+                "id": "use_gpu",
+                "type": "bool",
+                "label": "Use GPU Acceleration",
+                "default": True,
+            },
+            {
                 "id": "show_extracted_stars",
                 "type": "bool",
-                "label": "Save Extracted Stars Artifact",
+                "label": "Show Extracted Stars",
                 "default": False,
             },
         ]
 
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
-        del target, masks, weights, output_masks
+        del masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Dark Star...")
+        gpu_enabled = bool(params.get("use_gpu", self.settings.get("gpu_enabled", True)))
+        show_extracted_stars = bool(params.get("show_extracted_stars", False))
         afternight.log_info(
             f"Cosmic Clarity Dark Star: mode={params.get('star_removal_mode', 'additive')}, "
             f"chunk_size={int(params.get('chunk_size', 256))}, "
             f"pre_stretch={'enabled' if bool(params.get('pre_stretch_linear_image', False)) else 'disabled'}, "
-            f"stars_artifact={'enabled' if bool(params.get('show_extracted_stars', False)) else 'disabled'}, "
-            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            f"stars_output={'enabled' if show_extracted_stars else 'disabled'}, "
+            f"GPU={'enabled' if gpu_enabled else 'disabled'}.",
             component=self.component,
         )
 
         workspace = _Workspace(self._tool_dir())
         try:
+            workspace.clear_input_dir()
             input_path = workspace.input_dir / f"afternight_{uuid.uuid4().hex}.tiff"
             output_path = workspace.output_dir / f"{input_path.stem}_starless.tiff"
             stars_path = workspace.output_dir / f"{input_path.stem}_stars_only.tiff"
@@ -642,9 +683,9 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
             ]
             if bool(params.get("pre_stretch_linear_image", False)):
                 args.append("--pre_stretch")
-            if bool(params.get("show_extracted_stars", False)):
+            if show_extracted_stars:
                 args.append("--show_extracted_stars")
-            if not bool(self.settings.get("gpu_enabled", True)):
+            if not gpu_enabled:
                 args.append("--disable_gpu")
 
             self._run_process(
@@ -655,13 +696,18 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
             )
             resolved_output_path = self._resolve_output_path(output_path, input_path, "_starless")
             workspace.track(resolved_output_path)
-            self._copy_loaded_result(resolved_output_path, dst_image)
+            result = self._copy_loaded_result(resolved_output_path, dst_image)
+            self._open_result_image(result, target, "Cosmic Clarity Starless")
 
-            if bool(params.get("show_extracted_stars", False)) and stars_path.exists():
+            resolved_stars_path = self._resolve_output_path(stars_path, input_path, "_stars_only")
+            if show_extracted_stars and resolved_stars_path.exists():
+                workspace.track(resolved_stars_path)
+                stars_image = io.load(resolved_stars_path)
+                self._open_result_image(stars_image, target, "Cosmic Clarity Stars")
                 artifacts_dir = afternight.session_paths().artifacts_dir()
                 if artifacts_dir:
-                    artifact_path = pathlib.Path(artifacts_dir) / stars_path.name
-                    io.save(io.load(stars_path), artifact_path)
+                    artifact_path = pathlib.Path(artifacts_dir) / resolved_stars_path.name
+                    io.save(stars_image, artifact_path)
                     afternight.log_info(
                         f"Cosmic Clarity Dark Star: saved extracted stars artifact to {artifact_path}",
                         component=self.component,

@@ -47,7 +47,10 @@
       "class": "CosmicClarityDarkStarExtension",
       "display_name": "Cosmic Clarity Dark Star",
       "category": "star_object",
-      "action_object_name": "actionCosmic_Clarity_Dark_Star"
+      "action_object_name": "actionCosmic_Clarity_Dark_Star",
+      "capabilities": {
+        "starless_generator": true
+      }
     },
     {
       "id_suffix": "super_resolution",

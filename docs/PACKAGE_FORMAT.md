@@ -111,6 +111,21 @@ Every repository-ready package must declare `sdk_backend` explicitly.
 See [HOST_MODES_AND_LICENSING.md](HOST_MODES_AND_LICENSING.md) for the canonical
 host-mode matrix, allowed imports, and license restrictions.
 
+## Process Capabilities
+
+Each `processes[]` entry may declare a `capabilities` object. Missing fields use
+AfterNight defaults. In addition to execution, preview, mask, weight, and source
+channel metadata, star-separation processes can advertise reusable output roles:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `starless_generator` | boolean | The process can generate a starless image usable by other native or extension processes. |
+| `star_mask_generator` | boolean | The process can generate an extracted-stars or star-mask image usable by other processes. |
+
+These flags are discovery metadata only. The process is still launched through
+its normal `launch_mode`, and availability follows the package environment state
+reported by AfterNight.
+
 ## Runtime Targets
 
 Use `runtime_targets` when the package ships target-specific artifacts.
