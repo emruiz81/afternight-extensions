@@ -7,22 +7,23 @@
     {
       "id": "cosmic_clarity",
       "name": "Cosmic Clarity",
-      "summary": "Cosmic Clarity denoise, dark-star, sharpening, and super-resolution workflows hosted through the extension runtime.",
-      "description": "First-party AfterNight adapter for the Cosmic Clarity tool suite. It provides denoise, Dark Star, sharpening, and super-resolution processes while keeping the upstream Cosmic Clarity executables outside the package and user-configurable.",
+      "summary": "Cosmic Clarity denoise, satellite trail removal, dark-star, sharpening, and super-resolution workflows hosted through the extension runtime.",
+      "description": "First-party AfterNight adapter for the Cosmic Clarity tool suite. It provides denoise, satellite trail removal, Dark Star, sharpening, and super-resolution processes while keeping the upstream Cosmic Clarity executables outside the package and user-configurable.",
       "author": "AfterNight / Seti Astro",
       "license": "GPL-3.0",
       "publisher_id": "afternight",
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.1",
       "tags": [
         "ai",
         "denoise",
+        "satellite",
         "sharpening",
         "super-resolution",
         "stars"
       ],
       "releases": [
         {
-          "version": "1.0.0",
+          "version": "1.0.1",
           "min_app_version": "2.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
@@ -35,9 +36,9 @@
           ],
           "assets": [
             {
-              "name": "cosmic_clarity-1.0.0-all.tar.zst",
-              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.0/cosmic_clarity-1.0.0-all.tar.zst",
-              "package_hash": "sha256:15e2ba085481af0d364b650c53b29068b5f3f70256e79b7ee1ee00d1c8f63f07",
+              "name": "cosmic_clarity-1.0.1-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.1/cosmic_clarity-1.0.1-all.tar.zst",
+              "package_hash": "sha256:eb2cb49e663ebe23bace0114318ade30635c87749ecb0eab8e12e74de87f8319",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -46,8 +47,8 @@
               "signature_detail": "Unsigned official package; SHA-256 verified from index"
             }
           ],
-          "changelog": "Initial official repository release of the Cosmic Clarity adapter.",
-          "published_at": "2026-04-27T00:00:00Z"
+          "changelog": "Adds the Cosmic Clarity Satellite trail removal process and process-level GPU controls.",
+          "published_at": "2026-05-17T00:00:00Z"
         }
       ],
       "homepage_url": "https://www.setiastro.com/cosmic-clarity",

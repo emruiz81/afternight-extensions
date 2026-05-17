@@ -829,6 +829,7 @@ class RepositoryPackageTests(unittest.TestCase):
         processes = {process["id_suffix"]: process for process in manifest["processes"]}
 
         self.assertEqual(processes["denoise"]["category"], "denoising")
+        self.assertEqual(processes["satellite"]["category"], "denoising")
         self.assertEqual(processes["dark_star"]["category"], "star_object")
         self.assertEqual(processes["super_resolution"]["category"], "sharpening_enhancement")
         self.assertEqual(processes["sharpening"]["category"], "sharpening_enhancement")

@@ -22,6 +22,7 @@ _COSMIC_CLARITY_SETTING_KEY = "executable_path"
 _COSMIC_CLARITY_REQUIRED_EXECUTABLES = [
     "setiastrocosmicclarity_denoise",
     "setiastrocosmicclarity",
+    "setiastrocosmicclarity_satellite",
 ]
 _SHARPENING_MODE_ARGS = {
     "both": "Both",
@@ -266,10 +267,10 @@ class _CosmicClarityBase(ui.ProcessWindow):
                 ),
                 "install_instructions": (
                     "Select the Cosmic Clarity suite folder containing "
-                    "SetiAstroCosmicClarity and SetiAstroCosmicClarity_denoise. "
-                    "On Windows, use a complete current suite for Dark Star and "
-                    "Super Resolution because the individual update files exclude "
-                    "the _internal runtime folder."
+                    "SetiAstroCosmicClarity, SetiAstroCosmicClarity_denoise, and "
+                    "SetiAstroCosmicClarity_satellite. On Windows, use a complete "
+                    "current suite for Dark Star and Super Resolution because the "
+                    "individual update files exclude the _internal runtime folder."
                 ),
             },
         )
@@ -530,6 +531,26 @@ class _CosmicClarityBase(ui.ProcessWindow):
 
         return max(matches, key=lambda candidate: candidate.stat().st_mtime)
 
+    def _resolve_related_output_path(self, expected_path, input_path):
+        if expected_path.exists():
+            return expected_path
+
+        output_dir = pathlib.Path(expected_path).parent
+        input_stem = pathlib.Path(input_path).stem.casefold()
+        try:
+            matches = [
+                candidate
+                for candidate in output_dir.iterdir()
+                if candidate.is_file() and candidate.stem.casefold().startswith(input_stem)
+            ]
+        except OSError:
+            return expected_path
+
+        if not matches:
+            return expected_path
+
+        return max(matches, key=lambda candidate: candidate.stat().st_mtime)
+
 
 class CosmicClarityDenoiseExtension(_CosmicClarityBase):
     process_name = "Denoise"
@@ -600,6 +621,114 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
                 progress,
             )
             resolved_output_path = self._resolve_output_path(output_path, input_path, "_denoised")
+            workspace.track(resolved_output_path)
+            self._copy_loaded_result(resolved_output_path, dst_image)
+        finally:
+            workspace.cleanup()
+
+
+class CosmicClaritySatelliteExtension(_CosmicClarityBase):
+    process_name = "Satellite"
+    process_subtitle = "Seti Astro satellite trail removal helper"
+    process_header_detail = "Remove satellite trails with full-image or luminance-only processing."
+    not_configured_text = (
+        "Cosmic Clarity Satellite is required. Click Configure to select the Cosmic Clarity installation folder."
+    )
+
+    def get_params(self):
+        return self._meta_params() + [
+            {"id": "general", "type": "section", "label": "Satellite"},
+            {
+                "id": "satellite_mode",
+                "type": "choice",
+                "label": "Mode",
+                "default": "full",
+                "options": [
+                    ["Full", "full"],
+                    ["Luminance", "luminance"],
+                ],
+            },
+            {
+                "id": "sensitivity",
+                "type": "float",
+                "label": "Sensitivity",
+                "default": 0.1,
+                "min": 0.01,
+                "max": 0.5,
+                "step": 0.01,
+            },
+            {
+                "id": "clip_trail",
+                "type": "bool",
+                "label": "Clip Trail",
+                "default": True,
+            },
+            self._gpu_param(),
+        ]
+
+    def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
+        del target, masks, weights, output_masks
+        progress.set_text("Preparing Cosmic Clarity Satellite...")
+        gpu_enabled = self._gpu_enabled(params)
+        mode = str(params.get("satellite_mode", "full"))
+        sensitivity = max(0.01, min(0.5, float(params.get("sensitivity", 0.1))))
+        clip_trail = bool(params.get("clip_trail", True))
+        afternight.log_info(
+            f"Cosmic Clarity Satellite: mode={mode}, "
+            f"sensitivity={sensitivity:.3f}, "
+            f"clip_trail={'enabled' if clip_trail else 'disabled'}, "
+            f"GPU={'enabled' if gpu_enabled else 'disabled'}.",
+            component=self.component,
+        )
+
+        workspace = _Workspace(self._tool_dir())
+        try:
+            workspace.clear_input_dir()
+            input_path = workspace.input_dir / f"afternight_{uuid.uuid4().hex}.tiff"
+            output_path = workspace.output_dir / input_path.name
+            workspace.track(input_path, output_path)
+            io.save(src_image, input_path)
+
+            args = [
+                "--input",
+                str(workspace.input_dir),
+                "--output",
+                str(workspace.output_dir),
+                "--mode",
+                mode,
+                "--batch",
+                "--sensitivity",
+                str(sensitivity),
+                "--clip-trail" if clip_trail else "--no-clip-trail",
+            ]
+            if gpu_enabled:
+                args.append("--use-gpu")
+
+            executable = self._tool_executable("setiastrocosmicclarity_satellite")
+            self._run_process(
+                executable,
+                args,
+                workspace,
+                progress,
+                allow_gpu_retry=False,
+            )
+            resolved_output_path = self._resolve_related_output_path(output_path, input_path)
+            if gpu_enabled and not resolved_output_path.exists():
+                workspace.cleanup_outputs()
+                afternight.log_warning(
+                    "Cosmic Clarity Satellite GPU execution produced no output; retrying once on CPU.",
+                    component=self.component,
+                )
+                progress.set_text("Cosmic Clarity Satellite GPU failed; retrying on CPU...")
+                cpu_args = [arg for arg in args if arg != "--use-gpu"]
+                self._run_process(
+                    executable,
+                    cpu_args,
+                    workspace,
+                    progress,
+                    allow_gpu_retry=False,
+                )
+                resolved_output_path = self._resolve_related_output_path(output_path, input_path)
             workspace.track(resolved_output_path)
             self._copy_loaded_result(resolved_output_path, dst_image)
         finally:

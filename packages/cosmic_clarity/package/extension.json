@@ -1,9 +1,9 @@
 {
   "id": "cosmic_clarity",
   "name": "Cosmic Clarity",
-  "version": "1.0.0",
-  "summary": "Cosmic Clarity denoise, dark-star, sharpening, and super-resolution workflows hosted through the extension runtime.",
-  "description": "First-party AfterNight adapter for the Cosmic Clarity tool suite. It provides denoise, Dark Star, sharpening, and super-resolution processes while keeping the upstream Cosmic Clarity executables outside the package and user-configurable.",
+  "version": "1.0.1",
+  "summary": "Cosmic Clarity denoise, satellite trail removal, dark-star, sharpening, and super-resolution workflows hosted through the extension runtime.",
+  "description": "First-party AfterNight adapter for the Cosmic Clarity tool suite. It provides denoise, satellite trail removal, Dark Star, sharpening, and super-resolution processes while keeping the upstream Cosmic Clarity executables outside the package and user-configurable.",
   "author": "AfterNight / Seti Astro",
   "license": "GPL-3.0",
   "publisher_id": "afternight",
@@ -26,6 +26,7 @@
   "tags": [
     "ai",
     "denoise",
+    "satellite",
     "sharpening",
     "super-resolution",
     "stars"
@@ -41,6 +42,13 @@
       "display_name": "Cosmic Clarity Denoise",
       "category": "denoising",
       "action_object_name": "actionCosmic_Clarity_Denoise"
+    },
+    {
+      "id_suffix": "satellite",
+      "class": "CosmicClaritySatelliteExtension",
+      "display_name": "Cosmic Clarity Satellite",
+      "category": "denoising",
+      "action_object_name": "actionCosmic_Clarity_Satellite"
     },
     {
       "id_suffix": "dark_star",

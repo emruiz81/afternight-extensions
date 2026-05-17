@@ -18,6 +18,7 @@ import afternight  # noqa: E402
 from cosmic_clarity_extension import (  # noqa: E402
     CosmicClarityDarkStarExtension,
     CosmicClarityDenoiseExtension,
+    CosmicClaritySatelliteExtension,
     CosmicClaritySharpeningExtension,
     CosmicClaritySuperResExtension,
     _process_failure_message,
@@ -43,6 +44,7 @@ class CosmicClarityLoggingTests(unittest.TestCase):
     def test_each_process_launch_hook_emits_banner_with_credits(self):
         cases = [
             (CosmicClarityDenoiseExtension, "Cosmic Clarity - Denoise"),
+            (CosmicClaritySatelliteExtension, "Cosmic Clarity - Satellite"),
             (CosmicClarityDarkStarExtension, "Cosmic Clarity - Dark Star"),
             (CosmicClaritySharpeningExtension, "Cosmic Clarity - Sharpening"),
             (CosmicClaritySuperResExtension, "Cosmic Clarity - Super Resolution"),
@@ -62,6 +64,11 @@ class CosmicClarityLoggingTests(unittest.TestCase):
     def test_each_process_window_meta_uses_process_specific_header(self):
         cases = [
             (CosmicClarityDenoiseExtension, "Seti Astro Cosmic Clarity - Denoise", "full-image noise"),
+            (
+                CosmicClaritySatelliteExtension,
+                "Seti Astro Cosmic Clarity - Satellite",
+                "satellite trails",
+            ),
             (CosmicClarityDarkStarExtension, "Seti Astro Cosmic Clarity - Dark Star", "starless result"),
             (CosmicClaritySharpeningExtension, "Seti Astro Cosmic Clarity - Sharpening", "PSF detection"),
             (CosmicClaritySuperResExtension, "Seti Astro Cosmic Clarity - Super Resolution", "Upscale"),
@@ -86,6 +93,7 @@ class CosmicClarityLoggingTests(unittest.TestCase):
             [
                 "setiastrocosmicclarity_denoise",
                 "setiastrocosmicclarity",
+                "setiastrocosmicclarity_satellite",
             ],
         )
         self.assertNotIn("platform_update_api_urls", tool_configuration)
@@ -111,6 +119,7 @@ class CosmicClarityLoggingTests(unittest.TestCase):
     def test_gpu_supported_processes_expose_process_toggle(self):
         for extension_class in (
             CosmicClarityDenoiseExtension,
+            CosmicClaritySatelliteExtension,
             CosmicClarityDarkStarExtension,
             CosmicClaritySharpeningExtension,
         ):
@@ -207,7 +216,159 @@ class CosmicClarityLoggingTests(unittest.TestCase):
                             FakeProgress(),
                         )
 
-                    self.assertIn("--disable_gpu", captured_args)
+            self.assertIn("--disable_gpu", captured_args)
+
+    def test_satellite_maps_cli_args_and_loads_related_output(self):
+        class FakeProgress:
+            def set_text(self, _text):
+                pass
+
+        class FakeDestination:
+            copied = None
+
+            def copy_from(self, image):
+                self.copied = image
+
+        class FakeImage:
+            def __init__(self, path):
+                self.path = pathlib.Path(path)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool_dir = pathlib.Path(tmpdir) / "suite"
+            tool_dir.mkdir()
+            (tool_dir / "input").mkdir()
+            (tool_dir / "output").mkdir()
+            stale_input = tool_dir / "input" / "stale.tiff"
+            stale_input.write_text("stale", encoding="utf-8")
+            captured_args = []
+
+            def fake_run_process(_executable, args, workspace, _progress, **kwargs):
+                captured_args.extend(args)
+                self.assertFalse(kwargs["allow_gpu_retry"])
+                input_path = next(workspace.input_dir.iterdir())
+                (workspace.output_dir / f"{input_path.stem}_satellite_removed.fit").write_text(
+                    "result",
+                    encoding="utf-8",
+                )
+
+            def fake_save(_image, path, options=None):
+                del options
+                path = pathlib.Path(path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("image", encoding="utf-8")
+
+            def fake_load(path, load_metadata=True):
+                del load_metadata
+                return FakeImage(path)
+
+            extension = CosmicClaritySatelliteExtension(None)
+            extension.settings.set("executable_path", str(tool_dir))
+            destination = FakeDestination()
+
+            with (
+                mock.patch.object(extension, "_tool_executable", return_value=tool_dir / "satellite.exe"),
+                mock.patch.object(extension, "_run_process", side_effect=fake_run_process),
+                mock.patch("cosmic_clarity_extension.io.save", side_effect=fake_save),
+                mock.patch("cosmic_clarity_extension.io.load", side_effect=fake_load),
+            ):
+                extension.execute(
+                    None,
+                    object(),
+                    destination,
+                    {
+                        "satellite_mode": "luminance",
+                        "sensitivity": 0.2,
+                        "clip_trail": False,
+                        "use_gpu": True,
+                    },
+                    FakeProgress(),
+                )
+
+            self.assertFalse(stale_input.exists())
+            self.assertIn("--input", captured_args)
+            self.assertIn("--output", captured_args)
+            self.assertIn("--batch", captured_args)
+            self.assertIn("--use-gpu", captured_args)
+            self.assertIn("--no-clip-trail", captured_args)
+            self.assertNotIn("--clip-trail", captured_args)
+            self.assertEqual(captured_args[captured_args.index("--mode") + 1], "luminance")
+            self.assertEqual(captured_args[captured_args.index("--sensitivity") + 1], "0.2")
+            self.assertIsNotNone(destination.copied)
+            self.assertTrue(destination.copied.path.name.endswith("_satellite_removed.fit"))
+
+    def test_satellite_retries_without_gpu_when_gpu_run_produces_no_output(self):
+        class FakeProgress:
+            messages = []
+
+            def set_text(self, text):
+                self.messages.append(str(text))
+
+        class FakeDestination:
+            copied = None
+
+            def copy_from(self, image):
+                self.copied = image
+
+        class FakeImage:
+            def __init__(self, path):
+                self.path = pathlib.Path(path)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool_dir = pathlib.Path(tmpdir) / "suite"
+            tool_dir.mkdir()
+            (tool_dir / "input").mkdir()
+            (tool_dir / "output").mkdir()
+            captured_runs = []
+
+            def fake_run_process(_executable, args, workspace, _progress, **_kwargs):
+                captured_runs.append(list(args))
+                if "--use-gpu" in args:
+                    return
+                input_path = next(workspace.input_dir.iterdir())
+                (workspace.output_dir / f"{input_path.stem}_satellite_removed.fit").write_text(
+                    "result",
+                    encoding="utf-8",
+                )
+
+            def fake_save(_image, path, options=None):
+                del options
+                path = pathlib.Path(path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("image", encoding="utf-8")
+
+            def fake_load(path, load_metadata=True):
+                del load_metadata
+                return FakeImage(path)
+
+            extension = CosmicClaritySatelliteExtension(None)
+            extension.settings.set("executable_path", str(tool_dir))
+            progress = FakeProgress()
+            destination = FakeDestination()
+
+            with (
+                mock.patch.object(extension, "_tool_executable", return_value=tool_dir / "satellite.exe"),
+                mock.patch.object(extension, "_run_process", side_effect=fake_run_process),
+                mock.patch("cosmic_clarity_extension.io.save", side_effect=fake_save),
+                mock.patch("cosmic_clarity_extension.io.load", side_effect=fake_load),
+            ):
+                extension.execute(
+                    None,
+                    object(),
+                    destination,
+                    {
+                        "satellite_mode": "full",
+                        "sensitivity": 0.1,
+                        "clip_trail": True,
+                        "use_gpu": True,
+                    },
+                    progress,
+                )
+
+            self.assertEqual(len(captured_runs), 2)
+            self.assertIn("--use-gpu", captured_runs[0])
+            self.assertNotIn("--use-gpu", captured_runs[1])
+            self.assertIn("retrying on CPU", "\n".join(progress.messages))
+            self.assertIsNotNone(destination.copied)
 
     def test_dark_star_maps_gpu_toggle_and_opens_results(self):
         class FakeProgress:
