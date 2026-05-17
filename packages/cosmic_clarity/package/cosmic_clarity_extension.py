@@ -225,15 +225,18 @@ class _CosmicClarityBase(ui.ProcessWindow):
                     "setting is shared by all Cosmic Clarity processes."
                 ),
             },
-            {
-                "id": "gpu_enabled",
-                "type": "bool",
-                "label": "Use GPU Acceleration",
-                "default": True,
-                "group": "Tool Configuration",
-                "tooltip": "Enable GPU acceleration when the packaged CosmicClarity build supports it.",
-            },
         ]
+
+    def _gpu_param(self):
+        return {
+            "id": "use_gpu",
+            "type": "bool",
+            "label": "Use GPU Acceleration",
+            "default": True,
+        }
+
+    def _gpu_enabled(self, params):
+        return bool(params.get("use_gpu", self.settings.get("gpu_enabled", True)))
 
     def _meta_params(self):
         meta = ui.process_window_meta(
@@ -273,7 +276,7 @@ class _CosmicClarityBase(ui.ProcessWindow):
         meta["header_description"] = (
             f"Seti Astro Cosmic Clarity - {self.process_name}. "
             f"{self.process_header_detail} Configure the external suite folder once; "
-            "GPU and executable checks are shared across the Cosmic Clarity tools."
+            "GPU is controlled per process where supported."
         )
         return [meta]
 
@@ -560,15 +563,17 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
                     ["Luminance", "luminance"],
                 ],
             },
+            self._gpu_param(),
         ]
 
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Denoise...")
+        gpu_enabled = self._gpu_enabled(params)
         afternight.log_info(
             f"Cosmic Clarity Denoise: strength={float(params.get('strength', 0.9)):.3f}, "
             f"mode={params.get('denoise_mode', 'full')}, "
-            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            f"GPU={'enabled' if gpu_enabled else 'disabled'}.",
             component=self.component,
         )
 
@@ -585,7 +590,7 @@ class CosmicClarityDenoiseExtension(_CosmicClarityBase):
                 "--denoise_mode",
                 str(params.get("denoise_mode", "full")),
             ]
-            if not bool(self.settings.get("gpu_enabled", True)):
+            if not gpu_enabled:
                 args.append("--disable_gpu")
 
             self._run_process(
@@ -638,12 +643,7 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
                 "min": 64,
                 "max": 2048,
             },
-            {
-                "id": "use_gpu",
-                "type": "bool",
-                "label": "Use GPU Acceleration",
-                "default": True,
-            },
+            self._gpu_param(),
             {
                 "id": "show_extracted_stars",
                 "type": "bool",
@@ -655,7 +655,7 @@ class CosmicClarityDarkStarExtension(_CosmicClarityBase):
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Dark Star...")
-        gpu_enabled = bool(params.get("use_gpu", self.settings.get("gpu_enabled", True)))
+        gpu_enabled = self._gpu_enabled(params)
         show_extracted_stars = bool(params.get("show_extracted_stars", False))
         afternight.log_info(
             f"Cosmic Clarity Dark Star: mode={params.get('star_removal_mode', 'additive')}, "
@@ -778,11 +778,13 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
                 "label": "Process RGB Channels",
                 "default": False,
             },
+            self._gpu_param(),
         ]
 
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         del target, masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Sharpening...")
+        gpu_enabled = self._gpu_enabled(params)
         afternight.log_info(
             f"Cosmic Clarity Sharpening: mode={params.get('sharpening_mode', 'both')}, "
             f"non_stellar_strength={float(params.get('non_stellar_strength', 3.0)):.3f}, "
@@ -790,7 +792,7 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
             f"stellar_amount={float(params.get('stellar_amount', 0.5)):.3f}, "
             f"auto_psf={'enabled' if bool(params.get('auto_detect_psf', True)) else 'disabled'}, "
             f"rgb_channels={'enabled' if bool(params.get('process_rgb_channels', False)) else 'disabled'}, "
-            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            f"GPU={'enabled' if gpu_enabled else 'disabled'}.",
             component=self.component,
         )
 
@@ -830,7 +832,7 @@ class CosmicClaritySharpeningExtension(_CosmicClarityBase):
                 args.append("--auto_detect_psf")
             if bool(params.get("process_rgb_channels", False)):
                 args.append("--sharpen_channels_separately")
-            if not bool(self.settings.get("gpu_enabled", True)):
+            if not gpu_enabled:
                 args.append("--disable_gpu")
 
             self._run_process(
@@ -878,8 +880,7 @@ class CosmicClaritySuperResExtension(_CosmicClarityBase):
         progress.set_text("Preparing Cosmic Clarity Super Resolution...")
         scale = str(params.get("scale", "2"))
         afternight.log_info(
-            f"Cosmic Clarity Super Resolution: scale={scale}x, "
-            f"GPU={'enabled' if bool(self.settings.get('gpu_enabled', True)) else 'disabled'}.",
+            f"Cosmic Clarity Super Resolution: scale={scale}x.",
             component=self.component,
         )
 

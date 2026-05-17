@@ -108,13 +108,106 @@ class CosmicClarityLoggingTests(unittest.TestCase):
         self.assertIn("complete current Windows Cosmic Clarity suite", message)
         self.assertIn("GitHub per-file update release excludes _internal", message)
 
-    def test_dark_star_exposes_process_gpu_toggle(self):
-        params = CosmicClarityDarkStarExtension(None).get_params()
-        field_by_id = {field["id"]: field for field in params}
+    def test_gpu_supported_processes_expose_process_toggle(self):
+        for extension_class in (
+            CosmicClarityDenoiseExtension,
+            CosmicClarityDarkStarExtension,
+            CosmicClaritySharpeningExtension,
+        ):
+            with self.subTest(extension=extension_class.__name__):
+                params = extension_class(None).get_params()
+                field_by_id = {field["id"]: field for field in params}
 
-        self.assertEqual(field_by_id["use_gpu"]["type"], "bool")
-        self.assertTrue(field_by_id["use_gpu"]["default"])
-        self.assertEqual(field_by_id["use_gpu"]["label"], "Use GPU Acceleration")
+                self.assertEqual(field_by_id["use_gpu"]["type"], "bool")
+                self.assertTrue(field_by_id["use_gpu"]["default"])
+                self.assertEqual(field_by_id["use_gpu"]["label"], "Use GPU Acceleration")
+
+        super_res_fields = {field["id"]: field for field in CosmicClaritySuperResExtension(None).get_params()}
+        self.assertNotIn("use_gpu", super_res_fields)
+        global_settings = {field["id"]: field for field in CosmicClarityDenoiseExtension(None).get_settings_params()}
+        self.assertNotIn("gpu_enabled", global_settings)
+
+    def test_denoise_and_sharpening_map_gpu_toggle_to_disable_gpu_arg(self):
+        class FakeProgress:
+            def set_text(self, _text):
+                pass
+
+        class FakeDestination:
+            def copy_from(self, _image):
+                pass
+
+        class FakeImage:
+            def __init__(self, path):
+                self.path = pathlib.Path(path)
+
+        cases = [
+            (
+                CosmicClarityDenoiseExtension,
+                "_denoised",
+                {
+                    "strength": 0.9,
+                    "denoise_mode": "full",
+                    "use_gpu": False,
+                },
+            ),
+            (
+                CosmicClaritySharpeningExtension,
+                "_sharpened",
+                {
+                    "sharpening_mode": "both",
+                    "non_stellar_strength": 3.0,
+                    "non_stellar_amount": 0.5,
+                    "stellar_amount": 0.5,
+                    "auto_detect_psf": False,
+                    "process_rgb_channels": False,
+                    "use_gpu": False,
+                },
+            ),
+        ]
+
+        for extension_class, output_suffix, params in cases:
+            with self.subTest(extension=extension_class.__name__):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    tool_dir = pathlib.Path(tmpdir) / "suite"
+                    tool_dir.mkdir()
+                    captured_args = []
+
+                    def fake_run_process(_executable, args, workspace, _progress, **_kwargs):
+                        captured_args.extend(args)
+                        input_path = next(workspace.input_dir.iterdir())
+                        (workspace.output_dir / f"{input_path.stem}{output_suffix}.tiff").write_text(
+                            "result",
+                            encoding="utf-8",
+                        )
+
+                    def fake_save(_image, path, options=None):
+                        del options
+                        path = pathlib.Path(path)
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text("image", encoding="utf-8")
+
+                    def fake_load(path, load_metadata=True):
+                        del load_metadata
+                        return FakeImage(path)
+
+                    extension = extension_class(None)
+                    extension.settings.set("executable_path", str(tool_dir))
+
+                    with (
+                        mock.patch.object(extension, "_tool_executable", return_value=tool_dir / "helper.exe"),
+                        mock.patch.object(extension, "_run_process", side_effect=fake_run_process),
+                        mock.patch("cosmic_clarity_extension.io.save", side_effect=fake_save),
+                        mock.patch("cosmic_clarity_extension.io.load", side_effect=fake_load),
+                    ):
+                        extension.execute(
+                            None,
+                            object(),
+                            FakeDestination(),
+                            params,
+                            FakeProgress(),
+                        )
+
+                    self.assertIn("--disable_gpu", captured_args)
 
     def test_dark_star_maps_gpu_toggle_and_opens_results(self):
         class FakeProgress:
