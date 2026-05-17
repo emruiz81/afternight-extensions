@@ -146,6 +146,8 @@ class CosmicClarityLoggingTests(unittest.TestCase):
                 pass
 
         class FakeImage:
+            metadata = {"TEST": "1"}
+
             def __init__(self, path):
                 self.path = pathlib.Path(path)
 
@@ -270,6 +272,8 @@ class CosmicClarityLoggingTests(unittest.TestCase):
                 mock.patch.object(extension, "_run_process", side_effect=fake_run_process),
                 mock.patch("cosmic_clarity_extension.io.save", side_effect=fake_save),
                 mock.patch("cosmic_clarity_extension.io.load", side_effect=fake_load),
+                mock.patch("cosmic_clarity_extension.ui.open_image") as open_image,
+                mock.patch("cosmic_clarity_extension.ui.commit_image", return_value=True) as commit_image,
             ):
                 extension.execute(
                     None,
@@ -295,6 +299,13 @@ class CosmicClarityLoggingTests(unittest.TestCase):
             self.assertEqual(captured_args[captured_args.index("--sensitivity") + 1], "0.2")
             self.assertIsNotNone(destination.copied)
             self.assertTrue(destination.copied.path.name.endswith("_satellite_removed.fit"))
+            open_image.assert_not_called()
+            commit_image.assert_called_once()
+            self.assertEqual(commit_image.call_args.kwargs["history_step_name"], "Cosmic Clarity Satellite")
+            self.assertEqual(
+                commit_image.call_args.kwargs["history_step_description"],
+                "Applied Cosmic Clarity satellite trail removal",
+            )
 
     def test_satellite_retries_without_gpu_when_gpu_run_produces_no_output(self):
         class FakeProgress:

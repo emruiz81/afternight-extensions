@@ -667,7 +667,7 @@ class CosmicClaritySatelliteExtension(_CosmicClarityBase):
         ]
 
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
-        del target, masks, weights, output_masks
+        del masks, weights, output_masks
         progress.set_text("Preparing Cosmic Clarity Satellite...")
         gpu_enabled = self._gpu_enabled(params)
         mode = str(params.get("satellite_mode", "full"))
@@ -730,7 +730,17 @@ class CosmicClaritySatelliteExtension(_CosmicClarityBase):
                 )
                 resolved_output_path = self._resolve_related_output_path(output_path, input_path)
             workspace.track(resolved_output_path)
-            self._copy_loaded_result(resolved_output_path, dst_image)
+            result = self._copy_loaded_result(resolved_output_path, dst_image)
+            if ui.commit_image(
+                result,
+                history_step_name="Cosmic Clarity Satellite",
+                history_step_description="Applied Cosmic Clarity satellite trail removal",
+                metadata=getattr(result, "metadata", {}),
+            ):
+                afternight.log_info(
+                    "Cosmic Clarity Satellite: committed result to the current image.",
+                    component=self.component,
+                )
         finally:
             workspace.cleanup()
 

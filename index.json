@@ -38,7 +38,7 @@
             {
               "name": "cosmic_clarity-1.0.1-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.1/cosmic_clarity-1.0.1-all.tar.zst",
-              "package_hash": "sha256:eb2cb49e663ebe23bace0114318ade30635c87749ecb0eab8e12e74de87f8319",
+              "package_hash": "sha256:536891bc057285b8cd8601b2e428f9993c2538f91bc02783c02b189259700293",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
