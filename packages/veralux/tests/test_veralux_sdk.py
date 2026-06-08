@@ -81,6 +81,24 @@ class VeraLuxSdkTests(unittest.TestCase):
         self.assertEqual(int(destination.array[1, 1]), 49151)
         self.assertEqual(int(destination.array[1, 2]), 65535)
 
+    def test_mark_result_nonlinear_writes_afterNight_processing_state(self):
+        rgb = FakeImage(np.zeros((4, 5, 3), dtype=np.float32))
+        rgb.metadata["ANBASIS"] = "linear-rgb"
+
+        sdk.mark_result_nonlinear(rgb, "veralux-test-stretch")
+
+        self.assertEqual(rgb.metadata["ANSTVER"], "1")
+        self.assertEqual(rgb.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(rgb.metadata["ANBASIS"], "display-rgb")
+        self.assertEqual(rgb.metadata["ANASRC"], "process")
+        self.assertEqual(rgb.metadata["ANOP"], "veralux-test-stretch")
+
+        mono = FakeImage(np.zeros((4, 5), dtype=np.float32))
+        sdk.mark_result_nonlinear(mono, "veralux-test-mono")
+
+        self.assertEqual(mono.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(mono.metadata["ANBASIS"], "monochrome")
+
     def test_settings_migration_and_preview_helpers_are_deterministic(self):
         params = {"old_gain": 0.8, "enabled": False}
 

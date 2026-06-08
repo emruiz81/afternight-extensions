@@ -140,6 +140,7 @@ class VeraLuxCurvesExtension(ui.RTPreviewProcess):
                 upstream_version=core.UPSTREAM_VERSION,
                 attribution=curves_ui.ATTRIBUTION_TEXT,
             )
+            sdk.mark_result_nonlinear(dst_image, "veralux-curves")
         progress.set_value(100.0)
 
     def execute_preview(

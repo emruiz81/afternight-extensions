@@ -198,6 +198,10 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["afternight.extension"], "veralux_curves")
         self.assertEqual(dst.metadata["veralux.tool"], "Curves")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(dst.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(dst.metadata["ANBASIS"], "display-rgb")
+        self.assertEqual(dst.metadata["ANASRC"], "process")
+        self.assertEqual(dst.metadata["ANOP"], "veralux-curves")
         self.assertEqual(progress.value, 100.0)
 
     def test_execute_preview_writes_preview_image_without_provenance_metadata(self):

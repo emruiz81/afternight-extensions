@@ -163,6 +163,10 @@ class VeraLuxRevelaAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["afternight.extension"], "veralux_revela")
         self.assertEqual(dst.metadata["veralux.tool"], "Revela")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(dst.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(dst.metadata["ANBASIS"], "monochrome")
+        self.assertEqual(dst.metadata["ANASRC"], "process")
+        self.assertEqual(dst.metadata["ANOP"], "veralux-revela")
         self.assertEqual(progress.value, 100.0)
 
     def test_execute_preview_writes_preview_image_without_provenance_metadata(self):

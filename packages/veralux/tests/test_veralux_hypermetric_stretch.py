@@ -242,6 +242,10 @@ class VeraLuxHyperMetricStretchAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["afternight.extension"], "veralux_hypermetric_stretch")
         self.assertEqual(dst.metadata["veralux.tool"], "HyperMetric Stretch")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(dst.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(dst.metadata["ANBASIS"], "display-rgb")
+        self.assertEqual(dst.metadata["ANASRC"], "process")
+        self.assertEqual(dst.metadata["ANOP"], "veralux-hypermetric-stretch")
         self.assertEqual(progress.value, 100.0)
 
     def test_execute_preview_writes_preview_image_without_provenance_metadata(self):

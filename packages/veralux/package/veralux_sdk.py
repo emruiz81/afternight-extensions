@@ -84,6 +84,56 @@ def stamp_result(
         image_handle.set_metadata(str(key), str(value))
 
 
+def _metadata_dict(image_handle):
+    try:
+        return dict(getattr(image_handle, "metadata", {}) or {})
+    except Exception:
+        return {}
+
+
+def _channel_count(image_handle):
+    try:
+        properties = dict(getattr(image_handle, "properties", {}) or {})
+        if "channels" in properties:
+            return int(properties["channels"])
+    except Exception:
+        pass
+
+    try:
+        data = np.asarray(image_handle.to_numpy())
+    except Exception:
+        return 0
+
+    if data.ndim < 3:
+        return 1
+    if data.shape[0] in (1, 3, 4) and data.shape[-1] not in (1, 3, 4):
+        return int(data.shape[0])
+    return int(data.shape[-1])
+
+
+def _nonlinear_channel_basis(image_handle):
+    metadata_basis = str(_metadata_dict(image_handle).get("ANBASIS", "")).strip().lower()
+    channels = _channel_count(image_handle)
+
+    if channels == 1:
+        return "monochrome"
+    if channels >= 3:
+        return "display-rgb"
+    if metadata_basis in {"raw-cfa", "linear-rgb", "camera-rgb", "display-rgb", "monochrome"}:
+        return "display-rgb" if metadata_basis in {"linear-rgb", "camera-rgb"} else metadata_basis
+    return "unknown"
+
+
+def mark_result_nonlinear(image_handle, operation):
+    """Mark an applied VeraLux result as display/non-linear AfterNight image data."""
+
+    image_handle.set_metadata("ANSTVER", "1")
+    image_handle.set_metadata("ANLIN", "nonlinear")
+    image_handle.set_metadata("ANBASIS", _nonlinear_channel_basis(image_handle))
+    image_handle.set_metadata("ANASRC", "process")
+    image_handle.set_metadata("ANOP", str(operation))
+
+
 def log_info(message, *, component):
     afternight.log_info(str(message), component=str(component))
 

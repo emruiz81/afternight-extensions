@@ -75,6 +75,7 @@ class VeraLuxHyperMetricStretchExtension(ui.RTPreviewProcess):
                 upstream_version=core.UPSTREAM_VERSION,
                 attribution=hms_ui.ATTRIBUTION_TEXT,
             )
+            sdk.mark_result_nonlinear(dst_image, "veralux-hypermetric-stretch")
         progress.set_value(100.0)
 
     def handle_param_action(self, action_id, target, src_image, params):

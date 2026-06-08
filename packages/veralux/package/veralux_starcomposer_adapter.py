@@ -288,6 +288,7 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
                     "veralux.starcomposer.blend_mode": blend_mode,
                 },
             )
+            sdk.mark_result_nonlinear(dst_image, "veralux-starcomposer")
         progress.set_value(100.0)
 
     def execute_preview(

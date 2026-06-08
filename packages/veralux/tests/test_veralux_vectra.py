@@ -195,6 +195,10 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["afternight.extension"], "veralux_vectra")
         self.assertEqual(dst.metadata["veralux.tool"], "Vectra")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(dst.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(dst.metadata["ANBASIS"], "display-rgb")
+        self.assertEqual(dst.metadata["ANASRC"], "process")
+        self.assertEqual(dst.metadata["ANOP"], "veralux-vectra")
         self.assertEqual(progress.value, 100.0)
 
     def test_execute_preview_writes_result_without_provenance_metadata(self):

@@ -253,6 +253,10 @@ class VeraLuxStarComposerAdapterTests(unittest.TestCase):
         self.assertEqual(dst.metadata["veralux.starcomposer.stars_view"], "Stars")
         self.assertEqual(dst.metadata["veralux.starcomposer.blend_mode"], "screen")
         self.assertIn("Riccardo Paterniti", dst.metadata["veralux.attribution"])
+        self.assertEqual(dst.metadata["ANLIN"], "nonlinear")
+        self.assertEqual(dst.metadata["ANBASIS"], "display-rgb")
+        self.assertEqual(dst.metadata["ANASRC"], "process")
+        self.assertEqual(dst.metadata["ANOP"], "veralux-starcomposer")
         self.assertEqual(progress.value, 100.0)
 
     def test_execute_normalizes_linear_add_blend_mode_for_metadata(self):
