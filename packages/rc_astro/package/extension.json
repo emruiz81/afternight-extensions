@@ -1,0 +1,70 @@
+{
+  "id": "rc_astro",
+  "name": "RC-Astro XTerminators",
+  "version": "0.1.7",
+  "summary": "Adapter for user-installed RC-Astro BlurXTerminator, StarXTerminator, and NoiseXTerminator CLI tools.",
+  "description": "AfterNight native process-window adapter for RC-Astro XTerminator command-line tools. The package contains adapter code only; users provide their own RC-Astro CLI installation, models, and activation material.",
+  "author": "AfterNight",
+  "license": "GPL-3.0",
+  "publisher_id": "afternight",
+  "homepage_url": "https://www.rc-astro.com/",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
+  "type": "python",
+  "entry_point": "rc_astro_extension",
+  "category": "star_object",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "rc-astro",
+    "blurxterminator",
+    "starxterminator",
+    "noisexterminator",
+    "external-tool"
+  ],
+  "dependencies": {
+    "dependency_context": "shared_host",
+    "shared_host_profile": "scientific_core"
+  },
+  "processes": [
+    {
+      "id_suffix": "bxt",
+      "class": "RcAstroBxtExtension",
+      "display_name": "RC-Astro BlurXTerminator",
+      "category": "sharpening_enhancement",
+      "action_object_name": "actionRC_Astro_BlurXTerminator",
+      "capabilities": {
+        "keep_open": true
+      }
+    },
+    {
+      "id_suffix": "sxt",
+      "class": "RcAstroSxtExtension",
+      "display_name": "RC-Astro StarXTerminator",
+      "category": "star_object",
+      "action_object_name": "actionRC_Astro_StarXTerminator",
+      "capabilities": {
+        "keep_open": true,
+        "starless_generator": true,
+        "star_mask_generator": true
+      }
+    },
+    {
+      "id_suffix": "nxt",
+      "class": "RcAstroNxtExtension",
+      "display_name": "RC-Astro NoiseXTerminator",
+      "category": "denoising",
+      "action_object_name": "actionRC_Astro_NoiseXTerminator",
+      "capabilities": {
+        "keep_open": true
+      }
+    }
+  ]
+}
