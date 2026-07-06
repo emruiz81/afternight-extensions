@@ -79,6 +79,14 @@ def _fake_schema(product):
             "label": "Use GPU",
             "default": True,
         },
+        {
+            "id": "device",
+            "type": "choice",
+            "label": "Acceleration Device",
+            "default": "default",
+            "flag": "--device",
+            "options": [["Default Device", "default"], ["CPU", "cpu"], ["DirectML GPU", "dml"]],
+        },
     ]
     if product == "sxt":
         parameters.append(
@@ -91,21 +99,29 @@ def _fake_schema(product):
             }
         )
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "product": product,
-        "mlVersion": {"bxt": 4, "sxt": 3, "nxt": 2}.get(product, 1),
+        "mlVersion": {"bxt": 4, "sxt": 3, "nxt": 3}.get(product, 1),
         "parameters": parameters,
     }
 
 
 def _fake_nxt_grouped_schema():
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "product": "nxt",
         "mlVersion": 3,
         "parameters": [
             {"id": "csep", "type": "bool", "label": "Color Separation", "default": False, "guiOnly": True},
             {"id": "fsep", "type": "bool", "label": "Frequency Separation", "default": False, "guiOnly": True},
+            {
+                "id": "device",
+                "type": "choice",
+                "label": "Acceleration Device",
+                "default": "default",
+                "flag": "--device",
+                "options": [["Default Device", "default"], ["CPU", "cpu"], ["DirectML GPU", "dml"]],
+            },
             {
                 "id": "dn",
                 "type": "float",
@@ -152,7 +168,7 @@ def _fake_nxt_grouped_schema():
         "groups": [
             {"name": "mode_options", "label": "Options", "params": ["csep", "fsep"]},
             {"name": "denoise", "label": "Denoise", "params": ["dn", "di", "dc", "fs"]},
-            {"name": "engine", "label": "Engine", "params": ["it", "overlap"]},
+            {"name": "engine", "label": "Engine", "params": ["device", "it", "overlap"]},
         ],
     }
 
@@ -173,6 +189,8 @@ def make_fake_cli(directory, executable_name=None):
             SCHEMAS = json.loads(os.environ["FAKE_RC_SCHEMAS"])
             CAPTURE = pathlib.Path(os.environ["FAKE_RC_CAPTURE"])
             SCHEMA_STYLE = os.environ.get("FAKE_RC_SCHEMA_STYLE", "product_json")
+            LICENSE_STATUS = os.environ.get("FAKE_RC_LICENSE_STATUS", "activated").strip().lower()
+            UPDATE_STATUS = os.environ.get("FAKE_RC_UPDATE_STATUS", "none").strip().lower()
 
             def record(kind, payload):
                 existing = []
@@ -187,8 +205,16 @@ def make_fake_cli(directory, executable_name=None):
                 print("Astronomical image processing tools")
                 print("Version 9.9.0")
                 raise SystemExit(0)
+            if argv == ["--json"]:
+                print(json.dumps({"schemaVersion": 4, "cliVersion": "9.9.0", "products": []}))
+                raise SystemExit(0)
             if argv == ["--version"]:
                 print("rc-astro 9.9.0")
+                raise SystemExit(0)
+            if argv == ["--device"]:
+                print("default")
+                print("cpu")
+                print("dml")
                 raise SystemExit(0)
             if SCHEMA_STYLE == "product_json" and len(argv) >= 2 and argv[1] == "--json":
                 print(json.dumps(SCHEMAS[argv[0]]))
@@ -207,14 +233,14 @@ def make_fake_cli(directory, executable_name=None):
                     print("  --sn, --sharpen-nonstellar (float in [0, 1], default 0.00)")
                     print("  --correct-only")
                     print("      Correct PSF aberrations without sharpening.")
-                    print("  --engine (text {auto,dml,cpu}, default auto)")
+                    print("  --device (text {default,cpu,dml}, default default)")
                     print("  --ml-version (int, default 0)")
                     print("  --overlap (float in [0, 0.5], default 0.2)")
                     print("  --depth (text {8U,16U,32F,64F})")
                 else:
                     print("  --amount (float in [0, 1], default 0.80)")
                     print("      Processing amount.")
-                    print("  --engine (text {CPU,GPU}, default CPU)")
+                    print("  --device (text {default,cpu,dml}, default default)")
                     print("  --ansr, --no-ansr (default true)")
                 raise SystemExit(0)
             if len(argv) >= 2 and argv[1] == "--activate":
@@ -223,10 +249,21 @@ def make_fake_cli(directory, executable_name=None):
                 print(json.dumps({"ok": True, "message": "activated"}))
                 raise SystemExit(0)
             if len(argv) >= 2 and argv[1] == "--license":
-                print("License: Activated")
+                if LICENSE_STATUS in {"inactive", "not_activated", "unlicensed"}:
+                    print("License: Not activated")
+                elif LICENSE_STATUS == "unknown":
+                    print("License status unavailable")
+                else:
+                    print("License: Activated")
                 raise SystemExit(0)
             if argv[:1] == ["update"]:
-                print(json.dumps({"ok": True, "message": "up to date"}))
+                if "--install" in argv:
+                    print(json.dumps({"ok": True, "message": "updated to 0.9.9"}))
+                    raise SystemExit(0)
+                if UPDATE_STATUS in {"available", "newer"}:
+                    print(json.dumps({"ok": True, "update_available": True, "latest_version": "0.9.9"}))
+                    raise SystemExit(0)
+                print(json.dumps({"ok": True, "update_available": False, "message": "up to date"}))
                 raise SystemExit(0)
             if argv[:1] == ["download-models"]:
                 print(json.dumps({"ok": True, "message": "models downloaded"}))
@@ -311,6 +348,9 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["manual_strength"]["enabled_when"], 'mode == "manual"')
         self.assertIn("tool_configuration", by_id["window_meta"])
         self.assertEqual(by_id["window_meta"]["tool_configuration"]["primary_executable"], "rc-astro")
+        self.assertEqual(by_id["window_meta"]["tool_configuration"]["button_label"], "Settings")
+        self.assertTrue(by_id["window_meta"]["tool_configuration"]["open_extension_settings"])
+        self.assertFalse(by_id["window_meta"]["tool_configuration"]["show_configured_banner"])
         section_labels = [param["label"] for param in params if param.get("type") == "section"]
         self.assertNotIn("Models", section_labels)
         self.assertIn("Engine", section_labels)
@@ -320,8 +360,11 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertIn("latest schema model version is v4", by_id["model_version"]["tooltip"])
         self.assertEqual(
             by_id["model_version"]["options"],
-            [["Latest (v4)", "latest"]],
+            [["Latest (v4)", "latest"], ["Version 2", "2"], ["Version 3", "3"], ["Version 4", "4"]],
         )
+        self.assertEqual(by_id["device"]["group"], "Engine")
+        self.assertEqual(by_id["device"]["default"], "default")
+        self.assertEqual(by_id["device"]["options"][0], ["Default Device", "default"])
         self.assertNotIn("model_status", by_id)
         self.assertNotIn("list_models", by_id)
         self.assertNotIn("download_models", by_id)
@@ -388,7 +431,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["amount"]["type"], "float")
         self.assertEqual(by_id["amount"]["min"], 0)
         self.assertEqual(by_id["amount"]["max"], 1)
-        self.assertEqual(by_id["engine"]["type"], "choice")
+        self.assertEqual(by_id["device"]["type"], "choice")
         self.assertEqual(by_id["ansr"]["type"], "bool")
         self.assertTrue(by_id["ansr"]["default"])
 
@@ -411,7 +454,8 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self.assertEqual([param["id"] for param in params if param.get("group") == "Denoise"], ["dn", "di", "dc", "fs"])
         self.assertEqual(
-            [param["id"] for param in params if param.get("group") == "Engine"], ["model_version", "it", "overlap"]
+            [param["id"] for param in params if param.get("group") == "Engine"],
+            ["device", "model_version", "it", "overlap"],
         )
         self.assertEqual(by_id["dn"]["visible_when"], "csep != true && fsep != true")
         self.assertEqual(by_id["dn"]["default"], 0.9)
@@ -421,6 +465,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["model_version"]["type"], "choice")
         self.assertEqual(by_id["model_version"]["group"], "Engine")
         self.assertEqual(by_id["model_version"]["default"], "latest")
+        self.assertEqual(by_id["device"]["default"], "default")
         self.assertEqual(
             by_id["model_version"]["options"],
             [["Latest (v3)", "latest"], ["Version 2", "2"], ["Version 3", "3"]],
@@ -440,10 +485,10 @@ class RcAstroAdapterTests(unittest.TestCase):
         section_labels = [param["label"] for param in params if param.get("type") == "section"]
         self.assertEqual(section_labels, ["Stellar Adjustments", "Non stellar adjustments", "Options", "Engine"])
         self.assertEqual(options_ids, ["correct_only"])
-        self.assertEqual(engine_ids, ["model_version", "engine", "overlap"])
+        self.assertEqual(engine_ids, ["device", "model_version", "overlap"])
         self.assertIn("correct_only", by_id)
         self.assertIn("model_version", by_id)
-        self.assertIn("engine", by_id)
+        self.assertIn("device", by_id)
         self.assertIn("overlap", by_id)
         self.assertNotIn("depth", by_id)
         self.assertNotIn("ml_version", by_id)
@@ -454,14 +499,14 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["sharpen_nonstellar"]["group"], "Non stellar adjustments")
         self.assertEqual(by_id["model_version"]["group"], "Engine")
         self.assertEqual(by_id["correct_only"]["group"], "Options")
-        self.assertEqual(by_id["engine"]["group"], "Engine")
+        self.assertEqual(by_id["device"]["group"], "Engine")
         self.assertEqual(by_id["overlap"]["group"], "Engine")
         self.assertEqual(by_id["sharpen_stars"]["default"], 0.5)
         self.assertEqual(by_id["adjust_star_halos"]["default"], 0.0)
         self.assertTrue(by_id["auto_nonstellar_radius"]["default"])
         self.assertEqual(by_id["sharpen_nonstellar"]["default"], 0.5)
         self.assertFalse(by_id["correct_only"]["default"])
-        self.assertEqual(by_id["engine"]["default"], "auto")
+        self.assertEqual(by_id["device"]["default"], "default")
         self.assertEqual(by_id["overlap"]["default"], 0.2)
         for field_id in (
             "sharpen_stars",
@@ -474,13 +519,13 @@ class RcAstroAdapterTests(unittest.TestCase):
             by_id["nonstellar_radius"]["enabled_when"],
             "correct_only != true && auto_nonstellar_radius != true",
         )
-        self.assertNotIn("enabled_when", by_id["engine"])
+        self.assertNotIn("enabled_when", by_id["device"])
         self.assertNotIn("enabled_when", by_id["overlap"])
 
     def test_bxt_json_modes_restore_correct_only_control_and_command_flag(self):
         schema = rc._apply_product_schema_overrides(
             {
-                "schemaVersion": 3,
+                "schemaVersion": 4,
                 "key": "bxt",
                 "mlVersion": 4,
                 "parameters": [
@@ -518,15 +563,15 @@ class RcAstroAdapterTests(unittest.TestCase):
 
         self.assertEqual(section_labels, ["Stellar Adjustments", "Non stellar adjustments", "Options", "Engine"])
         self.assertEqual(options_ids, ["correct_only"])
-        self.assertEqual(engine_ids, ["model_version", "engine", "overlap"])
+        self.assertEqual(engine_ids, ["device", "model_version", "overlap"])
         self.assertEqual(by_id["correct_only"]["type"], "bool")
         self.assertEqual(by_id["correct_only"]["label"], "Correct Only")
         self.assertEqual(by_id["correct_only"]["group"], "Options")
         self.assertEqual(by_id["model_version"]["group"], "Engine")
         self.assertFalse(by_id["correct_only"]["default"])
         self.assertEqual(by_id["correct_only"]["tooltip"], "Correct PSF aberrations without sharpening.")
-        self.assertEqual(by_id["engine"]["group"], "Engine")
-        self.assertEqual(by_id["engine"]["default"], "auto")
+        self.assertEqual(by_id["device"]["group"], "Engine")
+        self.assertEqual(by_id["device"]["default"], "default")
         self.assertEqual(by_id["overlap"]["group"], "Engine")
         self.assertEqual(by_id["overlap"]["default"], 0.2)
 
@@ -544,13 +589,13 @@ class RcAstroAdapterTests(unittest.TestCase):
                 "nsr": 3.0,
                 "ansr": False,
                 "sn": 0.8,
-                "engine": "cpu",
+                "device": "cpu",
                 "overlap": 0.3,
             },
         )
 
         self.assertIn("--correct-only", command)
-        self.assertIn("--engine", command)
+        self.assertIn("--device", command)
         self.assertIn("cpu", command)
         self.assertIn("--overlap", command)
         self.assertIn("0.3", command)
@@ -623,6 +668,44 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertNotIn("--sharpen-nonstellar", command)
         self.assertNotIn("--depth", command)
 
+    def test_schema_v4_legacy_engine_field_is_translated_to_device(self):
+        schema = rc._apply_product_schema_overrides(
+            {
+                "schema_version": 4,
+                "product": "bxt",
+                "parameters": [
+                    {"id": "correct_only", "type": "bool", "flag": "--correct-only", "default": False},
+                    {
+                        "id": "engine",
+                        "type": "choice",
+                        "flag": "--engine",
+                        "default": "default",
+                        "options": ["default", "cpu"],
+                    },
+                    {"id": "overlap", "type": "float", "flag": "--overlap", "default": 0.2},
+                ],
+            },
+            "bxt",
+        )
+
+        params = rc._schema_params(schema)
+        by_id = {param["id"]: param for param in params}
+        command = rc._command_for_schema(
+            self.executable,
+            "bxt",
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            {"correct_only": True, "device": "cpu", "overlap": 0.3},
+        )
+
+        self.assertIn("device", by_id)
+        self.assertNotIn("engine", by_id)
+        self.assertIn("--device", command)
+        self.assertIn("cpu", command)
+        self.assertNotIn("--engine", command)
+
     def test_bxt_command_uses_curated_defaults_when_params_are_omitted(self):
         schema = rc._apply_product_schema_overrides(
             {
@@ -641,11 +724,11 @@ class RcAstroAdapterTests(unittest.TestCase):
                     {"id": "sharpen_nonstellar", "type": "float", "flag": "--sharpen-nonstellar", "default": 0.1},
                     {"id": "correct_only", "type": "bool", "flag": "--correct-only", "default": True},
                     {
-                        "id": "engine",
+                        "id": "device",
                         "type": "choice",
-                        "flag": "--engine",
+                        "flag": "--device",
                         "default": "cpu",
-                        "options": ["auto", "cpu"],
+                        "options": ["default", "cpu"],
                     },
                     {"id": "overlap", "type": "float", "flag": "--overlap", "default": 0.4},
                 ],
@@ -671,8 +754,8 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertIn("--sharpen-nonstellar", command)
         self.assertIn("0.5", command)
         self.assertNotIn("--correct-only", command)
-        self.assertIn("--engine", command)
-        self.assertIn("auto", command)
+        self.assertNotIn("--device", command)
+        self.assertNotIn("cpu", command)
         self.assertIn("--overlap", command)
         self.assertIn("0.2", command)
 
@@ -747,29 +830,112 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(schemas[0], schemas[1])
         self.assertEqual(schemas[0], schemas[2])
         by_id = {field["id"]: field for field in schemas[0]}
-        self.assertIn("tool_configuration", by_id["cli_folder"])
-        self.assertEqual(by_id["cli_folder"]["tool_configuration"]["primary_executable"], "rc-astro")
-        self.assertIn("rc-astro-cli", by_id["cli_folder"]["tool_configuration"]["primary_executable_candidates"])
-        self.assertIn("CLI", by_id["cli_folder"]["tool_configuration"]["candidate_subdirectories"])
-        self.assertEqual(by_id["cli_folder"]["tool_configuration"]["version_arguments"], ["--help", "--json"])
-        self.assertEqual(by_id["cli_folder"]["tool_configuration"]["version_pattern"], r"Version\s+([^\r\n]+)")
+        self.assertNotIn("cli_folder", by_id)
+        self.assertIn("tool_configuration", by_id["cli_executable"])
+        self.assertEqual(by_id["cli_executable"]["type"], "file_path")
+        self.assertEqual(by_id["cli_executable"]["tool_configuration"]["primary_executable"], "rc-astro")
+        self.assertIn("rc-astro-cli", by_id["cli_executable"]["tool_configuration"]["primary_executable_candidates"])
+        self.assertIn("CLI", by_id["cli_executable"]["tool_configuration"]["candidate_subdirectories"])
+        self.assertEqual(by_id["cli_executable"]["tool_configuration"]["version_arguments"], ["--json"])
+        self.assertIn("cliVersion", by_id["cli_executable"]["tool_configuration"]["version_pattern"])
+        self.assertFalse(by_id["cli_executable"]["tool_configuration"]["show_configured_banner"])
+        self.assertEqual(by_id["cli_executable"]["group"], "CLI Connection")
+        self.assertEqual(by_id["cli_executable"]["group_style"], "card")
+        self.assertEqual(by_id["cli_executable"]["label"], "Executable")
+        self.assertEqual(by_id["cli_executable"]["button_label"], "Browse...")
+        self.assertEqual(by_id["resolver_diagnostic"]["label"], "Status")
+        self.assertEqual(by_id["resolved_cli_version"]["label"], "Version")
+        self.assertEqual(by_id["resolved_cli_executable"]["label"], "Resolved Executable")
+        self.assertFalse(by_id["resolved_cli_executable"]["visible"])
+        self.assertFalse(by_id["resolution_source"]["visible"])
         self.assertIn("detect_installation", by_id)
         self.assertEqual(by_id["detect_installation"]["title"], "Find RC-Astro CLI")
+        self.assertTrue(by_id["refresh_status_on_open"]["autorun"])
+        self.assertFalse(by_id["refresh_status_on_open"]["show_status"])
+        self.assertFalse(by_id["refresh_status_on_open"]["visible"])
+        self.assertEqual(by_id["refresh_status_on_open"]["action_id"], "refresh_status")
         self.assertFalse(by_id["resolved_cli_executable"]["persist"])
         self.assertFalse(by_id["resolved_cli_version"]["persist"])
         self.assertFalse(by_id["activation_status"]["persist"])
+        self.assertFalse(by_id["activation_status"]["visible"])
+        self.assertEqual(by_id["activation_product"]["group"], "Products")
+        self.assertFalse(by_id["activation_product"]["visible"])
+        self.assertEqual(
+            by_id["activation_product"]["options"],
+            [["BlurXTerminator", "bxt"], ["StarXTerminator", "sxt"], ["NoiseXTerminator", "nxt"]],
+        )
+        self.assertFalse(by_id["activation_email"]["visible"])
+        self.assertFalse(by_id["activation_key"]["visible"])
+        self.assertEqual(by_id["open_activation_dialog"]["label"], "Activation...")
+        self.assertEqual(by_id["open_activation_dialog"]["action_id"], "activate_selected")
+        self.assertEqual(
+            by_id["open_activation_dialog"]["dialog"]["fields"],
+            ["activation_product", "activation_email", "activation_key"],
+        )
+        self.assertEqual(
+            by_id["open_activation_dialog"]["dialog"]["accept_label"],
+            "Activate Selected Product",
+        )
+        self.assertNotIn("activate_selected", by_id)
+        for field_id in ("bxt_activation_status", "sxt_activation_status", "nxt_activation_status"):
+            self.assertIn(field_id, by_id)
+            self.assertEqual(by_id[field_id]["type"], "status")
+            self.assertEqual(by_id[field_id]["group"], "Products")
+            self.assertEqual(by_id[field_id]["group_style"], "card")
+            self.assertFalse(by_id[field_id]["persist"])
+            self.assertFalse(by_id[field_id]["enabled"])
+        self.assertFalse(by_id["update_status"]["persist"])
+        self.assertFalse(by_id["update_available"]["persist"])
+        self.assertFalse(by_id["update_available"]["visible"])
+        self.assertEqual(by_id["download_update"]["label"], "Update")
+        self.assertEqual(by_id["download_update"]["enabled_when"], "update_available == true")
         self.assertNotIn("download_models", by_id)
         self.assertNotIn("force_redownload_models", by_id)
+
+    def test_cli_version_parses_json_catalog_and_text_banner(self):
+        self.assertEqual(rc._extract_cli_version_from_text('{"schemaVersion":4,"cliVersion":"0.9.9"}'), "0.9.9")
+        self.assertEqual(
+            rc._extract_cli_version_from_text("Astronomical image processing tools\nVersion 0.9.2 (build 105)"),
+            "0.9.2 (build 105)",
+        )
 
     def test_missing_host_resolved_cli_fails_closed(self):
         extension = RcAstroNxtExtension(None)
         with mock.patch.object(rc, "_default_cli_directories", return_value=[]):
             with mock.patch.object(rc, "_path_cli_directories", return_value=[]):
                 params = extension.get_params()
+                diagnostics = extension.validate_process({}, {})
         by_id = {param["id"]: param for param in params}
         self.assertIn("schema_status", by_id)
+        self.assertFalse(diagnostics[0]["ok"])
+        self.assertIn("RC-Astro CLI is not ready", diagnostics[0]["message"])
         with self.assertRaises(RcAstroError):
             extension.execute(None, object(), FakeDestination(), {}, FakeProgress())
+
+    def test_validate_process_blocks_unactivated_product(self):
+        extension = RcAstroBxtExtension(None)
+        extension.settings.set("resolved_cli_executable", str(self.executable))
+
+        with mock.patch.dict(os.environ, {"FAKE_RC_LICENSE_STATUS": "not_activated"}):
+            diagnostics = extension.validate_process({}, {})
+
+        self.assertEqual(len(diagnostics), 1)
+        self.assertFalse(diagnostics[0]["ok"])
+        self.assertEqual(diagnostics[0]["severity"], "error")
+        self.assertIn("BlurXTerminator is not activated", diagnostics[0]["message"])
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["bxt", "--license"], argv_events)
+
+    def test_execute_blocks_unactivated_product_before_image_io(self):
+        extension = RcAstroBxtExtension(None)
+        extension.settings.set("resolved_cli_executable", str(self.executable))
+
+        with mock.patch.dict(os.environ, {"FAKE_RC_LICENSE_STATUS": "not_activated"}):
+            with mock.patch.object(rc.io, "save") as save_image:
+                with self.assertRaisesRegex(RcAstroError, "BlurXTerminator is not activated"):
+                    extension.execute(None, object(), FakeDestination(), {}, FakeProgress())
+
+        save_image.assert_not_called()
 
     def test_execute_uses_resolved_cli_generates_command_and_loads_output(self):
         extension = RcAstroBxtExtension(None)
@@ -833,7 +999,27 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertIn("SECRET-KEY", stdin_payloads[0])
         self.assertIn("user@example.test", stdin_payloads[0])
 
-    def test_detect_installation_persists_candidate_folder_and_updates_status_fields(self):
+    def test_activation_uses_selected_product_from_settings(self):
+        extension = RcAstroBxtExtension(None)
+        result = extension.handle_settings_action(
+            "activate_selected",
+            {
+                "resolved_cli_executable": str(self.executable),
+                "activation_product": "sxt",
+                "activation_email": "user@example.test",
+                "activation_key": "SECRET-KEY",
+            },
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertIn("StarXTerminator", result["message"])
+        self.assertEqual(result["transient_updates"]["activation_status"], "Activated")
+        self.assertEqual(result["transient_updates"]["sxt_activation_status"], "Activated")
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["sxt", "--activate"], argv_events)
+        self.assertNotIn(["bxt", "--activate"], argv_events)
+
+    def test_detect_installation_persists_candidate_executable_and_updates_status_fields(self):
         extension = RcAstroBxtExtension(None)
         result = extension.handle_settings_action(
             "detect_installation",
@@ -847,12 +1033,16 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
 
         self.assertTrue(result["ok"])
-        self.assertEqual(result["settings_updates"]["cli_folder"], str(self.root))
+        self.assertEqual(result["settings_updates"]["cli_executable"], str(self.executable))
         transient = result["transient_updates"]
+        self.assertEqual(transient["cli_executable"], str(self.executable))
         self.assertEqual(transient["resolved_cli_executable"], str(self.executable))
         self.assertEqual(transient["resolved_cli_version"], "9.9.0")
         self.assertEqual(transient["resolution_source"], "candidate_directory")
         self.assertEqual(transient["activation_status"], "Activated")
+        self.assertEqual(transient["bxt_activation_status"], "Activated")
+        self.assertEqual(transient["sxt_activation_status"], "Activated")
+        self.assertEqual(transient["nxt_activation_status"], "Activated")
 
     def test_detect_installation_falls_back_to_selected_parent_folder_alias_subdir(self):
         extension = RcAstroBxtExtension(None)
@@ -870,12 +1060,16 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
 
         self.assertTrue(result["ok"], result.get("message"))
-        self.assertEqual(result["settings_updates"]["cli_folder"], str(install_root))
+        self.assertEqual(pathlib.Path(result["settings_updates"]["cli_executable"]), executable.resolve())
         transient = result["transient_updates"]
+        self.assertEqual(pathlib.Path(transient["cli_executable"]), executable.resolve())
         self.assertEqual(pathlib.Path(transient["resolved_cli_executable"]), executable.resolve())
         self.assertEqual(transient["resolved_cli_version"], "9.9.0")
         self.assertEqual(transient["resolution_source"], "settings")
         self.assertEqual(transient["activation_status"], "Activated")
+        self.assertEqual(transient["bxt_activation_status"], "Activated")
+        self.assertEqual(transient["sxt_activation_status"], "Activated")
+        self.assertEqual(transient["nxt_activation_status"], "Activated")
 
     def test_refresh_status_updates_version_and_activation_status_fields(self):
         extension = RcAstroBxtExtension(None)
@@ -890,11 +1084,28 @@ class RcAstroAdapterTests(unittest.TestCase):
 
         self.assertTrue(result["ok"])
         transient = result["transient_updates"]
+        self.assertEqual(transient["cli_executable"], str(self.executable))
         self.assertEqual(transient["resolved_cli_version"], "9.9.0")
         self.assertEqual(transient["activation_status"], "Activated")
-        self.assertIn("Activation: Activated", result["message"])
+        self.assertEqual(transient["bxt_activation_status"], "Activated")
+        self.assertEqual(transient["sxt_activation_status"], "Activated")
+        self.assertEqual(transient["nxt_activation_status"], "Activated")
+        self.assertIn("Product activation statuses refreshed", result["message"])
 
-    def test_update_install_is_never_invoked(self):
+    def test_refresh_status_reports_unavailable_products_when_cli_is_missing(self):
+        extension = RcAstroBxtExtension(None)
+        with mock.patch.object(rc, "_default_cli_directories", return_value=[]):
+            with mock.patch.object(rc, "_path_cli_directories", return_value=[]):
+                result = extension.handle_settings_action("refresh_status", {})
+
+        self.assertFalse(result["ok"])
+        transient = result["transient_updates"]
+        self.assertIn("Could not find", transient["resolver_diagnostic"])
+        self.assertEqual(transient["activation_status"], transient["bxt_activation_status"])
+        self.assertEqual(transient["sxt_activation_status"], transient["bxt_activation_status"])
+        self.assertEqual(transient["nxt_activation_status"], transient["bxt_activation_status"])
+
+    def test_update_action_requires_positive_update_check(self):
         extension = RcAstroBxtExtension(None)
         result = extension.handle_settings_action(
             "download_update",
@@ -902,9 +1113,84 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
 
         self.assertFalse(result["ok"])
-        self.assertIn("disabled", result["message"])
-        argv_text = json.dumps([event["payload"] for event in self._events() if event["kind"] == "argv"])
-        self.assertNotIn("--install", argv_text)
+        self.assertIn("No RC-Astro CLI update", result["message"])
+        self.assertFalse(result["transient_updates"]["update_available"])
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["update"], argv_events)
+        self.assertNotIn(["update", "--install"], argv_events)
+
+    def test_update_action_rechecks_when_availability_snapshot_is_missing(self):
+        extension = RcAstroBxtExtension(None)
+
+        with mock.patch.dict(os.environ, {"FAKE_RC_UPDATE_STATUS": "available"}):
+            result = extension.handle_settings_action(
+                "download_update",
+                {
+                    "resolved_cli_executable": str(self.executable),
+                    "resolved_cli_version": "0.9.2",
+                },
+            )
+
+        self.assertTrue(result["ok"], result.get("message"))
+        self.assertFalse(result["transient_updates"]["update_available"])
+        self.assertIn("updated to 0.9.9", result["message"])
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["update"], argv_events)
+        self.assertIn(["update", "--install"], argv_events)
+
+    def test_check_updates_enables_update_when_newer_version_reported(self):
+        extension = RcAstroBxtExtension(None)
+
+        with mock.patch.dict(os.environ, {"FAKE_RC_UPDATE_STATUS": "available"}):
+            result = extension.handle_settings_action(
+                "check_updates",
+                {
+                    "resolved_cli_executable": str(self.executable),
+                    "resolved_cli_version": "0.9.2",
+                },
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["tone"], "warning")
+        self.assertIn("0.9.9", result["message"])
+        self.assertTrue(result["transient_updates"]["update_available"])
+        self.assertIn("0.9.9", result["transient_updates"]["update_status"])
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["update"], argv_events)
+        self.assertNotIn(["update", "--install"], argv_events)
+
+    def test_update_action_runs_install_after_available_check(self):
+        extension = RcAstroBxtExtension(None)
+
+        result = extension.handle_settings_action(
+            "download_update",
+            {
+                "resolved_cli_executable": str(self.executable),
+                "update_available": True,
+            },
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["transient_updates"]["update_available"])
+        self.assertIn("updated to 0.9.9", result["message"])
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["update", "--install"], argv_events)
+
+    def test_check_updates_keeps_update_disabled_when_current(self):
+        extension = RcAstroBxtExtension(None)
+
+        result = extension.handle_settings_action(
+            "check_updates",
+            {
+                "resolved_cli_executable": str(self.executable),
+                "resolved_cli_version": "9.9.0",
+            },
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["tone"], "success")
+        self.assertFalse(result["transient_updates"]["update_available"])
+        self.assertIn("up to date", result["transient_updates"]["update_status"])
 
     def test_model_actions_are_process_local(self):
         extension = RcAstroBxtExtension(None)

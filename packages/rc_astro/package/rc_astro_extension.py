@@ -27,14 +27,24 @@ _CLI_EXECUTABLE_BASENAMES = (
     "RCAstro",
 )
 _CLI_SEARCH_SUBDIRECTORIES = ("", "CLI", "cli", "bin", "Bin")
-_CLI_SETTING_KEY = "cli_folder"
+_CLI_SETTING_KEY = "cli_executable"
+_LEGACY_CLI_SETTING_KEY = "cli_folder"
 _RESOLVED_CLI_KEY = "resolved_cli_executable"
 _MODEL_STATUS_PARAM_ID = "model_status"
 _MODEL_VERSION_PARAM_ID = "model_version"
+_UPDATE_AVAILABLE_PARAM_ID = "update_available"
+_UPDATE_STATUS_PARAM_ID = "update_status"
+_ACTIVATION_PRODUCT_PARAM_ID = "activation_product"
+_ACTIVATION_STATUS_PARAM_IDS = {
+    "bxt": "bxt_activation_status",
+    "sxt": "sxt_activation_status",
+    "nxt": "nxt_activation_status",
+}
 _SCHEMA_TIMEOUT_SECONDS = 5.0
 _ACTION_TIMEOUT_SECONDS = 30.0
+_UPDATE_TIMEOUT_SECONDS = 300.0
 _RUN_TIMEOUT_SECONDS = 60.0 * 60.0
-_SUPPORTED_SCHEMA_MAJORS = {1, 2, 3}
+_SUPPORTED_SCHEMA_MAJORS = {1, 2, 3, 4}
 _PRODUCTS = {
     "bxt": {
         "name": "BlurXTerminator",
@@ -56,7 +66,7 @@ _SCHEMA_CACHE = {}
 _TEXT_PROGRESS_RE = re.compile(r".*?([0-9]+(?:\.[0-9]+)?)\s*%")
 _FIELD_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _TECHNICAL_OUTPUT_FIELDS = {"depth"}
-_MODEL_SELECTOR_FIELDS = {"ml_version"}
+_MODEL_SELECTOR_FIELDS = {"ml_version", "mlVersion", "model_version", "modelVersion"}
 _BXT_CORRECT_ONLY_FIELD_IDS = {"correct_only", "correctOnlyMode"}
 _BXT_CORRECT_ONLY_DISABLED_FIELD_IDS = {
     "ss",
@@ -73,6 +83,7 @@ _BXT_CORRECT_ONLY_DISABLED_FIELD_IDS = {
 _BXT_CORRECT_ONLY_ALLOWED_FIELD_IDS = {
     *_BXT_CORRECT_ONLY_FIELD_IDS,
     _MODEL_VERSION_PARAM_ID,
+    "device",
     "engine",
     "overlap",
 }
@@ -93,6 +104,7 @@ _BXT_FIELD_GROUPS = {
     "sharpen_nonstellar": "Non stellar adjustments",
     "correct_only": "Options",
     "correctOnlyMode": "Options",
+    "device": "Engine",
     _MODEL_VERSION_PARAM_ID: "Engine",
     "engine": "Engine",
     "overlap": "Engine",
@@ -116,8 +128,9 @@ _BXT_FIELD_ORDER = {
     "sharpen_nonstellar": 2,
     "correct_only": 0,
     "correctOnlyMode": 0,
-    _MODEL_VERSION_PARAM_ID: 0,
-    "engine": 1,
+    "device": 0,
+    "engine": 0,
+    _MODEL_VERSION_PARAM_ID: 1,
     "overlap": 2,
 }
 _BXT_FIELD_DEFAULTS = {
@@ -131,6 +144,7 @@ _BXT_FIELD_DEFAULTS = {
     "sharpen_nonstellar": 0.5,
     "correct_only": False,
     "correctOnlyMode": False,
+    "device": "default",
     "engine": "auto",
     "overlap": 0.2,
 }
@@ -165,6 +179,7 @@ _NXT_FIELD_GROUPS = {
     "fs": "Denoise",
     "frequency_scale": "Denoise",
     "manual_strength": "Denoise",
+    "device": "Engine",
     "engine": "Engine",
     "gpu": "Engine",
     "it": "Engine",
@@ -203,6 +218,7 @@ _NXT_FIELD_ORDER = {
     "fs": 9,
     "frequency_scale": 9,
     "manual_strength": 10,
+    "device": 0,
     "engine": 0,
     "gpu": 0,
     _MODEL_VERSION_PARAM_ID: 1,
@@ -217,6 +233,7 @@ _NXT_FIELD_DEFAULTS = {
 }
 _SXT_FIELD_GROUPS = {
     _MODEL_VERSION_PARAM_ID: "Engine",
+    "device": "Engine",
     "engine": "Engine",
     "gpu": "Engine",
     "overlap": "Engine",
@@ -226,13 +243,23 @@ _SXT_GROUP_ORDER = {
     "Engine": 1,
 }
 _SXT_FIELD_ORDER = {
+    "device": 0,
     "engine": 0,
     "gpu": 0,
     _MODEL_VERSION_PARAM_ID: 1,
     "overlap": 2,
 }
 _MODEL_VERSION_FALLBACK_MINIMUMS = {
+    "bxt": 2,
     "nxt": 2,
+}
+_COMMON_DEVICE_FIELD = {
+    "id": "device",
+    "type": "choice",
+    "label": "Acceleration Device",
+    "default": "default",
+    "flag": "--device",
+    "options": [["Default device", "default"]],
 }
 _COMMON_ENGINE_FIELD = {
     "id": "engine",
@@ -451,16 +478,34 @@ def _schema_version_major(schema):
         return 0
 
 
+def _extract_cli_version_from_text(text):
+    text = str(text or "").strip()
+    if not text:
+        return ""
+    try:
+        payload = json.loads(_json_payload_from_lines(text.splitlines()))
+    except Exception:
+        payload = None
+    if isinstance(payload, dict):
+        version = str(payload.get("cliVersion", payload.get("cli_version", "")) or "").strip()
+        if version:
+            return version
+    match = re.search(r'(?:\bVersion\s+|"cliVersion"\s*:\s*")([^"\r\n]+)', text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return ""
+
+
 def _cli_version(executable):
-    for arguments in (["--help", "--json"], ["--help"], ["--version"]):
+    for arguments in (["--json"], ["--help", "--json"], ["--help"], ["--version"]):
         try:
             lines = _run_cli([executable, *arguments], timeout_seconds=3.0)
         except Exception:
             continue
         text = "\n".join(lines)
-        match = re.search(r"\bVersion\s+([^\r\n]+)", text, flags=re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
+        version = _extract_cli_version_from_text(text)
+        if version:
+            return version
         if arguments == ["--version"] and lines:
             return lines[-1].strip()
     return ""
@@ -674,15 +719,38 @@ def _schema_group_lookup(schema):
 
 def _apply_product_schema_overrides(schema, product):
     schema_groups = _schema_group_lookup(schema)
+    schema_major = _schema_version_major(schema)
+    schema_field_ids = {_schema_field_id(field) for field in _schema_fields(schema)}
+    schema_has_device = "device" in schema_field_ids
     for field in _ordered_schema_fields(schema):
         field_id = _schema_field_id(field)
         if not field_id:
             continue
+        if schema_major >= 4 and field_id == "engine":
+            if schema_has_device:
+                field["hidden"] = True
+                continue
+            field["id"] = "device"
+            field["name"] = "device"
+            field["flag"] = "--device"
+            field["label"] = "Acceleration Device"
+            field_id = "device"
         if field_id in _TECHNICAL_OUTPUT_FIELDS or field_id in _MODEL_SELECTOR_FIELDS:
             field["hidden"] = True
             continue
         if "group" not in field and field_id in schema_groups:
             field["group"] = schema_groups[field_id]
+        if field_id == "device":
+            field["group"] = {
+                "bxt": _BXT_FIELD_GROUPS,
+                "nxt": _NXT_FIELD_GROUPS,
+                "sxt": _SXT_FIELD_GROUPS,
+            }.get(product, {}).get(field_id, "Engine")
+            field["label"] = "Acceleration Device"
+            field["flag"] = "--device"
+            field.setdefault("default", "default")
+            if _normalized_field_type(field) == "choice" and not _options_for_field(field):
+                field["options"] = [["Default device", "default"]]
         if product == "bxt":
             group = _BXT_FIELD_GROUPS.get(field_id)
             if group:
@@ -811,7 +879,10 @@ def _resolve_cli_for_settings_action(snapshot):
         host_diagnostic = str(host_error)
     else:
         resolved_snapshot = dict(snapshot)
-        resolved_snapshot.setdefault("configured_folder", str(snapshot.get(_CLI_SETTING_KEY, "") or executable.parent))
+        resolved_snapshot.setdefault(
+            "configured_folder", str(snapshot.get("configured_folder", "") or executable.parent)
+        )
+        resolved_snapshot.setdefault(_CLI_SETTING_KEY, str(snapshot.get(_CLI_SETTING_KEY, "") or executable))
         resolved_snapshot.setdefault("resolution_source", "host")
         resolved_snapshot.setdefault("resolved_cli_version", _cli_version(executable))
         resolved_snapshot.setdefault("resolver_diagnostic", "RC-Astro CLI is configured and ready to use.")
@@ -821,6 +892,7 @@ def _resolve_cli_for_settings_action(snapshot):
     configured_dirs = _dedupe_paths(
         [
             snapshot.get(_CLI_SETTING_KEY, ""),
+            snapshot.get(_LEGACY_CLI_SETTING_KEY, ""),
             snapshot.get("configured_folder", ""),
         ]
     )
@@ -833,16 +905,19 @@ def _resolve_cli_for_settings_action(snapshot):
         if not executable:
             continue
         version = _cli_version(executable)
+        root_path = pathlib.Path(root).expanduser()
+        configured_folder = root_path.parent if root_path.is_file() else root_path
         resolved_snapshot = dict(snapshot)
         resolved_snapshot[_RESOLVED_CLI_KEY] = str(executable)
-        resolved_snapshot["configured_folder"] = str(root)
+        resolved_snapshot[_CLI_SETTING_KEY] = str(executable)
+        resolved_snapshot["configured_folder"] = str(configured_folder)
         resolved_snapshot["resolution_source"] = source
         resolved_snapshot["resolved_cli_version"] = version or "Unknown"
         resolved_snapshot["resolver_diagnostic"] = "RC-Astro CLI is configured and ready to use."
         return executable, resolved_snapshot
 
     message = (
-        "Could not find a supported RC-Astro CLI executable in the selected folder, "
+        "Could not find a supported RC-Astro CLI executable in the selected executable or folder, "
         "default installation folders, or PATH."
     )
     if host_diagnostic:
@@ -855,21 +930,21 @@ def _tool_configuration():
         "settings_key": _CLI_SETTING_KEY,
         "label": "RC-Astro CLI",
         "button_label": "Configure",
-        "dialog_title": "Select RC-Astro CLI Folder",
+        "dialog_title": "Select RC-Astro CLI Executable",
         "not_configured_text": "RC-Astro CLI is not configured.",
         "configured_text": "RC-Astro CLI is configured and ready to use.",
         "invalid_text": (
-            "Selected folder does not contain a supported RC-Astro CLI executable (%1). "
-            "Try the RC-Astro installation folder, CLI folder, or bin folder."
+            "Selected file is not a supported RC-Astro CLI executable (%1). "
+            "Choose the rc-astro executable, or use Detect Installation."
         ),
-        "show_configured_banner": True,
+        "show_configured_banner": False,
         "primary_executable": _CLI_NAME,
         "primary_executable_candidates": _candidate_executable_names(),
         "candidate_subdirectories": [item for item in _CLI_SEARCH_SUBDIRECTORIES if item],
         "append_platform_executable_suffix": True,
         "require_executable": True,
-        "version_arguments": ["--help", "--json"],
-        "version_pattern": r"Version\s+([^\r\n]+)",
+        "version_arguments": ["--json"],
+        "version_pattern": r'(?:\bVersion\s+|"cliVersion"\s*:\s*")([^"\r\n]+)',
         "platform_candidate_directories": {
             "windows": [
                 r"C:\Program Files\RC-Astro\CLI",
@@ -887,17 +962,15 @@ def _tool_configuration():
         },
         "download_page_url": "https://www.rc-astro.com/resources/",
         "install_instructions": (
-            "Install the RC-Astro command-line tools separately, then select the folder "
-            "that contains the rc-astro executable. This package does not redistribute "
+            "Install the RC-Astro command-line tools separately, then select the rc-astro "
+            "executable or click Detect Installation. This package does not redistribute "
             "RC-Astro binaries, models, icons, licenses, or activation material."
         ),
     }
 
 
 def _tool_record_updates(snapshot, executable):
-    configured_folder = str(
-        snapshot.get("configured_folder", "") or snapshot.get(_CLI_SETTING_KEY, "") or pathlib.Path(executable).parent
-    ).strip()
+    configured_folder = str(snapshot.get("configured_folder", "") or pathlib.Path(executable).parent).strip()
     source = str(snapshot.get("resolution_source", "") or "").strip()
     version = str(snapshot.get("resolved_cli_version", "") or "").strip() or _cli_version(executable)
     diagnostic = str(snapshot.get("resolver_diagnostic", "") or "").strip()
@@ -905,10 +978,10 @@ def _tool_record_updates(snapshot, executable):
         diagnostic = "RC-Astro CLI is configured and ready to use."
     return {
         "resolver_diagnostic": diagnostic,
+        _CLI_SETTING_KEY: str(executable),
         "resolved_cli_executable": str(executable),
         "resolved_cli_version": version or "Unknown",
         "resolution_source": source or "settings",
-        "activation_status": "Not checked yet.",
         "configured_folder": configured_folder,
     }
 
@@ -936,6 +1009,163 @@ def _activation_status(executable, product):
         if "activated" in lowered or "licensed" in lowered or "valid" in lowered:
             return "Activated"
     return "Activation status was not reported by this RC-Astro CLI."
+
+
+def _activation_settings_options():
+    return [[info["name"], product] for product, info in _PRODUCTS.items()]
+
+
+def _selected_activation_product(snapshot, fallback="bxt"):
+    product = str(snapshot.get(_ACTIVATION_PRODUCT_PARAM_ID, "") or "").strip().lower()
+    if product in _PRODUCTS:
+        return product
+    fallback = str(fallback or "").strip().lower()
+    return fallback if fallback in _PRODUCTS else "bxt"
+
+
+def _activation_status_updates(executable, selected_product="bxt"):
+    updates = {}
+    for product in _PRODUCTS:
+        updates[_ACTIVATION_STATUS_PARAM_IDS[product]] = _activation_status(executable, product)
+    selected_product = _selected_activation_product({_ACTIVATION_PRODUCT_PARAM_ID: selected_product})
+    updates["activation_status"] = updates[_ACTIVATION_STATUS_PARAM_IDS[selected_product]]
+    return updates
+
+
+def _activation_unavailable_updates(message):
+    text = str(message or "").strip() or "RC-Astro CLI is not configured."
+    updates = {param_id: text for param_id in _ACTIVATION_STATUS_PARAM_IDS.values()}
+    updates["activation_status"] = text
+    updates["resolver_diagnostic"] = text
+    return updates
+
+
+def _activation_state_from_text(value):
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+    inactive_markers = (
+        "not activated",
+        "not licensed",
+        "unactivated",
+        "unlicensed",
+        "license required",
+        "no license",
+        "invalid",
+        "expired",
+    )
+    if any(marker in text for marker in inactive_markers):
+        return False
+    active_markers = ("activated", "licensed", "permanently licensed", "trial", "valid")
+    if any(marker in text for marker in active_markers):
+        return True
+    return None
+
+
+def _activation_state_from_mapping(value):
+    if not isinstance(value, dict):
+        return None
+    for key in ("activated", "licensed", "license_valid", "is_activated", "valid"):
+        if key in value:
+            return bool(value[key])
+    for key in ("activation_status", "license_status", "status", "state"):
+        state = _activation_state_from_text(value.get(key))
+        if state is not None:
+            return state
+    for key in ("license", "activation"):
+        state = _activation_state_from_mapping(value.get(key))
+        if state is not None:
+            return state
+    return None
+
+
+def _activation_state_from_schema(schema):
+    return _activation_state_from_mapping(schema)
+
+
+def _activation_state_for_product(executable, product, schema=None):
+    if schema is not None:
+        state = _activation_state_from_schema(schema)
+        if state is not None:
+            return state, "product schema"
+    status = _activation_status(executable, product)
+    return _activation_state_from_text(status), status
+
+
+def _activation_required_message(product, status=""):
+    message = (
+        f"{_PRODUCTS[product]['name']} is not activated in the RC-Astro CLI. "
+        "Open the RC-Astro XTerminators settings, activate this product, then refresh status."
+    )
+    status = str(status or "").strip()
+    if status and status != "Not activated":
+        message = f"{message} Reported status: {status}."
+    return message
+
+
+def _activation_validation_diagnostic(product, status=""):
+    return {
+        "ok": False,
+        "severity": "error",
+        "message": _activation_required_message(product, status),
+    }
+
+
+def _require_activated_product(executable, product, schema=None):
+    state, status = _activation_state_for_product(executable, product, schema)
+    if state is False:
+        raise RcAstroError(_activation_required_message(product, status))
+
+
+def _version_tuple(value):
+    match = re.search(r"\b([0-9]+(?:\.[0-9]+){1,3})\b", str(value or ""))
+    if not match:
+        return ()
+    return tuple(int(part) for part in match.group(1).split("."))
+
+
+def _update_info_from_lines(lines, current_version=""):
+    text = "\n".join(str(line) for line in lines if str(line).strip()).strip()
+    status = text or "Update check completed."
+    available = None
+    latest_version = ""
+
+    for line in lines:
+        event = _json_event(line)
+        if not event:
+            continue
+        for key in ("latest_version", "latestVersion", "available_version", "availableVersion", "new_version"):
+            if event.get(key):
+                latest_version = str(event[key]).strip()
+                break
+        for key in ("update_available", "updateAvailable", "available", "has_update", "newer_available"):
+            if key in event:
+                available = bool(event[key])
+                break
+
+    lowered = status.lower()
+    if available is None:
+        if any(marker in lowered for marker in ("up to date", "up-to-date", "latest version", "no update")):
+            available = False
+        elif any(marker in lowered for marker in ("newer version", "new version", "update available", "available")):
+            available = True
+
+    if not latest_version:
+        versions = re.findall(r"\b[0-9]+(?:\.[0-9]+){1,3}\b", status)
+        current_tuple = _version_tuple(current_version)
+        if versions:
+            newer_versions = [version for version in versions if _version_tuple(version) > current_tuple]
+            if newer_versions:
+                latest_version = newer_versions[-1]
+                available = True
+
+    if available is None:
+        available = False
+    return {
+        "available": bool(available),
+        "latest_version": latest_version,
+        "status": status,
+    }
 
 
 def _load_product_schema(executable, product):
@@ -1023,16 +1253,25 @@ def _field_from_schema_mode(mode, product):
             field["group"] = group
         if field_id in _BXT_FIELD_DEFAULTS:
             field["default"] = _BXT_FIELD_DEFAULTS[field_id]
+        if field_id == "device":
+            field.setdefault("label", "Acceleration Device")
+            field.setdefault("flag", "--device")
     if product == "nxt" and "group" not in field:
         group = _NXT_FIELD_GROUPS.get(field_id)
         if group:
             field["group"] = group
     if product == "nxt" and field_id in _NXT_FIELD_DEFAULTS:
         field["default"] = _NXT_FIELD_DEFAULTS[field_id]
+    if product == "nxt" and field_id == "device":
+        field.setdefault("label", "Acceleration Device")
+        field.setdefault("flag", "--device")
     if product == "sxt" and "group" not in field:
         group = _SXT_FIELD_GROUPS.get(field_id)
         if group:
             field["group"] = group
+    if product == "sxt" and field_id == "device":
+        field.setdefault("label", "Acceleration Device")
+        field.setdefault("flag", "--device")
     return field
 
 
@@ -1053,15 +1292,23 @@ def _schema_mode_fields(schema):
 
 def _synthetic_schema_fields(schema):
     product = _schema_product(schema)
-    if product != "bxt":
+    if product not in _PRODUCTS:
         return []
     existing_ids = {_schema_field_id(field) for field in [*_schema_fields(schema), *_schema_mode_fields(schema)]}
-    if "engine" in existing_ids:
+    if {"device", "engine"} & existing_ids:
         return []
-    field = dict(_COMMON_ENGINE_FIELD)
+    schema_major = _schema_version_major(schema)
+    if schema_major < 4 and product != "bxt":
+        return []
+    field = dict(_COMMON_DEVICE_FIELD if schema_major >= 4 else _COMMON_ENGINE_FIELD)
+    field_groups = {
+        "bxt": _BXT_FIELD_GROUPS,
+        "nxt": _NXT_FIELD_GROUPS,
+        "sxt": _SXT_FIELD_GROUPS,
+    }[product]
+    field["group"] = field_groups[field["id"]]
     if product == "bxt":
-        field["group"] = _BXT_FIELD_GROUPS["engine"]
-        field["default"] = _BXT_FIELD_DEFAULTS["engine"]
+        field["default"] = _BXT_FIELD_DEFAULTS[field["id"]]
     return [field]
 
 
@@ -1111,27 +1358,67 @@ def _as_positive_int(value):
     return number if number > 0 else 0
 
 
+def _model_version_number(value):
+    number = _as_positive_int(value)
+    if number > 0:
+        return number
+    text = str(value or "").strip()
+    if not text:
+        return 0
+    match = re.search(r"(?:\bAI|\bv)?\s*([1-9][0-9]*)\b", text, flags=re.IGNORECASE)
+    if not match:
+        return 0
+    return _as_positive_int(match.group(1))
+
+
 def _schema_latest_model_version(schema):
     for key in ("mlVersion", "ml_version", "modelVersion", "model_version", "latestModelVersion"):
-        version = _as_positive_int(schema.get(key))
+        version = _model_version_number(schema.get(key))
         if version > 0:
             return version
     for field in _ordered_schema_fields(schema):
         if _schema_field_id(field) not in _MODEL_SELECTOR_FIELDS:
             continue
         for key in ("latest", "max", "default"):
-            version = _as_positive_int(field.get(key))
+            version = _model_version_number(field.get(key))
             if version > 0:
                 return version
     return 0
 
 
+def _add_model_version_value(versions, value):
+    if isinstance(value, dict):
+        for key in ("version", "value", "id", "name", "label", "mlVersion", "modelVersion"):
+            version = _model_version_number(value.get(key))
+            if version > 0:
+                versions.add(version)
+        return
+    version = _model_version_number(value)
+    if version > 0:
+        versions.add(version)
+
+
 def _schema_model_versions(schema, product=None):
     versions = set()
-    for key in ("modelVersions", "model_versions", "mlVersions", "ml_versions"):
+    for key in (
+        "modelVersions",
+        "model_versions",
+        "mlVersions",
+        "ml_versions",
+        "availableModelVersions",
+        "available_model_versions",
+        "models",
+        "model_catalog",
+    ):
         raw_versions = schema.get(key)
         if isinstance(raw_versions, list):
-            versions.update(version for version in (_as_positive_int(item) for item in raw_versions) if version > 0)
+            for item in raw_versions:
+                _add_model_version_value(versions, item)
+    for field in _ordered_schema_fields(schema):
+        if _schema_field_id(field) not in _MODEL_SELECTOR_FIELDS:
+            continue
+        for _label, value in _options_for_field(field):
+            _add_model_version_value(versions, value)
     if versions:
         return sorted(versions)
     latest = _schema_latest_model_version(schema)
@@ -1443,6 +1730,12 @@ def _should_emit_field(product, field, field_id, params):
     return True
 
 
+def _should_omit_field_value(field_id, flag, value):
+    if field_id == "device" or flag == "--device":
+        return str(value or "").strip().lower() in {"", "default", "auto"}
+    return False
+
+
 def _command_for_schema(executable, product, schema, input_path, output_path, stars_path, params):
     params = params or {}
     command = [
@@ -1479,6 +1772,8 @@ def _command_for_schema(executable, product, schema, input_path, output_path, st
         if value is None:
             continue
         flag = str(field.get("flag", "") or "").strip() or _flag_name(field_id)
+        if _should_omit_field_value(field_id, flag, value):
+            continue
         if param["type"] == "bool":
             if value:
                 command.append(flag)
@@ -1496,20 +1791,22 @@ class _RcAstroBase(ui.ProcessWindow):
     def get_settings_params(self):
         return [
             {
-                "id": _CLI_SETTING_KEY,
-                "type": "dir_path",
-                "label": "RC-Astro CLI Folder",
-                "default": "",
-                "group": "Tool",
-                "tooltip": "Folder containing the user-installed RC-Astro CLI executable.",
-                "tool_configuration": _tool_configuration(),
-            },
-            {
                 "id": "resolver_diagnostic",
                 "type": "string",
-                "label": "Detection Status",
-                "default": "Not checked yet.",
-                "group": "Tool",
+                "label": "Status",
+                "default": "Select the RC-Astro CLI executable or click Detect Installation.",
+                "group": "CLI Connection",
+                "group_style": "card",
+                "persist": False,
+                "enabled": False,
+            },
+            {
+                "id": "resolved_cli_version",
+                "type": "string",
+                "label": "Version",
+                "default": "Not detected",
+                "group": "CLI Connection",
+                "group_style": "card",
                 "persist": False,
                 "enabled": False,
             },
@@ -1517,36 +1814,44 @@ class _RcAstroBase(ui.ProcessWindow):
                 "id": _RESOLVED_CLI_KEY,
                 "type": "string",
                 "label": "Resolved Executable",
-                "default": "",
-                "group": "Tool",
+                "default": "Not detected",
+                "group": "CLI Connection",
+                "group_style": "card",
                 "persist": False,
                 "enabled": False,
+                "visible": False,
             },
             {
-                "id": "resolved_cli_version",
-                "type": "string",
-                "label": "CLI Version",
+                "id": _CLI_SETTING_KEY,
+                "type": "file_path",
+                "label": "Executable",
                 "default": "",
-                "group": "Tool",
-                "persist": False,
-                "enabled": False,
+                "group": "CLI Connection",
+                "group_style": "card",
+                "placeholder": "Select rc-astro, rc-astro-cli, or RCAstroCLI",
+                "button_label": "Browse...",
+                "tooltip": "User-installed RC-Astro CLI executable.",
+                "tool_configuration": _tool_configuration(),
             },
             {
                 "id": "resolution_source",
                 "type": "string",
                 "label": "Detected From",
                 "default": "",
-                "group": "Tool",
+                "group": "CLI Connection",
+                "group_style": "card",
                 "persist": False,
                 "enabled": False,
+                "visible": False,
             },
             {
                 "id": "detect_installation",
                 "type": "action",
                 "label": "Detect Installation",
                 "title": "Find RC-Astro CLI",
-                "group": "Tool",
-                "tooltip": "Search the saved folder, common installation folders, and PATH for rc-astro.",
+                "group": "CLI Connection",
+                "group_style": "card",
+                "tooltip": "Search the saved executable, common installation folders, and PATH for rc-astro.",
                 "timeout_ms": 10000,
             },
             {
@@ -1554,62 +1859,141 @@ class _RcAstroBase(ui.ProcessWindow):
                 "type": "action",
                 "label": "Refresh Status",
                 "title": "Refresh RC-Astro Status",
-                "group": "Tool",
-                "tooltip": "Query the detected RC-Astro CLI version and product activation status.",
-                "timeout_ms": 10000,
+                "group": "CLI Connection",
+                "group_style": "card",
+                "tooltip": "Query the detected RC-Astro CLI version and product activation statuses.",
+                "timeout_ms": 30000,
             },
+            {
+                "id": "refresh_status_on_open",
+                "type": "action",
+                "label": "Refresh Status",
+                "title": "Refresh RC-Astro Status",
+                "group": "CLI Connection",
+                "group_style": "card",
+                "visible": False,
+                "persist": False,
+                "action_id": "refresh_status",
+                "autorun": True,
+                "show_status": False,
+                "timeout_ms": 30000,
+            },
+            *[
+                {
+                    "id": _ACTIVATION_STATUS_PARAM_IDS[product],
+                    "type": "status",
+                    "label": info["name"],
+                    "default": "Checking...",
+                    "group": "Products",
+                    "group_style": "card",
+                    "persist": False,
+                    "enabled": False,
+                }
+                for product, info in _PRODUCTS.items()
+            ],
             {
                 "id": "activation_status",
                 "type": "string",
-                "label": "Activation Status",
-                "default": "Not checked yet.",
-                "group": "Activation",
+                "label": "Selected Product Status",
+                "default": "Checking...",
+                "group": "Products",
+                "group_style": "card",
                 "persist": False,
                 "enabled": False,
+                "visible": False,
+            },
+            {
+                "id": _ACTIVATION_PRODUCT_PARAM_ID,
+                "type": "choice",
+                "label": "Product",
+                "default": "bxt",
+                "group": "Products",
+                "group_style": "card",
+                "options": _activation_settings_options(),
+                "visible": False,
             },
             {
                 "id": "activation_email",
                 "type": "string",
-                "label": "Activation Email",
+                "label": "Email",
                 "default": "",
-                "group": "Activation",
+                "group": "Products",
+                "group_style": "card",
+                "placeholder": "Activation email",
                 "sensitive": True,
                 "persist": False,
+                "visible": False,
             },
             {
                 "id": "activation_key",
                 "type": "string",
                 "label": "Activation Key",
                 "default": "",
-                "group": "Activation",
+                "group": "Products",
+                "group_style": "card",
+                "placeholder": "Activation key",
                 "secret": True,
                 "sensitive": True,
                 "persist": False,
+                "visible": False,
             },
             {
-                "id": "activate_selected",
+                "id": "open_activation_dialog",
                 "type": "action",
-                "label": "Activate Selected Product",
-                "title": "Activate Product",
-                "group": "Activation",
-                "tooltip": "Send activation credentials to the RC-Astro CLI through stdin for this product.",
+                "label": "Activation...",
+                "title": "Product Activation",
+                "group": "Products",
+                "group_style": "card",
+                "tooltip": "Open the RC-Astro product activation dialog.",
+                "action_id": "activate_selected",
+                "dialog": {
+                    "title": "RC-Astro Product Activation",
+                    "accept_label": "Activate Selected Product",
+                    "fields": [_ACTIVATION_PRODUCT_PARAM_ID, "activation_email", "activation_key"],
+                },
                 "timeout_ms": 30000,
+            },
+            {
+                "id": _UPDATE_STATUS_PARAM_ID,
+                "type": "string",
+                "label": "Latest Version",
+                "default": "Run Check Updates to look for a newer RC-Astro CLI.",
+                "group": "Updates",
+                "group_style": "card",
+                "persist": False,
+                "enabled": False,
             },
             {
                 "id": "check_updates",
                 "type": "action",
                 "label": "Check Updates",
-                "title": "RC-Astro Updates",
+                "title": "Check for RC-Astro CLI Updates",
                 "group": "Updates",
+                "group_style": "card",
+                "tooltip": "Ask the RC-Astro CLI whether a newer version is available.",
                 "timeout_ms": 15000,
+            },
+            {
+                "id": _UPDATE_AVAILABLE_PARAM_ID,
+                "type": "bool",
+                "label": "Update Available",
+                "default": False,
+                "group": "Updates",
+                "group_style": "card",
+                "persist": False,
+                "enabled": False,
+                "visible": False,
             },
             {
                 "id": "download_update",
                 "type": "action",
-                "label": "Download Update",
-                "title": "Update Safety",
+                "label": "Update",
+                "title": "Update RC-Astro CLI",
                 "group": "Updates",
-                "timeout_ms": 15000,
+                "group_style": "card",
+                "tooltip": "Runs rc-astro update --install after Check Updates reports a newer CLI version.",
+                "enabled_when": f"{_UPDATE_AVAILABLE_PARAM_ID} == true",
+                "timeout_ms": 300000,
             },
         ]
 
@@ -1618,17 +2002,17 @@ class _RcAstroBase(ui.ProcessWindow):
         try:
             executable, snapshot = _resolve_cli_for_settings_action(snapshot)
         except Exception as exc:
-            return {"ok": False, "message": str(exc), "tone": "warning"}
+            result = {"ok": False, "message": str(exc), "tone": "warning"}
+            if action_id in {"detect_installation", "refresh_status"}:
+                result["transient_updates"] = _activation_unavailable_updates(str(exc))
+            return result
 
         try:
             if action_id == "detect_installation":
                 updates = _tool_record_updates(snapshot, executable)
-                settings_updates = {}
-                source = updates.get("resolution_source", "")
-                configured_folder = updates.get("configured_folder", "")
-                if source in {"settings", "candidate_directory"} and configured_folder:
-                    settings_updates[_CLI_SETTING_KEY] = configured_folder
-                updates["activation_status"] = _activation_status(executable, self.product)
+                settings_updates = {_CLI_SETTING_KEY: str(executable)}
+                selected_product = _selected_activation_product(snapshot, self.product)
+                updates.update(_activation_status_updates(executable, selected_product))
                 return {
                     "ok": True,
                     "message": (f"Detected RC-Astro CLI at {executable}. Version: {updates['resolved_cli_version']}."),
@@ -1638,36 +2022,90 @@ class _RcAstroBase(ui.ProcessWindow):
                 }
             if action_id == "refresh_status":
                 updates = _tool_record_updates(snapshot, executable)
-                updates["activation_status"] = _activation_status(executable, self.product)
+                selected_product = _selected_activation_product(snapshot, self.product)
+                updates.update(_activation_status_updates(executable, selected_product))
                 return {
                     "ok": True,
                     "message": (
                         f"RC-Astro CLI is available ({updates['resolved_cli_version']}). "
-                        f"Activation: {updates['activation_status']}."
+                        "Product activation statuses refreshed."
                     ),
                     "tone": "success",
                     "transient_updates": updates,
                 }
             if action_id == "activate_selected":
-                return self._activate_product(executable, self.product, snapshot)
+                return self._activate_product(
+                    executable,
+                    _selected_activation_product(snapshot, self.product),
+                    snapshot,
+                )
             if action_id == "check_updates":
+                current_version = str(snapshot.get("resolved_cli_version", "") or "").strip() or _cli_version(
+                    executable
+                )
                 lines = _run_cli(
                     [executable, "update"],
                     timeout_seconds=_ACTION_TIMEOUT_SECONDS,
                 )
+                update_info = _update_info_from_lines(lines, current_version=current_version)
+                latest = update_info["latest_version"]
+                update_status = update_info["status"]
+                if update_info["available"] and latest:
+                    message = f"RC-Astro CLI {latest} is available."
+                    tone = "warning"
+                elif update_info["available"]:
+                    message = "A newer RC-Astro CLI version is available."
+                    tone = "warning"
+                else:
+                    message = "RC-Astro CLI is up to date."
+                    tone = "success"
                 return {
                     "ok": True,
-                    "message": "\n".join(lines[-5:]) or "Update check completed.",
-                    "tone": "info",
+                    "message": message,
+                    "tone": tone,
+                    "transient_updates": {
+                        _UPDATE_AVAILABLE_PARAM_ID: update_info["available"],
+                        _UPDATE_STATUS_PARAM_ID: update_status,
+                    },
                 }
-            if action_id == "download_update":
+            if action_id in {"install_update", "download_update"}:
+                if not bool(snapshot.get(_UPDATE_AVAILABLE_PARAM_ID)):
+                    current_version = str(snapshot.get("resolved_cli_version", "") or "").strip() or _cli_version(
+                        executable
+                    )
+                    lines = _run_cli(
+                        [executable, "update"],
+                        timeout_seconds=_ACTION_TIMEOUT_SECONDS,
+                    )
+                    update_info = _update_info_from_lines(lines, current_version=current_version)
+                    if not update_info["available"]:
+                        update_status = update_info["status"] or "No RC-Astro CLI update is currently available."
+                        return {
+                            "ok": False,
+                            "message": "No RC-Astro CLI update is currently available.",
+                            "tone": "warning",
+                            "transient_updates": {
+                                _UPDATE_AVAILABLE_PARAM_ID: False,
+                                _UPDATE_STATUS_PARAM_ID: update_status,
+                            },
+                        }
+                lines = _run_cli(
+                    [executable, "update", "--install"],
+                    timeout_seconds=_UPDATE_TIMEOUT_SECONDS,
+                )
+                version = _cli_version(executable)
+                message = "\n".join(lines[-5:]) or "RC-Astro update command completed."
+                updates = {
+                    _UPDATE_AVAILABLE_PARAM_ID: False,
+                    _UPDATE_STATUS_PARAM_ID: message,
+                }
+                if version:
+                    updates["resolved_cli_version"] = version
                 return {
-                    "ok": False,
-                    "message": (
-                        "Update installation is disabled. The adapter will not run update --install; "
-                        "use the RC-Astro updater manually until a non-launching download-only CLI is available."
-                    ),
-                    "tone": "warning",
+                    "ok": True,
+                    "message": message,
+                    "tone": "success",
+                    "transient_updates": updates,
                 }
         except Exception as exc:
             return {"ok": False, "message": str(exc), "tone": "error"}
@@ -1688,11 +2126,14 @@ class _RcAstroBase(ui.ProcessWindow):
             timeout_seconds=_ACTION_TIMEOUT_SECONDS,
             stdin_payload=payload,
         )
+        updates = _activation_status_updates(executable, product)
+        updates["activation_email"] = ""
+        updates["activation_key"] = ""
         return {
             "ok": True,
             "message": f"{_PRODUCTS[product]['name']} activation command completed.",
             "tone": "success",
-            "transient_updates": {"activation_email": "", "activation_key": ""},
+            "transient_updates": updates,
         }
 
     def on_process_launch(self):
@@ -1705,7 +2146,12 @@ class _RcAstroBase(ui.ProcessWindow):
             fixed_size=True,
             target_selector=True,
             target_channel_filter=[1, 3],
-            tool_configuration={**_tool_configuration(), "show_configured_banner": False},
+            tool_configuration={
+                **_tool_configuration(),
+                "button_label": "Settings",
+                "open_extension_settings": True,
+                "show_configured_banner": False,
+            },
         )
         meta["header_description"] = (
             f"{product_info['display']} adapter. It uses the host-resolved RC-Astro CLI path and "
@@ -1723,6 +2169,7 @@ class _RcAstroBase(ui.ProcessWindow):
     def _schema_cli(self):
         snapshot = {
             _CLI_SETTING_KEY: self.settings.get(_CLI_SETTING_KEY, ""),
+            _LEGACY_CLI_SETTING_KEY: self.settings.get(_LEGACY_CLI_SETTING_KEY, ""),
             _RESOLVED_CLI_KEY: self.settings.get(_RESOLVED_CLI_KEY, ""),
             "configured_folder": self.settings.get("configured_folder", ""),
             "resolution_source": self.settings.get("resolution_source", ""),
@@ -1750,6 +2197,23 @@ class _RcAstroBase(ui.ProcessWindow):
         params.extend(schema_params)
         return params
 
+    def validate_process(self, params, input_metadata):
+        del params, input_metadata
+        try:
+            executable = self._schema_cli()
+            state, status = _activation_state_for_product(executable, self.product)
+        except Exception as exc:
+            return [
+                {
+                    "ok": False,
+                    "severity": "error",
+                    "message": f"RC-Astro CLI is not ready: {exc}",
+                }
+            ]
+        if state is False:
+            return [_activation_validation_diagnostic(self.product, status)]
+        return []
+
     def handle_param_action(self, action_id, target, src_image, params):
         del target, src_image, params
         if action_id not in {"list_models", "download_models", "force_redownload_models"}:
@@ -1771,6 +2235,7 @@ class _RcAstroBase(ui.ProcessWindow):
     def execute(self, target, src_image, dst_image, params, progress, masks=None, weights=None, output_masks=None):
         executable = self._resolved_cli()
         schema = _load_product_schema(executable, self.product)
+        _require_activated_product(executable, self.product, schema)
         workspace = _Workspace()
         _progress_text(progress, f"Preparing {_PRODUCTS[self.product]['name']}...")
         io.save(src_image, workspace.input_path)
