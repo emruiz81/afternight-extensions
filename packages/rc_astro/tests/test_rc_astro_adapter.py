@@ -328,6 +328,76 @@ class RcAstroAdapterTests(unittest.TestCase):
             return []
         return json.loads(self.capture.read_text(encoding="utf-8"))
 
+    def test_run_cli_streams_stdout_and_stderr_callbacks_before_process_exit(self):
+        script = self.root / "streaming_cli.py"
+        sentinel = self.root / "line_seen"
+        script.write_text(
+            textwrap.dedent(
+                """
+                import os
+                import sys
+                import time
+
+                sentinel = sys.argv[1]
+                print("stdout one", flush=True)
+                print("stderr one", file=sys.stderr, flush=True)
+                deadline = time.monotonic() + 5.0
+                while not os.path.exists(sentinel):
+                    if time.monotonic() > deadline:
+                        print("sentinel timeout", file=sys.stderr, flush=True)
+                        raise SystemExit(7)
+                    time.sleep(0.02)
+                print("stdout two", flush=True)
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+
+        streamed = []
+
+        def callback(entry):
+            streamed.append(entry)
+            if entry["stream"] == "stdout" and entry["text"] == "stdout one":
+                sentinel.write_text("seen", encoding="utf-8")
+
+        lines, console_output = rc._run_cli(
+            [sys.executable, str(script), str(sentinel)],
+            timeout_seconds=3.0,
+            capture_console=True,
+            console_callback=callback,
+        )
+
+        self.assertEqual(lines, ["stdout one", "stdout two"])
+        self.assertIn({"stream": "stderr", "text": "stderr one"}, console_output)
+        self.assertIn({"stream": "stderr", "text": "stderr one"}, streamed)
+        self.assertTrue(sentinel.exists())
+
+    def test_check_updates_emits_incremental_settings_console_updates(self):
+        extension = RcAstroBxtExtension(None)
+        streamed_updates = []
+
+        with mock.patch.object(
+            rc.afternight,
+            "emit_settings_action_update",
+            side_effect=lambda update: streamed_updates.append(update) or True,
+            create=True,
+        ):
+            with mock.patch.dict(os.environ, {"FAKE_RC_UPDATE_STATUS": "available"}):
+                result = extension.handle_settings_action(
+                    "check_updates",
+                    {
+                        "resolved_cli_executable": str(self.executable),
+                        "resolved_cli_version": "0.9.2",
+                    },
+                )
+
+        self.assertTrue(result["ok"])
+        self.assertGreaterEqual(len(streamed_updates), 2)
+        self.assertEqual(streamed_updates[0]["transient_updates"]["settings_console_output"], "")
+        self.assertTrue(
+            any("append" in update["transient_updates"]["settings_console_output"] for update in streamed_updates[1:])
+        )
+
     def test_manifest_declares_keep_open_for_native_reset_button(self):
         manifest = json.loads((PACKAGE_ROOT / "extension.json").read_text(encoding="utf-8"))
         processes = {process["id_suffix"]: process for process in manifest["processes"]}
@@ -391,6 +461,85 @@ class RcAstroAdapterTests(unittest.TestCase):
             rc._model_version_options(schema),
             [["Latest (v4)", "latest"], ["Version 2", "2"], ["Version 4", "4"]],
         )
+
+    def test_sxt_options_precede_engine_and_unscreen_requires_generated_stars(self):
+        schema = rc._apply_product_schema_overrides(
+            {
+                "schemaVersion": 4,
+                "product": "sxt",
+                "mlVersion": 3,
+                "parameters": [
+                    {
+                        "id": "overlap",
+                        "type": "float",
+                        "label": "Tile Overlap",
+                        "flag": "--overlap",
+                        "default": 0.2,
+                    },
+                    {
+                        "id": "generate_stars_image",
+                        "type": "bool",
+                        "label": "Generate Stars Image",
+                        "flag": "--generate-stars",
+                        "default": False,
+                    },
+                    {
+                        "id": "unscreen_stars",
+                        "type": "bool",
+                        "label": "Unscreen Stars",
+                        "flag": "--unscreen-stars",
+                        "default": False,
+                    },
+                    {
+                        "id": "stars_output",
+                        "type": "string",
+                        "label": "Stars Output",
+                        "flag": "--stars-output",
+                        "hidden": True,
+                    },
+                ],
+            },
+            "sxt",
+        )
+
+        params = rc._schema_params(schema)
+        by_id = {param["id"]: param for param in params}
+        section_labels = [param["label"] for param in params if param.get("type") == "section"]
+
+        self.assertEqual(section_labels, ["Options", "Engine"])
+        self.assertEqual(
+            [param["id"] for param in params if param.get("group") == "Options"],
+            ["generate_stars_image", "unscreen_stars"],
+        )
+        self.assertEqual(
+            [param["id"] for param in params if param.get("group") == "Engine"],
+            ["device", "model_version", "overlap"],
+        )
+        self.assertEqual(by_id["unscreen_stars"]["enabled_when"], "generate_stars_image == true")
+
+        command_without_stars = rc._command_for_schema(
+            self.executable,
+            "sxt",
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            {"generate_stars_image": False, "unscreen_stars": True},
+        )
+        self.assertNotIn("--stars-output", command_without_stars)
+        self.assertNotIn("--unscreen-stars", command_without_stars)
+
+        command_with_stars = rc._command_for_schema(
+            self.executable,
+            "sxt",
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            {"generate_stars_image": True, "unscreen_stars": True},
+        )
+        self.assertIn("--stars-output", command_with_stars)
+        self.assertIn("--unscreen-stars", command_with_stars)
 
     def test_get_params_can_inspect_schema_from_configured_folder_before_host_record(self):
         extension = RcAstroBxtExtension(None)
@@ -843,6 +992,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["cli_executable"]["group_style"], "card")
         self.assertEqual(by_id["cli_executable"]["label"], "Executable")
         self.assertEqual(by_id["cli_executable"]["button_label"], "Browse...")
+        self.assertTrue(by_id["cli_executable"]["read_only"])
         self.assertEqual(by_id["resolver_diagnostic"]["label"], "Status")
         self.assertEqual(by_id["resolved_cli_version"]["label"], "Version")
         self.assertEqual(by_id["resolved_cli_executable"]["label"], "Resolved Executable")
@@ -866,12 +1016,19 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self.assertFalse(by_id["activation_email"]["visible"])
         self.assertFalse(by_id["activation_key"]["visible"])
+        self.assertEqual(by_id["activation_console_output"]["type"], "console_output")
+        self.assertEqual(by_id["activation_console_output"]["default"], "")
+        self.assertEqual(by_id["activation_console_output"]["placeholder"], "Activation output will appear here.")
+        self.assertTrue(by_id["activation_console_output"]["collapsed_when_empty"])
+        self.assertFalse(by_id["activation_console_output"]["visible"])
+        self.assertFalse(by_id["activation_console_output"]["persist"])
         self.assertEqual(by_id["open_activation_dialog"]["label"], "Activation...")
         self.assertEqual(by_id["open_activation_dialog"]["action_id"], "activate_selected")
         self.assertEqual(
             by_id["open_activation_dialog"]["dialog"]["fields"],
-            ["activation_product", "activation_email", "activation_key"],
+            ["activation_product", "activation_email", "activation_key", "activation_console_output"],
         )
+        self.assertTrue(by_id["open_activation_dialog"]["dialog"]["keep_open_on_accept"])
         self.assertEqual(
             by_id["open_activation_dialog"]["dialog"]["accept_label"],
             "Activate Selected Product",
@@ -884,9 +1041,22 @@ class RcAstroAdapterTests(unittest.TestCase):
             self.assertEqual(by_id[field_id]["group_style"], "card")
             self.assertFalse(by_id[field_id]["persist"])
             self.assertFalse(by_id[field_id]["enabled"])
-        self.assertFalse(by_id["update_status"]["persist"])
+        self.assertNotIn("update_status", by_id)
+        schema_text = json.dumps(schemas[0])
+        self.assertNotIn("Latest Version", schema_text)
+        self.assertNotIn("Run Check Updates to look for a newer RC-Astro CLI", schema_text)
         self.assertFalse(by_id["update_available"]["persist"])
         self.assertFalse(by_id["update_available"]["visible"])
+        self.assertEqual(by_id["settings_console_output"]["type"], "console_output")
+        self.assertEqual(by_id["settings_console_output"]["default"], "")
+        self.assertEqual(
+            by_id["settings_console_output"]["placeholder"],
+            "Check Updates and Update output will appear here.",
+        )
+        self.assertTrue(by_id["settings_console_output"]["collapsed_when_empty"])
+        self.assertFalse(by_id["settings_console_output"]["persist"])
+        self.assertEqual(by_id["settings_console_output"]["group"], "Updates")
+        self.assertEqual(by_id["settings_console_output"]["min_lines"], 18)
         self.assertEqual(by_id["download_update"]["label"], "Update")
         self.assertEqual(by_id["download_update"]["enabled_when"], "update_available == true")
         self.assertNotIn("download_models", by_id)
@@ -998,6 +1168,10 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(len(stdin_payloads), 1)
         self.assertIn("SECRET-KEY", stdin_payloads[0])
         self.assertIn("user@example.test", stdin_payloads[0])
+        console_output = result["transient_updates"]["activation_console_output"]
+        self.assertIn("activated", json.dumps(console_output))
+        self.assertNotIn("SECRET-KEY", json.dumps(console_output))
+        self.assertNotIn("user@example.test", json.dumps(console_output))
 
     def test_activation_uses_selected_product_from_settings(self):
         extension = RcAstroBxtExtension(None)
@@ -1015,6 +1189,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertIn("StarXTerminator", result["message"])
         self.assertEqual(result["transient_updates"]["activation_status"], "Activated")
         self.assertEqual(result["transient_updates"]["sxt_activation_status"], "Activated")
+        self.assertIn("activated", json.dumps(result["transient_updates"]["activation_console_output"]))
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
         self.assertIn(["sxt", "--activate"], argv_events)
         self.assertNotIn(["bxt", "--activate"], argv_events)
@@ -1115,6 +1290,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn("No RC-Astro CLI update", result["message"])
         self.assertFalse(result["transient_updates"]["update_available"])
+        self.assertIn("up to date", json.dumps(result["transient_updates"]["settings_console_output"]))
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
         self.assertIn(["update"], argv_events)
         self.assertNotIn(["update", "--install"], argv_events)
@@ -1134,6 +1310,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertTrue(result["ok"], result.get("message"))
         self.assertFalse(result["transient_updates"]["update_available"])
         self.assertIn("updated to 0.9.9", result["message"])
+        self.assertIn("updated to 0.9.9", json.dumps(result["transient_updates"]["settings_console_output"]))
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
         self.assertIn(["update"], argv_events)
         self.assertIn(["update", "--install"], argv_events)
@@ -1154,7 +1331,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(result["tone"], "warning")
         self.assertIn("0.9.9", result["message"])
         self.assertTrue(result["transient_updates"]["update_available"])
-        self.assertIn("0.9.9", result["transient_updates"]["update_status"])
+        self.assertIn("0.9.9", json.dumps(result["transient_updates"]["settings_console_output"]))
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
         self.assertIn(["update"], argv_events)
         self.assertNotIn(["update", "--install"], argv_events)
@@ -1173,6 +1350,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertFalse(result["transient_updates"]["update_available"])
         self.assertIn("updated to 0.9.9", result["message"])
+        self.assertIn("updated to 0.9.9", json.dumps(result["transient_updates"]["settings_console_output"]))
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
         self.assertIn(["update", "--install"], argv_events)
 
@@ -1190,7 +1368,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["tone"], "success")
         self.assertFalse(result["transient_updates"]["update_available"])
-        self.assertIn("up to date", result["transient_updates"]["update_status"])
+        self.assertIn("up to date", json.dumps(result["transient_updates"]["settings_console_output"]))
 
     def test_model_actions_are_process_local(self):
         extension = RcAstroBxtExtension(None)

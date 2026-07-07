@@ -6,10 +6,12 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import queue
 import re
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 import uuid
 
@@ -33,7 +35,8 @@ _RESOLVED_CLI_KEY = "resolved_cli_executable"
 _MODEL_STATUS_PARAM_ID = "model_status"
 _MODEL_VERSION_PARAM_ID = "model_version"
 _UPDATE_AVAILABLE_PARAM_ID = "update_available"
-_UPDATE_STATUS_PARAM_ID = "update_status"
+_SETTINGS_CONSOLE_PARAM_ID = "settings_console_output"
+_ACTIVATION_CONSOLE_PARAM_ID = "activation_console_output"
 _ACTIVATION_PRODUCT_PARAM_ID = "activation_product"
 _ACTIVATION_STATUS_PARAM_IDS = {
     "bxt": "bxt_activation_status",
@@ -231,7 +234,37 @@ _NXT_FIELD_DEFAULTS = {
     "denoise": 0.9,
     "amount": 0.9,
 }
+_SXT_GENERATE_STARS_TOKENS = {
+    "generatestars",
+    "generatestarimage",
+    "generatestarsimage",
+    "createstars",
+    "createstarimage",
+    "createstarsimage",
+    "starimage",
+    "starsimage",
+}
+_SXT_UNSCREEN_STARS_TOKENS = {
+    "unscreenstars",
+    "unscreenstarimage",
+    "unscreenstarsimage",
+}
 _SXT_FIELD_GROUPS = {
+    "generate_stars": "Options",
+    "generate_star_image": "Options",
+    "generate_stars_image": "Options",
+    "generateStars": "Options",
+    "generateStarImage": "Options",
+    "generateStarsImage": "Options",
+    "create_stars": "Options",
+    "create_star_image": "Options",
+    "create_stars_image": "Options",
+    "unscreen_stars": "Options",
+    "unscreenStars": "Options",
+    "unscreen_star_image": "Options",
+    "unscreen_stars_image": "Options",
+    "unscreenStarImage": "Options",
+    "unscreenStarsImage": "Options",
     _MODEL_VERSION_PARAM_ID: "Engine",
     "device": "Engine",
     "engine": "Engine",
@@ -239,10 +272,26 @@ _SXT_FIELD_GROUPS = {
     "overlap": "Engine",
 }
 _SXT_GROUP_ORDER = {
-    "": 0,
+    "Options": 0,
     "Engine": 1,
+    "": 2,
 }
 _SXT_FIELD_ORDER = {
+    "generate_stars": 0,
+    "generate_star_image": 0,
+    "generate_stars_image": 0,
+    "generateStars": 0,
+    "generateStarImage": 0,
+    "generateStarsImage": 0,
+    "create_stars": 0,
+    "create_star_image": 0,
+    "create_stars_image": 0,
+    "unscreen_stars": 1,
+    "unscreenStars": 1,
+    "unscreen_star_image": 1,
+    "unscreen_stars_image": 1,
+    "unscreenStarImage": 1,
+    "unscreenStarsImage": 1,
     "device": 0,
     "engine": 0,
     "gpu": 0,
@@ -285,6 +334,68 @@ _HELP_SKIP_FLAGS = {
 
 class RcAstroError(RuntimeError):
     """Raised for user-facing RC-Astro adapter failures."""
+
+
+class RcAstroCliError(RcAstroError):
+    """Raised when the RC-Astro CLI fails after producing console output."""
+
+    def __init__(self, message, console_output=None):
+        super().__init__(message)
+        self.console_output = list(console_output or [])
+
+
+def _console_entry(stream, text):
+    return {"stream": str(stream or "stdout"), "text": str(text or "")}
+
+
+def _console_output_from_lines(lines, stream="stdout"):
+    return [_console_entry(stream, line) for line in lines if str(line).strip()]
+
+
+def _console_updates_for_action(action_id, console_output):
+    if not console_output:
+        return {}
+    if action_id == "activate_selected":
+        return {_ACTIVATION_CONSOLE_PARAM_ID: console_output}
+    if action_id in {"check_updates", "download_update", "install_update"}:
+        return {_SETTINGS_CONSOLE_PARAM_ID: console_output}
+    return {}
+
+
+def _console_param_id_for_action(action_id):
+    if action_id == "activate_selected":
+        return _ACTIVATION_CONSOLE_PARAM_ID
+    if action_id in {"check_updates", "download_update", "install_update"}:
+        return _SETTINGS_CONSOLE_PARAM_ID
+    return ""
+
+
+def _emit_settings_action_update(update):
+    emitter = getattr(afternight, "emit_settings_action_update", None)
+    if emitter is None:
+        return False
+    try:
+        return bool(emitter(update))
+    except Exception:
+        return False
+
+
+def _clear_console_for_action(action_id):
+    param_id = _console_param_id_for_action(action_id)
+    if not param_id:
+        return
+    _emit_settings_action_update({"transient_updates": {param_id: ""}})
+
+
+def _console_stream_callback_for_action(action_id):
+    param_id = _console_param_id_for_action(action_id)
+    if not param_id:
+        return None
+
+    def callback(entry):
+        _emit_settings_action_update({"transient_updates": {param_id: {"append": [entry]}}})
+
+    return callback
 
 
 def _progress_cancelled(progress):
@@ -398,7 +509,24 @@ def _message_from_event(event):
     return ""
 
 
-def _run_cli(command, *, timeout_seconds, progress=None, stdin_payload=None, cwd=None):
+def _reader_thread(pipe, stream_name, output_queue):
+    try:
+        for raw_line in pipe:
+            output_queue.put((stream_name, raw_line))
+    finally:
+        output_queue.put((stream_name, None))
+
+
+def _run_cli(
+    command,
+    *,
+    timeout_seconds,
+    progress=None,
+    stdin_payload=None,
+    cwd=None,
+    capture_console=False,
+    console_callback=None,
+):
     creationflags = 0
     if os.name == "nt":
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
@@ -407,7 +535,7 @@ def _run_cli(command, *, timeout_seconds, progress=None, stdin_payload=None, cwd
         cwd=str(cwd) if cwd else None,
         stdin=subprocess.PIPE if stdin_payload is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
         start_new_session=os.name != "nt",
@@ -415,19 +543,75 @@ def _run_cli(command, *, timeout_seconds, progress=None, stdin_payload=None, cwd
     )
     if stdin_payload is not None:
         assert process.stdin is not None
-        process.stdin.write(stdin_payload)
-        process.stdin.close()
+        try:
+            process.stdin.write(stdin_payload)
+        except BrokenPipeError:
+            pass
+        finally:
+            process.stdin.close()
 
     start = time.monotonic()
     output_lines = []
+    all_output_lines = []
+    console_output = []
+    stream_queue = queue.Queue()
+    readers = []
+    active_readers = 0
+    for stream_name, pipe in (("stdout", process.stdout), ("stderr", process.stderr)):
+        if pipe is None:
+            continue
+        active_readers += 1
+        reader = threading.Thread(
+            target=_reader_thread,
+            args=(pipe, stream_name, stream_queue),
+            daemon=True,
+        )
+        reader.start()
+        readers.append(reader)
+
+    def check_process_state():
+        if progress is not None and _progress_cancelled(progress):
+            _terminate_process(process, "cancellation")
+            if capture_console:
+                raise RcAstroCliError("RC-Astro processing was cancelled.", console_output)
+            raise RcAstroError("RC-Astro processing was cancelled.")
+        if timeout_seconds > 0 and time.monotonic() - start > timeout_seconds:
+            _terminate_process(process, "timeout")
+            if capture_console:
+                raise RcAstroCliError("RC-Astro CLI timed out.", console_output)
+            raise RcAstroError("RC-Astro CLI timed out.")
+
     try:
-        assert process.stdout is not None
-        for raw_line in process.stdout:
+        while active_readers > 0:
+            try:
+                stream_name, raw_line = stream_queue.get(timeout=0.05)
+            except queue.Empty:
+                check_process_state()
+                continue
+            if raw_line is None:
+                active_readers -= 1
+                check_process_state()
+                continue
             line = raw_line.rstrip()
             if line:
-                output_lines.append(line)
-                if len(output_lines) > 500:
-                    output_lines.pop(0)
+                all_output_lines.append(line)
+                if len(all_output_lines) > 500:
+                    all_output_lines.pop(0)
+                if stream_name == "stdout":
+                    output_lines.append(line)
+                    if len(output_lines) > 500:
+                        output_lines.pop(0)
+                if capture_console or console_callback is not None:
+                    entry = _console_entry(stream_name, line)
+                    if capture_console:
+                        console_output.append(entry)
+                        if len(console_output) > 500:
+                            console_output.pop(0)
+                    if console_callback is not None:
+                        try:
+                            console_callback(entry)
+                        except Exception:
+                            pass
                 event = _json_event(line)
                 if event:
                     message = _message_from_event(event)
@@ -440,21 +624,25 @@ def _run_cli(command, *, timeout_seconds, progress=None, stdin_payload=None, cwd
                     match = _TEXT_PROGRESS_RE.match(line)
                     if match and progress is not None:
                         _progress_value(progress, float(match.group(1)))
-            if progress is not None and _progress_cancelled(progress):
-                _terminate_process(process, "cancellation")
-                raise RcAstroError("RC-Astro processing was cancelled.")
-            if timeout_seconds > 0 and time.monotonic() - start > timeout_seconds:
-                _terminate_process(process, "timeout")
-                raise RcAstroError("RC-Astro CLI timed out.")
+            check_process_state()
         process.wait()
     finally:
-        if process.stdout is not None:
-            process.stdout.close()
+        for pipe in (process.stdout, process.stderr):
+            if pipe is not None:
+                try:
+                    pipe.close()
+                except Exception:
+                    pass
+        for reader in readers:
+            reader.join(timeout=0.2)
 
     if process.returncode != 0:
-        tail = "\n".join(output_lines[-40:]) or "The CLI produced no output."
-        raise RcAstroError(f"RC-Astro CLI exited with status {process.returncode}.\n\n{tail}")
-    return output_lines
+        tail = "\n".join(all_output_lines[-40:]) or "The CLI produced no output."
+        error_message = f"RC-Astro CLI exited with status {process.returncode}.\n\n{tail}"
+        if capture_console:
+            raise RcAstroCliError(error_message, console_output or _console_output_from_lines(all_output_lines[-40:]))
+        raise RcAstroError(error_message)
+    return (output_lines, console_output) if capture_console else output_lines
 
 
 def _resolved_cli_from_mapping(mapping):
@@ -717,11 +905,49 @@ def _schema_group_lookup(schema):
     return lookup
 
 
+def _identity_token(value):
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+
+def _schema_field_matches_tokens(field, tokens):
+    values = [
+        _schema_field_id(field),
+        field.get("id"),
+        field.get("name"),
+        field.get("label"),
+        field.get("flag"),
+    ]
+    return any(_identity_token(value) in tokens for value in values)
+
+
+def _sxt_generate_stars_field_id(schema):
+    for field in _schema_fields(schema):
+        if _schema_field_matches_tokens(field, _SXT_GENERATE_STARS_TOKENS):
+            return _schema_field_id(field)
+    return ""
+
+
+def _sxt_generate_stars_enabled(schema, params):
+    field_id = _sxt_generate_stars_field_id(schema)
+    if not field_id:
+        return True
+    if field_id in params:
+        return bool(params.get(field_id))
+    for key, value in params.items():
+        if _identity_token(key) in _SXT_GENERATE_STARS_TOKENS:
+            return bool(value)
+    for field in _schema_fields(schema):
+        if _schema_field_id(field) == field_id:
+            return bool(field.get("default", False))
+    return False
+
+
 def _apply_product_schema_overrides(schema, product):
     schema_groups = _schema_group_lookup(schema)
     schema_major = _schema_version_major(schema)
     schema_field_ids = {_schema_field_id(field) for field in _schema_fields(schema)}
     schema_has_device = "device" in schema_field_ids
+    sxt_generate_stars_field_id = _sxt_generate_stars_field_id(schema) if product == "sxt" else ""
     for field in _ordered_schema_fields(schema):
         field_id = _schema_field_id(field)
         if not field_id:
@@ -774,6 +1000,12 @@ def _apply_product_schema_overrides(schema, product):
             group = _SXT_FIELD_GROUPS.get(field_id)
             if group:
                 field["group"] = group
+        if product == "sxt" and _schema_field_matches_tokens(field, _SXT_GENERATE_STARS_TOKENS):
+            field["group"] = "Options"
+        if product == "sxt" and _schema_field_matches_tokens(field, _SXT_UNSCREEN_STARS_TOKENS):
+            field["group"] = "Options"
+            if sxt_generate_stars_field_id:
+                field["enabled_when"] = f"{sxt_generate_stars_field_id} == true"
     return schema
 
 
@@ -1727,6 +1959,8 @@ def _should_emit_field(product, field, field_id, params):
         return field_id in _BXT_CORRECT_ONLY_ALLOWED_FIELD_IDS
     if product == "bxt" and field_id in {"nsr", "nonstellar_radius"}:
         return not _bool_param(params, {"ansr", "auto_nonstellar_radius"})
+    if product == "sxt" and _schema_field_matches_tokens(field, _SXT_UNSCREEN_STARS_TOKENS):
+        return any(_identity_token(key) in _SXT_GENERATE_STARS_TOKENS and bool(value) for key, value in params.items())
     return True
 
 
@@ -1748,7 +1982,7 @@ def _command_for_schema(executable, product, schema, input_path, output_path, st
     ]
     if product == "sxt":
         stars_flag = _schema_flag_for_field(schema, "stars_output")
-        if stars_flag:
+        if stars_flag and _sxt_generate_stars_enabled(schema, params):
             command.extend([stars_flag, str(stars_path)])
     model_version = str((params or {}).get(_MODEL_VERSION_PARAM_ID, "") or "").strip().lower()
     if model_version and model_version not in {"latest", "0"}:
@@ -1830,6 +2064,7 @@ class _RcAstroBase(ui.ProcessWindow):
                 "group_style": "card",
                 "placeholder": "Select rc-astro, rc-astro-cli, or RCAstroCLI",
                 "button_label": "Browse...",
+                "read_only": True,
                 "tooltip": "User-installed RC-Astro CLI executable.",
                 "tool_configuration": _tool_configuration(),
             },
@@ -1938,6 +2173,19 @@ class _RcAstroBase(ui.ProcessWindow):
                 "visible": False,
             },
             {
+                "id": _ACTIVATION_CONSOLE_PARAM_ID,
+                "type": "console_output",
+                "label": "Activation Output",
+                "default": "",
+                "placeholder": "Activation output will appear here.",
+                "group": "Products",
+                "group_style": "card",
+                "persist": False,
+                "visible": False,
+                "min_lines": 10,
+                "collapsed_when_empty": True,
+            },
+            {
                 "id": "open_activation_dialog",
                 "type": "action",
                 "label": "Activation...",
@@ -1949,19 +2197,16 @@ class _RcAstroBase(ui.ProcessWindow):
                 "dialog": {
                     "title": "RC-Astro Product Activation",
                     "accept_label": "Activate Selected Product",
-                    "fields": [_ACTIVATION_PRODUCT_PARAM_ID, "activation_email", "activation_key"],
+                    "keep_open_on_accept": True,
+                    "minimum_width": 720,
+                    "fields": [
+                        _ACTIVATION_PRODUCT_PARAM_ID,
+                        "activation_email",
+                        "activation_key",
+                        _ACTIVATION_CONSOLE_PARAM_ID,
+                    ],
                 },
                 "timeout_ms": 30000,
-            },
-            {
-                "id": _UPDATE_STATUS_PARAM_ID,
-                "type": "string",
-                "label": "Latest Version",
-                "default": "Run Check Updates to look for a newer RC-Astro CLI.",
-                "group": "Updates",
-                "group_style": "card",
-                "persist": False,
-                "enabled": False,
             },
             {
                 "id": "check_updates",
@@ -1994,6 +2239,18 @@ class _RcAstroBase(ui.ProcessWindow):
                 "tooltip": "Runs rc-astro update --install after Check Updates reports a newer CLI version.",
                 "enabled_when": f"{_UPDATE_AVAILABLE_PARAM_ID} == true",
                 "timeout_ms": 300000,
+            },
+            {
+                "id": _SETTINGS_CONSOLE_PARAM_ID,
+                "type": "console_output",
+                "label": "Console Output",
+                "default": "",
+                "placeholder": "Check Updates and Update output will appear here.",
+                "group": "Updates",
+                "group_style": "card",
+                "persist": False,
+                "min_lines": 18,
+                "collapsed_when_empty": True,
             },
         ]
 
@@ -2043,13 +2300,16 @@ class _RcAstroBase(ui.ProcessWindow):
                 current_version = str(snapshot.get("resolved_cli_version", "") or "").strip() or _cli_version(
                     executable
                 )
-                lines = _run_cli(
+                _clear_console_for_action(action_id)
+                console_callback = _console_stream_callback_for_action(action_id)
+                lines, console_output = _run_cli(
                     [executable, "update"],
                     timeout_seconds=_ACTION_TIMEOUT_SECONDS,
+                    capture_console=True,
+                    console_callback=console_callback,
                 )
                 update_info = _update_info_from_lines(lines, current_version=current_version)
                 latest = update_info["latest_version"]
-                update_status = update_info["status"]
                 if update_info["available"] and latest:
                     message = f"RC-Astro CLI {latest} is available."
                     tone = "warning"
@@ -2065,39 +2325,47 @@ class _RcAstroBase(ui.ProcessWindow):
                     "tone": tone,
                     "transient_updates": {
                         _UPDATE_AVAILABLE_PARAM_ID: update_info["available"],
-                        _UPDATE_STATUS_PARAM_ID: update_status,
+                        _SETTINGS_CONSOLE_PARAM_ID: console_output,
                     },
                 }
             if action_id in {"install_update", "download_update"}:
+                console_output = []
+                _clear_console_for_action(action_id)
+                console_callback = _console_stream_callback_for_action(action_id)
                 if not bool(snapshot.get(_UPDATE_AVAILABLE_PARAM_ID)):
                     current_version = str(snapshot.get("resolved_cli_version", "") or "").strip() or _cli_version(
                         executable
                     )
-                    lines = _run_cli(
+                    lines, check_console_output = _run_cli(
                         [executable, "update"],
                         timeout_seconds=_ACTION_TIMEOUT_SECONDS,
+                        capture_console=True,
+                        console_callback=console_callback,
                     )
+                    console_output.extend(check_console_output)
                     update_info = _update_info_from_lines(lines, current_version=current_version)
                     if not update_info["available"]:
-                        update_status = update_info["status"] or "No RC-Astro CLI update is currently available."
                         return {
                             "ok": False,
                             "message": "No RC-Astro CLI update is currently available.",
                             "tone": "warning",
                             "transient_updates": {
                                 _UPDATE_AVAILABLE_PARAM_ID: False,
-                                _UPDATE_STATUS_PARAM_ID: update_status,
+                                _SETTINGS_CONSOLE_PARAM_ID: console_output,
                             },
                         }
-                lines = _run_cli(
+                lines, install_console_output = _run_cli(
                     [executable, "update", "--install"],
                     timeout_seconds=_UPDATE_TIMEOUT_SECONDS,
+                    capture_console=True,
+                    console_callback=console_callback,
                 )
+                console_output.extend(install_console_output)
                 version = _cli_version(executable)
                 message = "\n".join(lines[-5:]) or "RC-Astro update command completed."
                 updates = {
                     _UPDATE_AVAILABLE_PARAM_ID: False,
-                    _UPDATE_STATUS_PARAM_ID: message,
+                    _SETTINGS_CONSOLE_PARAM_ID: console_output,
                 }
                 if version:
                     updates["resolved_cli_version"] = version
@@ -2108,7 +2376,11 @@ class _RcAstroBase(ui.ProcessWindow):
                     "transient_updates": updates,
                 }
         except Exception as exc:
-            return {"ok": False, "message": str(exc), "tone": "error"}
+            result = {"ok": False, "message": str(exc), "tone": "error"}
+            console_output = getattr(exc, "console_output", None)
+            if console_output:
+                result["transient_updates"] = _console_updates_for_action(action_id, console_output)
+            return result
         return {"ok": False, "message": f"Unsupported RC-Astro action: {action_id}", "tone": "warning"}
 
     def _activate_product(self, executable, product, snapshot):
@@ -2121,14 +2393,18 @@ class _RcAstroBase(ui.ProcessWindow):
                 "tone": "warning",
             }
         payload = f"{email}\n{key}\n"
-        _run_cli(
+        _clear_console_for_action("activate_selected")
+        lines, console_output = _run_cli(
             [executable, product, "--activate"],
             timeout_seconds=_ACTION_TIMEOUT_SECONDS,
             stdin_payload=payload,
+            capture_console=True,
+            console_callback=_console_stream_callback_for_action("activate_selected"),
         )
         updates = _activation_status_updates(executable, product)
         updates["activation_email"] = ""
         updates["activation_key"] = ""
+        updates[_ACTIVATION_CONSOLE_PARAM_ID] = console_output or _console_output_from_lines(lines)
         return {
             "ok": True,
             "message": f"{_PRODUCTS[product]['name']} activation command completed.",
