@@ -463,24 +463,31 @@ class RcAstroAdapterTests(unittest.TestCase):
             [["Automatically select device", "default"], ["DirectML GPU", "dml"]],
         )
 
-    def test_get_params_maps_synthetic_schema_conditions(self):
+    def test_get_params_uses_fast_schema_without_cli_subprocess(self):
         extension = RcAstroBxtExtension(None)
         extension.settings.set("resolved_cli_executable", str(self.executable))
 
-        params = extension.get_params()
+        with mock.patch.object(rc, "_run_cli", side_effect=AssertionError("get_params must not spawn rc-astro")):
+            params = extension.get_params()
+
         by_id = {param["id"]: param for param in params}
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
 
-        self.assertEqual(by_id["amount"]["type"], "float")
-        self.assertEqual(by_id["mode"]["type"], "choice")
-        self.assertEqual(by_id["manual_strength"]["visible_when"], 'mode == "manual"')
-        self.assertEqual(by_id["manual_strength"]["enabled_when"], 'mode == "manual"')
+        self.assertEqual(by_id["sharpen_stars"]["type"], "float")
+        self.assertEqual(by_id["sharpen_stars"]["default"], 0.5)
+        self.assertTrue(by_id["auto_nonstellar_radius"]["default"])
+        self.assertEqual(
+            by_id["nonstellar_radius"]["enabled_when"], "correct_only != true && auto_nonstellar_radius != true"
+        )
+        self.assertEqual(by_id["sharpen_nonstellar"]["default"], 0.5)
+        self.assertFalse(by_id["correct_only"]["default"])
         self.assertIn("tool_configuration", by_id["window_meta"])
         self.assertEqual(by_id["window_meta"]["tool_configuration"]["primary_executable"], "rc-astro")
         self.assertEqual(by_id["window_meta"]["tool_configuration"]["button_label"], "Settings")
         self.assertTrue(by_id["window_meta"]["tool_configuration"]["open_extension_settings"])
         self.assertFalse(by_id["window_meta"]["tool_configuration"]["show_configured_banner"])
         section_labels = [param["label"] for param in params if param.get("type") == "section"]
+        self.assertEqual(section_labels, ["Stellar Adjustments", "Non stellar adjustments", "Options", "Engine"])
         self.assertNotIn("Models", section_labels)
         self.assertIn("Engine", section_labels)
         self.assertEqual(by_id["model_version"]["type"], "choice")
@@ -493,6 +500,38 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self.assertEqual(by_id["device"]["group"], "Engine")
         self.assertEqual(by_id["device"]["default"], "default")
+        self.assertEqual(by_id["device"]["options"], [["Automatically select device", "default"]])
+        device_options_text = json.dumps(by_id["device"]["options"])
+        self.assertNotIn("// / //", device_options_text)
+        self.assertNotIn("Select a device with", device_options_text)
+        self.assertNotIn("E.G.", device_options_text)
+        self.assertNotIn("Device Gpu1.", device_options_text)
+        self.assertEqual(argv_events, [])
+        self.assertNotIn("amount", by_id)
+        self.assertNotIn("manual_strength", by_id)
+        self.assertNotIn("model_status", by_id)
+        self.assertNotIn("list_models", by_id)
+        self.assertNotIn("download_models", by_id)
+        self.assertNotIn("force_redownload_models", by_id)
+
+    def test_get_params_uses_cached_device_options_without_cli_subprocess(self):
+        extension = RcAstroBxtExtension(None)
+        extension.settings.set(
+            rc._DEVICE_OPTIONS_SETTING_KEY,
+            rc._device_options_json(
+                [
+                    ["Automatically select device", "default"],
+                    ["NVIDIA GeForce RTX 5080", "Gpu0"],
+                    ["AMD Radeon(TM) Graphics", "Gpu1"],
+                    ["CPU", "Cpu"],
+                ]
+            ),
+        )
+
+        with mock.patch.object(rc, "_run_cli", side_effect=AssertionError("get_params must not spawn rc-astro")):
+            params = extension.get_params()
+
+        by_id = {param["id"]: param for param in params}
         self.assertEqual(
             by_id["device"]["options"],
             [
@@ -502,16 +541,6 @@ class RcAstroAdapterTests(unittest.TestCase):
                 ["CPU", "Cpu"],
             ],
         )
-        device_options_text = json.dumps(by_id["device"]["options"])
-        self.assertNotIn("// / //", device_options_text)
-        self.assertNotIn("Select a device with", device_options_text)
-        self.assertNotIn("E.G.", device_options_text)
-        self.assertNotIn("Device Gpu1.", device_options_text)
-        self.assertIn(["--device"], argv_events)
-        self.assertNotIn("model_status", by_id)
-        self.assertNotIn("list_models", by_id)
-        self.assertNotIn("download_models", by_id)
-        self.assertNotIn("force_redownload_models", by_id)
 
     def test_sxt_model_selector_does_not_invent_fixed_versions(self):
         extension = RcAstroSxtExtension(None)
@@ -614,25 +643,24 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertIn("--stars-output", command_with_stars)
         self.assertIn("--unscreen-stars", command_with_stars)
 
-    def test_get_params_can_inspect_schema_from_configured_folder_before_host_record(self):
+    def test_get_params_opens_before_host_resolved_cli_record_exists(self):
         extension = RcAstroBxtExtension(None)
         extension.settings.set("cli_folder", str(self.root))
 
         params = extension.get_params()
         by_id = {param["id"]: param for param in params}
 
-        self.assertIn("amount", by_id)
+        self.assertIn("sharpen_stars", by_id)
+        self.assertIn("correct_only", by_id)
         self.assertNotIn("schema_status", by_id)
         with self.assertRaises(RcAstroError):
             extension.execute(None, object(), FakeDestination(), {}, FakeProgress())
 
-    def test_get_params_tries_schema_command_alternates(self):
+    def test_load_product_schema_tries_schema_command_alternates(self):
         with mock.patch.dict(os.environ, {"FAKE_RC_SCHEMA_STYLE": "product_schema_json"}):
             rc._SCHEMA_CACHE.clear()
-            extension = RcAstroBxtExtension(None)
-            extension.settings.set("resolved_cli_executable", str(self.executable))
-
-            params = extension.get_params()
+            schema = rc._load_product_schema(self.executable, "bxt")
+            params = rc._schema_params(schema)
 
         by_id = {param["id"]: param for param in params}
         argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
@@ -640,13 +668,11 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertNotIn("schema_status", by_id)
         self.assertIn(["bxt", "schema", "--json"], argv_events)
 
-    def test_get_params_falls_back_to_cli_help_when_json_schema_is_unavailable(self):
+    def test_load_product_schema_falls_back_to_cli_help_when_json_schema_is_unavailable(self):
         with mock.patch.dict(os.environ, {"FAKE_RC_SCHEMA_STYLE": "help_only"}):
             rc._SCHEMA_CACHE.clear()
-            extension = RcAstroNxtExtension(None)
-            extension.settings.set("resolved_cli_executable", str(self.executable))
-
-            params = extension.get_params()
+            schema = rc._load_product_schema(self.executable, "nxt")
+            params = rc._schema_params(schema)
 
         by_id = {param["id"]: param for param in params}
         self.assertNotIn("schema_status", by_id)
@@ -658,14 +684,8 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertTrue(by_id["ansr"]["default"])
 
     def test_nxt_params_are_grouped_into_options_denoise_and_engine_cards(self):
-        schemas = {product: _fake_schema(product) for product in ("bxt", "sxt")}
-        schemas["nxt"] = _fake_nxt_grouped_schema()
-        with mock.patch.dict(os.environ, {"FAKE_RC_SCHEMAS": json.dumps(schemas)}):
-            rc._SCHEMA_CACHE.clear()
-            extension = RcAstroNxtExtension(None)
-            extension.settings.set("resolved_cli_executable", str(self.executable))
-
-            params = extension.get_params()
+        schema = rc._apply_product_schema_overrides(_fake_nxt_grouped_schema(), "nxt")
+        params = rc._schema_params(schema)
 
         by_id = {param["id"]: param for param in params}
         section_labels = [param["label"] for param in params if param.get("type") == "section"]
@@ -696,10 +716,8 @@ class RcAstroAdapterTests(unittest.TestCase):
     def test_bxt_help_schema_hides_technical_fields_and_disables_correct_only_controls(self):
         with mock.patch.dict(os.environ, {"FAKE_RC_SCHEMA_STYLE": "help_only"}):
             rc._SCHEMA_CACHE.clear()
-            extension = RcAstroBxtExtension(None)
-            extension.settings.set("resolved_cli_executable", str(self.executable))
-
-            params = extension.get_params()
+            schema = rc._load_product_schema(self.executable, "bxt")
+            params = rc._schema_params(schema)
 
         by_id = {param["id"]: param for param in params}
         options_ids = [param["id"] for param in params if param.get("group") == "Options"]
@@ -1070,6 +1088,8 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertEqual(by_id["resolved_cli_version"]["label"], "Version")
         self.assertEqual(by_id["resolved_cli_executable"]["label"], "Resolved Executable")
         self.assertFalse(by_id["resolved_cli_executable"]["visible"])
+        self.assertFalse(by_id["device_options_json"]["visible"])
+        self.assertTrue(by_id["device_options_json"]["persist"])
         self.assertFalse(by_id["resolution_source"]["visible"])
         self.assertIn("detect_installation", by_id)
         self.assertEqual(by_id["detect_installation"]["title"], "Find RC-Astro CLI")
@@ -1149,7 +1169,8 @@ class RcAstroAdapterTests(unittest.TestCase):
                 params = extension.get_params()
                 diagnostics = extension.validate_process({}, {})
         by_id = {param["id"]: param for param in params}
-        self.assertIn("schema_status", by_id)
+        self.assertIn("dn", by_id)
+        self.assertNotIn("schema_status", by_id)
         self.assertFalse(diagnostics[0]["ok"])
         self.assertIn("RC-Astro CLI is not ready", diagnostics[0]["message"])
         with self.assertRaises(RcAstroError):
@@ -1329,11 +1350,21 @@ class RcAstroAdapterTests(unittest.TestCase):
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["settings_updates"]["cli_executable"], str(self.executable))
+        self.assertIn(rc._DEVICE_OPTIONS_SETTING_KEY, result["settings_updates"])
         transient = result["transient_updates"]
         self.assertEqual(transient["cli_executable"], str(self.executable))
         self.assertEqual(transient["resolved_cli_executable"], str(self.executable))
         self.assertEqual(transient["resolved_cli_version"], "9.9.0")
         self.assertEqual(transient["resolution_source"], "candidate_directory")
+        self.assertEqual(
+            json.loads(transient[rc._DEVICE_OPTIONS_SETTING_KEY]),
+            [
+                ["Automatically select device", "default"],
+                ["NVIDIA GeForce RTX 5080", "Gpu0"],
+                ["AMD Radeon(TM) Graphics", "Gpu1"],
+                ["CPU", "Cpu"],
+            ],
+        )
         self.assertEqual(transient["activation_status"], "Activated")
         self.assertEqual(transient["bxt_activation_status"], "Activated")
         self.assertEqual(transient["sxt_activation_status"], "Activated")
@@ -1356,6 +1387,7 @@ class RcAstroAdapterTests(unittest.TestCase):
 
         self.assertTrue(result["ok"], result.get("message"))
         self.assertEqual(pathlib.Path(result["settings_updates"]["cli_executable"]), executable.resolve())
+        self.assertIn(rc._DEVICE_OPTIONS_SETTING_KEY, result["settings_updates"])
         transient = result["transient_updates"]
         self.assertEqual(pathlib.Path(transient["cli_executable"]), executable.resolve())
         self.assertEqual(pathlib.Path(transient["resolved_cli_executable"]), executable.resolve())
@@ -1378,9 +1410,19 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
 
         self.assertTrue(result["ok"])
+        self.assertIn(rc._DEVICE_OPTIONS_SETTING_KEY, result["settings_updates"])
         transient = result["transient_updates"]
         self.assertEqual(transient["cli_executable"], str(self.executable))
         self.assertEqual(transient["resolved_cli_version"], "9.9.0")
+        self.assertEqual(
+            json.loads(transient[rc._DEVICE_OPTIONS_SETTING_KEY]),
+            [
+                ["Automatically select device", "default"],
+                ["NVIDIA GeForce RTX 5080", "Gpu0"],
+                ["AMD Radeon(TM) Graphics", "Gpu1"],
+                ["CPU", "Cpu"],
+            ],
+        )
         self.assertEqual(transient["activation_status"], "Activated")
         self.assertEqual(transient["bxt_activation_status"], "Activated")
         self.assertEqual(transient["sxt_activation_status"], "Activated")

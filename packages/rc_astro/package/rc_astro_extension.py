@@ -35,6 +35,7 @@ _RESOLVED_CLI_KEY = "resolved_cli_executable"
 _MODEL_STATUS_PARAM_ID = "model_status"
 _MODEL_VERSION_PARAM_ID = "model_version"
 _UPDATE_AVAILABLE_PARAM_ID = "update_available"
+_DEVICE_OPTIONS_SETTING_KEY = "device_options_json"
 _SETTINGS_CONSOLE_PARAM_ID = "settings_console_output"
 _ACTIVATION_CONSOLE_PARAM_ID = "activation_console_output"
 _ACTIVATION_PRODUCT_PARAM_ID = "activation_product"
@@ -65,6 +66,7 @@ _PRODUCTS = {
         "category": "denoising",
     },
 }
+_MISSING = object()
 _SCHEMA_CACHE = {}
 _DEVICE_OPTIONS_CACHE = {}
 _TEXT_PROGRESS_RE = re.compile(r".*?([0-9]+(?:\.[0-9]+)?)\s*%")
@@ -154,6 +156,53 @@ _BXT_FIELD_DEFAULTS = {
 }
 _BXT_MODE_FIELD_ALIASES = {
     "correctOnlyMode": "correct_only",
+}
+_PARAM_VALUE_ALIASES = {
+    "ss": ("sharpen_stars",),
+    "sharpen_stars": ("ss",),
+    "ash": ("adjust_star_halos",),
+    "adjust_star_halos": ("ash",),
+    "nsr": ("nonstellar_radius",),
+    "nonstellar_radius": ("nsr",),
+    "ansr": ("auto_nonstellar_radius",),
+    "auto_nonstellar_radius": ("ansr",),
+    "sn": ("sharpen_nonstellar",),
+    "sharpen_nonstellar": ("sn",),
+    "correct_only": ("correctOnlyMode",),
+    "correctOnlyMode": ("correct_only",),
+    "dn": ("denoise", "amount"),
+    "denoise": ("dn", "amount"),
+    "amount": ("dn", "denoise"),
+    "generate_stars_image": (
+        "generate_stars",
+        "generate_star_image",
+        "generateStars",
+        "generateStarImage",
+        "generateStarsImage",
+        "create_stars",
+        "create_star_image",
+        "create_stars_image",
+    ),
+    "generate_stars": ("generate_stars_image",),
+    "generate_star_image": ("generate_stars_image",),
+    "generateStars": ("generate_stars_image",),
+    "generateStarImage": ("generate_stars_image",),
+    "generateStarsImage": ("generate_stars_image",),
+    "create_stars": ("generate_stars_image",),
+    "create_star_image": ("generate_stars_image",),
+    "create_stars_image": ("generate_stars_image",),
+    "unscreen_stars": (
+        "unscreenStars",
+        "unscreen_star_image",
+        "unscreen_stars_image",
+        "unscreenStarImage",
+        "unscreenStarsImage",
+    ),
+    "unscreenStars": ("unscreen_stars",),
+    "unscreen_star_image": ("unscreen_stars",),
+    "unscreen_stars_image": ("unscreen_stars",),
+    "unscreenStarImage": ("unscreen_stars",),
+    "unscreenStarsImage": ("unscreen_stars",),
 }
 _NXT_FIELD_GROUPS = {
     "csep": "Options",
@@ -1019,6 +1068,75 @@ def _parse_device_options(lines):
     return options
 
 
+def _normalised_device_options(options):
+    normalised = []
+    seen = set()
+    for item in options or []:
+        if isinstance(item, (list, tuple)) and len(item) >= 2:
+            label, value = item[0], item[1]
+        elif isinstance(item, dict):
+            label = item.get("label", item.get("name", item.get("value")))
+            value = item.get("value", item.get("id", label))
+        else:
+            label = value = item
+        _append_device_option(normalised, seen, value, label)
+    if not any(str(value).strip().lower() == "default" for _label, value in normalised):
+        normalised.insert(0, _DEFAULT_DEVICE_OPTION.copy())
+    return normalised
+
+
+def _device_options_json(options):
+    return json.dumps(_normalised_device_options(options), separators=(",", ":"))
+
+
+def _device_options_from_json(value):
+    text = str(value or "").strip()
+    if not text:
+        return []
+    try:
+        payload = json.loads(text)
+    except Exception:
+        return []
+    return _normalised_device_options(payload)
+
+
+def _device_options_from_settings(settings):
+    try:
+        raw_options = settings.get(_DEVICE_OPTIONS_SETTING_KEY, "")
+    except Exception:
+        raw_options = ""
+    options = _device_options_from_json(raw_options)
+    if options:
+        return options
+
+    try:
+        raw_executable = str(settings.get(_RESOLVED_CLI_KEY, "") or settings.get(_CLI_SETTING_KEY, "") or "").strip()
+        version = str(settings.get("resolved_cli_version", "") or "").strip()
+    except Exception:
+        raw_executable = ""
+        version = ""
+    if not raw_executable:
+        return []
+    try:
+        resolved = str(pathlib.Path(raw_executable).resolve())
+    except Exception:
+        resolved = raw_executable
+    cache_keys = [(resolved, version), (resolved, "")]
+    cache_keys.extend(key for key in _DEVICE_OPTIONS_CACHE if key[0] == resolved and key not in cache_keys)
+    for key in cache_keys:
+        cached = _DEVICE_OPTIONS_CACHE.get(key)
+        if cached:
+            return _normalised_device_options(cached)
+    return []
+
+
+def _device_option_setting_updates(executable, version=""):
+    options = _device_options_for_cli(executable, version)
+    if not options:
+        return {}
+    return {_DEVICE_OPTIONS_SETTING_KEY: _device_options_json(options)}
+
+
 def _device_options_for_cli(executable, version=""):
     try:
         resolved = str(pathlib.Path(executable).resolve())
@@ -1347,6 +1465,162 @@ def _apply_product_schema_overrides(schema, product):
             if sxt_generate_stars_field_id:
                 field["enabled_when"] = f"{sxt_generate_stars_field_id} == true"
     return schema
+
+
+def _fast_product_schema(product, device_options=None):
+    """Local first-paint schema used by native process windows before CLI probing."""
+    device_field = dict(_COMMON_DEVICE_FIELD)
+    device_field["options"] = _normalised_device_options(device_options)
+    if product == "bxt":
+        schema = {
+            "schema_version": 4,
+            "product": "bxt",
+            "schema_source": "fast_ui",
+            "mlVersion": 4,
+            "parameters": [
+                {
+                    "id": "sharpen_stars",
+                    "type": "float",
+                    "label": "Sharpen Stars",
+                    "flag": "--sharpen-stars",
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.01,
+                },
+                {
+                    "id": "adjust_star_halos",
+                    "type": "float",
+                    "label": "Adjust Star Halos",
+                    "flag": "--adjust-star-halos",
+                    "default": 0.0,
+                    "min": -1.0,
+                    "max": 1.0,
+                    "step": 0.01,
+                },
+                {
+                    "id": "auto_nonstellar_radius",
+                    "type": "bool",
+                    "label": "Auto Nonstellar Radius",
+                    "flag": "--auto-nonstellar-radius",
+                    "false_flag": "--no-auto-nonstellar-radius",
+                    "default": True,
+                },
+                {
+                    "id": "nonstellar_radius",
+                    "type": "float",
+                    "label": "Nonstellar Radius",
+                    "flag": "--nonstellar-radius",
+                    "default": 0.0,
+                    "min": 0.0,
+                    "max": 8.0,
+                    "step": 0.1,
+                },
+                {
+                    "id": "sharpen_nonstellar",
+                    "type": "float",
+                    "label": "Sharpen Nonstellar",
+                    "flag": "--sharpen-nonstellar",
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.01,
+                },
+                {
+                    "id": "correct_only",
+                    "type": "bool",
+                    "label": "Correct Only",
+                    "flag": "--correct-only",
+                    "default": False,
+                },
+                device_field,
+                {
+                    "id": "overlap",
+                    "type": "float",
+                    "label": "Tile Overlap",
+                    "flag": "--overlap",
+                    "default": 0.2,
+                    "min": 0.0,
+                    "max": 0.5,
+                    "step": 0.01,
+                },
+            ],
+        }
+    elif product == "nxt":
+        schema = {
+            "schema_version": 4,
+            "product": "nxt",
+            "schema_source": "fast_ui",
+            "mlVersion": 3,
+            "modelVersions": [2, 3],
+            "parameters": [
+                {
+                    "id": "dn",
+                    "type": "float",
+                    "label": "Denoise",
+                    "flag": "--dn",
+                    "default": 0.9,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.01,
+                },
+                device_field,
+                {
+                    "id": "overlap",
+                    "type": "float",
+                    "label": "Tile Overlap",
+                    "flag": "--overlap",
+                    "default": 0.2,
+                    "min": 0.0,
+                    "max": 0.5,
+                    "step": 0.01,
+                },
+            ],
+        }
+    elif product == "sxt":
+        schema = {
+            "schema_version": 4,
+            "product": "sxt",
+            "schema_source": "fast_ui",
+            "mlVersion": 3,
+            "parameters": [
+                {
+                    "id": "generate_stars_image",
+                    "type": "bool",
+                    "label": "Generate Stars Image",
+                    "flag": "--generate-stars",
+                    "default": False,
+                },
+                {
+                    "id": "unscreen_stars",
+                    "type": "bool",
+                    "label": "Unscreen Stars",
+                    "flag": "--unscreen-stars",
+                    "default": False,
+                },
+                {
+                    "id": "stars_output",
+                    "type": "string",
+                    "label": "Stars Output",
+                    "flag": "--stars-output",
+                    "hidden": True,
+                },
+                device_field,
+                {
+                    "id": "overlap",
+                    "type": "float",
+                    "label": "Tile Overlap",
+                    "flag": "--overlap",
+                    "default": 0.2,
+                    "min": 0.0,
+                    "max": 0.5,
+                    "step": 0.01,
+                },
+            ],
+        }
+    else:
+        raise RcAstroError(f"Unsupported RC-Astro product: {product}")
+    return _apply_product_schema_overrides(schema, product)
 
 
 def _dedupe_paths(paths):
@@ -2288,10 +2562,20 @@ def _flag_name(field_id):
     return "--" + field_id.replace("_", "-")
 
 
+def _param_value(params, field_id, default=None):
+    if field_id in params:
+        return params.get(field_id)
+    for alias in _PARAM_VALUE_ALIASES.get(field_id, ()):
+        if alias in params:
+            return params.get(alias)
+    return default
+
+
 def _bool_param(params, field_ids):
     for field_id in field_ids:
-        if field_id in params:
-            return bool(params.get(field_id))
+        value = _param_value(params, field_id, _MISSING)
+        if value is not _MISSING:
+            return bool(value)
     return False
 
 
@@ -2338,7 +2622,7 @@ def _command_for_schema(executable, product, schema, input_path, output_path, st
     for field in fields:
         param = _param_from_schema_field(field)
         if param:
-            state[param["id"]] = params.get(param["id"], param.get("default"))
+            state[param["id"]] = _param_value(params, param["id"], param.get("default"))
     for field in fields:
         param = _param_from_schema_field(field)
         if not param:
@@ -2346,9 +2630,7 @@ def _command_for_schema(executable, product, schema, input_path, output_path, st
         field_id = param["id"]
         if not _should_emit_field(product, field, field_id, state):
             continue
-        value = params.get(field_id, param.get("default"))
-        if product == "bxt" and field_id == "correct_only" and "correct_only" not in params:
-            value = params.get("correctOnlyMode", value)
+        value = _param_value(params, field_id, param.get("default"))
         if value is None:
             continue
         flag = str(field.get("flag", "") or "").strip() or _flag_name(field_id)
@@ -2398,6 +2680,17 @@ class _RcAstroBase(ui.ProcessWindow):
                 "group": "CLI Connection",
                 "group_style": "card",
                 "persist": False,
+                "enabled": False,
+                "visible": False,
+            },
+            {
+                "id": _DEVICE_OPTIONS_SETTING_KEY,
+                "type": "string",
+                "label": "Detected Acceleration Devices",
+                "default": "",
+                "group": "CLI Connection",
+                "group_style": "card",
+                "persist": True,
                 "enabled": False,
                 "visible": False,
             },
@@ -2613,8 +2906,10 @@ class _RcAstroBase(ui.ProcessWindow):
         try:
             if action_id == "detect_installation":
                 updates = _tool_record_updates(snapshot, executable)
-                settings_updates = {_CLI_SETTING_KEY: str(executable)}
+                device_updates = _device_option_setting_updates(executable, updates.get("resolved_cli_version", ""))
+                settings_updates = {_CLI_SETTING_KEY: str(executable), **device_updates}
                 selected_product = _selected_activation_product(snapshot, self.product)
+                updates.update(device_updates)
                 updates.update(_activation_status_updates(executable, selected_product))
                 return {
                     "ok": True,
@@ -2625,9 +2920,11 @@ class _RcAstroBase(ui.ProcessWindow):
                 }
             if action_id == "refresh_status":
                 updates = _tool_record_updates(snapshot, executable)
+                device_updates = _device_option_setting_updates(executable, updates.get("resolved_cli_version", ""))
                 selected_product = _selected_activation_product(snapshot, self.product)
+                updates.update(device_updates)
                 updates.update(_activation_status_updates(executable, selected_product))
-                return {
+                result = {
                     "ok": True,
                     "message": (
                         f"RC-Astro CLI is available ({updates['resolved_cli_version']}). "
@@ -2636,6 +2933,9 @@ class _RcAstroBase(ui.ProcessWindow):
                     "tone": "success",
                     "transient_updates": updates,
                 }
+                if device_updates:
+                    result["settings_updates"] = device_updates
+                return result
             if action_id == "activate_selected":
                 return self._activate_product(
                     executable,
@@ -2715,12 +3015,17 @@ class _RcAstroBase(ui.ProcessWindow):
                 }
                 if version:
                     updates["resolved_cli_version"] = version
-                return {
+                device_updates = _device_option_setting_updates(executable, version)
+                updates.update(device_updates)
+                result = {
                     "ok": True,
                     "message": message,
                     "tone": "success",
                     "transient_updates": updates,
                 }
+                if device_updates:
+                    result["settings_updates"] = device_updates
+                return result
         except Exception as exc:
             result = {"ok": False, "message": str(exc), "tone": "error"}
             console_output = getattr(exc, "console_output", None)
@@ -2803,20 +3108,7 @@ class _RcAstroBase(ui.ProcessWindow):
 
     def get_params(self):
         params = self._meta_params()
-        try:
-            executable = self._schema_cli()
-            schema = _load_product_schema(executable, self.product)
-            schema_params = _schema_params(schema)
-        except Exception as exc:
-            params.append(
-                {
-                    "id": "schema_status",
-                    "type": "info",
-                    "text": f"RC-Astro schema unavailable: {exc}",
-                }
-            )
-            return params
-        params.extend(schema_params)
+        params.extend(_schema_params(_fast_product_schema(self.product, _device_options_from_settings(self.settings))))
         return params
 
     def validate_process(self, params, input_metadata):
