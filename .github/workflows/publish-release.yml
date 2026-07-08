@@ -12,6 +12,7 @@ on:
         options:
           - cosmic_clarity
           - graxpert
+          - rc_astro
           - veralux
       version:
         description: Version to publish. Must match package/extension.json and repository.json release metadata. The run summary shows the declared release versions discovered from the repository.

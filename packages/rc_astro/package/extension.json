@@ -1,7 +1,7 @@
 {
   "id": "rc_astro",
   "name": "RC-Astro XTerminators",
-  "version": "0.1.7",
+  "version": "1.0.0",
   "summary": "Adapter for user-installed RC-Astro BlurXTerminator, StarXTerminator, and NoiseXTerminator CLI tools.",
   "description": "AfterNight native process-window adapter for RC-Astro XTerminator command-line tools. The package contains adapter code only; users provide their own RC-Astro CLI installation, models, and activation material.",
   "author": "AfterNight",

@@ -14,6 +14,7 @@ on:
           - published
           - cosmic_clarity
           - graxpert
+          - rc_astro
           - veralux
       compression_level:
         description: zstd compression level for the generated workflow artifacts
@@ -53,6 +54,12 @@ jobs:
             graxpert)
               python3 tools/build_package.py \
                 packages/graxpert/package \
+                --output-dir dist \
+                --compression-level "${{ inputs.compression_level }}"
+              ;;
+            rc_astro)
+              python3 tools/build_package.py \
+                packages/rc_astro/package \
                 --output-dir dist \
                 --compression-level "${{ inputs.compression_level }}"
               ;;

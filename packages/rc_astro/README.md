@@ -1,10 +1,10 @@
 # RC-Astro XTerminators
 
-This staged package exposes RC-Astro BlurXTerminator, StarXTerminator, and NoiseXTerminator through AfterNight's native extension process window.
+This package exposes RC-Astro BlurXTerminator, StarXTerminator, and NoiseXTerminator through AfterNight's native extension process window.
 
 The package contains AfterNight adapter code only. It does not bundle RC-Astro binaries, models, icons, license text, activation credentials, captured product schemas, or private URLs. Users install and license the RC-Astro CLI separately, then select the user-installed RC-Astro CLI executable in AfterNight or use **Detect Installation**.
 
-`repository.json` is set to `"publish": false`, so this package can be built and tested locally without entering the generated public candidate index.
+The package is published through the official AfterNight extension index as `rc_astro`.
 
 ## Processes
 

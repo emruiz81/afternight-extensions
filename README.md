@@ -30,6 +30,10 @@ The live Extension Manager feed currently publishes:
 - GraXpert AI: a thin AfterNight adapter for GraXpert background extraction,
   denoise, and deconvolution. GraXpert and public dependency wheels are
   installed by the host from hash-locked PyPI requirements during install.
+- RC-Astro XTerminators: an AfterNight adapter for user-installed RC-Astro
+  BlurXTerminator, StarXTerminator, and NoiseXTerminator CLI tools. RC-Astro
+  binaries, models, licenses, and activation material are not redistributed
+  here.
 - VeraLux Suite: a GPL-3.0-or-later AfterNight port of Riccardo Paterniti's
   VeraLux Siril scripts, published as one suite package that registers Revela,
   Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, StarComposer,

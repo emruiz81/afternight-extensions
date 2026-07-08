@@ -41,8 +41,8 @@ host/runtime tests.
   workflows
 - `index.json` - generated candidate repository index checked into `main`
 
-Current publishable package ids are `cosmic_clarity`, `graxpert`, and
-`veralux`. If a new publishable package is added, update
+Current publishable package ids are `cosmic_clarity`, `graxpert`, `rc_astro`,
+and `veralux`. If a new publishable package is added, update
 `.github/workflows/publish-release.yml` so the static `package_id` dropdown
 matches the publishable package list; repository tests enforce this.
 

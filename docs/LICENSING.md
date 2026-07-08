@@ -48,6 +48,7 @@ Host-mode-specific import and licensing rules are defined in
 | --- | --- | --- | --- |
 | `cosmic_clarity` | Yes | GPL-3.0 | Contains the AfterNight adapter only. Upstream Cosmic Clarity executables, models, and runtime payloads are not bundled. |
 | `graxpert` | Yes | GPL-3.0 | Contains the AfterNight adapter and hash-locked requirements. GraXpert and public dependency wheels are downloaded from PyPI by the host during install. |
+| `rc_astro` | Yes | GPL-3.0 | Contains the AfterNight adapter only. RC-Astro executables, models, licenses, and activation material are provided by the user and are not bundled. |
 | `veralux` | Yes | GPL-3.0-or-later | Derived from Riccardo Paterniti's VeraLux Siril scripts. Provenance is recorded in `UPSTREAM.md`, `UPSTREAM.json`, and `THIRD_PARTY_NOTICES.md`. |
 
 ## Publication Requirements

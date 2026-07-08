@@ -33,6 +33,7 @@ build:
 - all currently published packages
 - Cosmic Clarity by itself
 - GraXpert's thin PyPI-backed asset without redistributing public wheels
+- RC-Astro XTerminators by itself
 - VeraLux Suite by itself
 
 The workflow uploads `.tar.zst` files and sidecars as GitHub Actions artifacts.
