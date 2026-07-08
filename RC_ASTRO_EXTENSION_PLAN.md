@@ -1,0 +1,150 @@
+# RC-Astro XTerminators Extension Plan
+
+## Summary
+- Add a new source-staged package `rc_astro` containing three runtime-hosted processes: BlurXTerminator (`bxt`), StarXTerminator (`sxt`), and NoiseXTerminator (`nxt`).
+- Wrap the user-installed RC-Astro CLI instead of bundling RC-Astro binaries, models, icons, or RC-Astro license material.
+- Use the user-installed RC-Astro CLI JSON schema as the main UI source. Do not commit captured RC-Astro product schema JSON or `README-DEVS.txt` excerpts unless RC-Astro grants explicit redistribution permission; V1 fallbacks must be package-owned unavailable-state UI plus synthetic test fixtures.
+- Treat the RC-Astro page as the current external reference: https://www.rc-astro.com/stand-alone-rc-astro-tools/. As of June 26, 2026, that page describes the CLI as beta, so stage with `publish:false`.
+
+## Implementation Order And Hard Gates
+- Implement and validate the sibling app public-contract work before landing the `packages/rc_astro` package source in this repository. The package must not depend on unimplemented host APIs or undocumented schema fields.
+- Gate 1 - sibling app contracts:
+  - Native `tool_configuration` candidate-directory resolution and resolved-tool handoff.
+  - Extension settings actions, async Settings UI action execution, transient and sensitive field metadata, private secret-bearing transport, action timeout/cancel support, update filtering, and redaction.
+  - Native process-window `visible_when` and string-form `enabled_when` support.
+  - SDK/schema/runbook documentation for every new public field, hook, action result, resolver, and redaction rule.
+  - Targeted sibling app tests listed below passing locally or explicitly recorded as blocked by platform/tooling.
+- Gate 2 - package source:
+  - Add `packages/rc_astro` only after Gate 1 is complete, or keep early experiments outside the repository/package tree.
+  - The package starts as source-staged with `repository.json` `publish:false`; it remains absent from `index.json`, release assets, and the publish-release dropdown until a later publication review.
+- Gate 3 - publication readiness:
+  - Revisit beta status, RC-Astro redistribution permissions, schema-version compatibility, licensing/notices, real CLI smoke tests, and release metadata before making the package publishable.
+
+## Public Interfaces And App-Side Additions
+- Extend native `tool_configuration` with platform candidate directories, for example Windows `C:\Program Files\RC-Astro\CLI` and Linux `/opt/rc-astro`, so the process window can auto-detect `rc-astro(.exe)` before the user browses.
+  - Auto-detection produces the same resolved-tool record used by the Python adapter:
+    - `configured_folder`: the user-saved or auto-detected folder, if any
+    - `resolved_cli_executable`: canonical absolute path to the executable that passed host validation
+    - `resolution_source`: `"settings" | "candidate_directory" | "path" | "manual"`
+    - `resolved_cli_version`: parsed `rc-astro --version` string when available
+    - `resolver_diagnostic`: redacted user-facing status text
+  - The host passes the resolved-tool record in the current settings snapshot. Python execution must use `resolved_cli_executable` exactly when present and must fail closed if it is missing, stale, or no longer validates. It may search candidate directories or `PATH` only when the host has not supplied a validated executable for the current action/session.
+  - Candidate-directory and `PATH` auto-detection are session observations unless the user explicitly saves the folder. Do not silently persist a `PATH`-resolved executable path as the configured folder.
+- Add extension settings action support:
+  - Settings schema accepts `type: "button"` / `"action"` fields.
+  - Settings schema supports `secret: true` for masked sensitive inputs, `sensitive: true` for values that may be visible in the UI but must be redacted from logs/diagnostics/results, and `persist: false` for transient fields that must not be saved.
+  - RC-Astro activation email is `sensitive: true` and `persist: false`; RC-Astro activation keys are `secret: true`, `sensitive: true`, and `persist: false`. The host must never save them, cache their values, include them in crash diagnostics, or write them to logs. They are held only in the in-memory settings snapshot for the single user-triggered activation action, then discarded.
+  - Python hook: `handle_settings_action(action_id, settings_snapshot) -> dict`.
+  - Action result contract:
+    - `ok: bool`
+    - `settings_updates: dict[str, safe_value]`
+    - optional `transient_updates: dict[str, safe_value]` for UI-only status fields
+    - `message: str`
+    - `tone: "info" | "success" | "warning" | "error"`
+  - The host filters normal settings saves and returned action updates against the inspected settings schema before persisting:
+    - ignore unknown fields
+    - ignore `secret: true` fields
+    - redact `sensitive: true` fields before logging, diagnostics, user-visible action results, or crash capture
+    - ignore `persist: false` fields
+    - persist only schema-declared safe fields whose values pass normal type coercion
+  - Settings schema caches may store field metadata, including `secret`, `sensitive`, and `persist` flags, but must never store field values.
+  - The Settings dialog runs actions through a worker/asynchronous host path, never through a blocking UI callback. Disable all action buttons for the same extension while one action is running, show an indeterminate progress state, keep the dialog responsive, and use existing tokenized Settings UI components.
+  - Action invocation uses a one-shot extension-host call, for example a new inspect/action mode that instantiates the selected process or package action handler, passes the in-memory settings snapshot, calls `handle_settings_action`, writes a structured JSON/CBOR result, and exits. It must not show a native process window and must not reintroduce `ui.describe` / `ui.patch` / `ui.event` / `ui.validate`.
+  - Secret- or sensitive-bearing action snapshots must use a private transport such as stdin, an inherited pipe, or another local IPC channel owned by the host. Do not put `secret: true` or `sensitive: true` values in argv, environment variables, command-line encoded inspect payloads, temporary files, settings caches, or structured diagnostics. Reuse command-line/base64 inspect payloads only for snapshots with no secret/sensitive fields, and reject or strip those fields before any fallback path.
+  - For V1, all `rc_astro` process classes expose an identical package-level `get_settings_params()` schema and shared `handle_settings_action()` implementation through a common base class. Do not ship per-process divergent settings/action schemas unless the sibling app first adds and documents a dedicated package-level settings/action provider.
+  - Actions are cancellable where the underlying operation runs a child process. Add a default timeout plus per-action timeout metadata; terminate child process trees on cancel/timeout and return a warning/error result instead of hanging the Settings dialog.
+  - Redact `secret: true` and `sensitive: true` values from host logs, extension logs, crash diagnostics, action results, and error strings before display or persistence. Treat extension-provided `message` strings as untrusted and run final host-side redaction before showing or storing them.
+- Add native process-window `visible_when` support, reusing the settings-condition utilities where possible, so RC-Astro `visibleIf` groups like NXT color/frequency separation can hide irrelevant controls.
+  - Accept the same string condition subset used by extension settings: one field comparison with `==`, `!=`, `<`, `<=`, `>`, or `>=`, with string, numeric, and boolean literals.
+  - Keep existing native-window object-form `enabled_when` behavior backward-compatible.
+  - Map supported RC-Astro `visibleIf` expressions to `visible_when`; unsupported visibility expressions fail open, leaving the control visible and logging one warning.
+  - Map supported RC-Astro `disabledIf` expressions to the inverse `enabled_when`; unsupported disabled expressions fail open, leaving the control enabled, with final command validation still rejecting invalid combinations.
+  - Do not add `ExtensionUI`, `build_params_ui()`, `ParamPanel`, or declarative UI protocol dependencies; RC-Astro parameters are emitted as normal native `get_params()` ParamDefs.
+- Update sibling app SDK/schema docs and runbook notes for each public contract addition: settings `button`/`action`, `secret`, `sensitive`, `persist`, private action transport, action timeout metadata, action result shape, action redaction rules, package-level action provider constraints, authoritative native/Python tool resolver behavior, native process-window `visible_when`, and string-form `enabled_when`.
+
+## Extension Implementation
+- Package metadata:
+  - `id`: `rc_astro`
+  - `name`: `RC-Astro XTerminators Adapter`
+  - `version`: `0.1.0`
+  - `summary`: `RC-Astro BlurXTerminator, StarXTerminator, and NoiseXTerminator CLI adapter hosted through the AfterNight extension runtime.`
+  - `description`: mention that the package wraps a user-installed RC-Astro CLI and does not redistribute RC-Astro binaries, models, icons, activation material, or license files.
+  - `author`: `AfterNight`
+  - `attribution`: mention that BlurXTerminator, StarXTerminator, NoiseXTerminator, and the RC-Astro CLI are developed and licensed by RC Astro, LLC; this package is only an AfterNight adapter and must not imply RC-Astro authorship or endorsement without explicit permission.
+  - `publisher_id`: `afternight`
+  - `homepage_url`: `https://www.rc-astro.com/stand-alone-rc-astro-tools/`
+  - `support_url`: `https://github.com/emruiz81/afternight-extensions/issues`
+  - `type`: `python`
+  - `entry_point`: `rc_astro_extension`
+  - package `category`: `star_object`
+  - `license`: `GPL-3.0`
+  - `sdk_backend`: `runtime`
+  - `launch_mode`: `single_image`
+  - `package_format_version`: integer `1`
+  - `protocol_version`: integer `1`
+  - `sdk_version`: integer `1`
+  - `runtime_targets`: `windows-msvc-x86_64`, `linux-clang-x86_64`
+  - package-local `LICENSE` matching the manifest license.
+  - package-local `THIRD_PARTY_NOTICES.md` documenting that RC-Astro software, models, icons, activation keys, license text, captured product schema JSON, and `README-DEVS.txt` text are not bundled. If explicit redistribution permission is later granted for captured schema metadata, document the permission, CLI version, schema version, and provenance before adding it.
+  - `repository.json`: `publish:false`; do not update `index.json` or release workflow dropdown until it becomes publishable.
+- Processes:
+  - `id_suffix: bxt`, `class: RCAstroBlurXTerminatorExtension`, display name `RC-Astro BlurXTerminator`, category `sharpening_enhancement`.
+  - `id_suffix: sxt`, `class: RCAstroStarXTerminatorExtension`, display name `RC-Astro StarXTerminator`, category `star_object`, with `starless_generator` and `star_mask_generator` capability metadata.
+  - `id_suffix: nxt`, `class: RCAstroNoiseXTerminatorExtension`, display name `RC-Astro NoiseXTerminator`, category `denoising`.
+- Shared adapter:
+  - Resolve CLI through one authoritative resolver shared by the native configuration gate and Python adapter. Candidate sources are saved `cli_folder`, platform candidate directories, and `PATH`, but execution must use the exact `resolved_cli_executable` record that the host validated or supplied in the current settings snapshot. Do not let the native process window enable execution for one binary while the Python adapter silently falls back to another.
+  - Query `rc-astro <product> --json` with a short, documented timeout and cancellable process-tree termination. Support only explicitly allowlisted schema/product versions. Newer or incompatible schema versions fail closed by showing a package-owned unavailable/configuration state and disabling execution until the adapter is updated. Warn only for known-compatible schema drift; when unavailable, show a package-owned unavailable/configuration state instead of using committed RC-Astro schema snapshots.
+  - Cache dynamic schema inspection results only as package-owned metadata keyed by `resolved_cli_executable`, `resolved_cli_version`, product id, schema version, and a hash/summary of the product schema. Cache entries must not include captured upstream schema JSON, activation values, user image paths, command output tails, or other RC-Astro-controlled prose. Expired, missing, timed-out, or incompatible cache entries fail closed to the unavailable/configuration state.
+  - Before implementation, capture local CLI provenance for private development notes and tests without committing upstream-controlled content: `rc-astro --version`, schema version, product schema hashes or field summaries, and the local `README-DEVS.txt` version/path. Automated tests must use synthetic schemas and fake CLI output unless RC-Astro grants explicit redistribution permission.
+  - Map CLI schema groups to sections, params to native controls, modes to mutually exclusive controls, and `visibleIf` / `disabledIf` to AfterNight conditions.
+  - Save the active image to a temp `.fit`, run `rc-astro <product> input.fit -o output.fit --overwrite --json ...`, parse JSON/NDJSON progress/events when the CLI emits them, then load the output into `dst_image`.
+  - If execution progress is not machine-readable in CLI `0.9.2`, fall back to line-oriented text progress, expected output-path checks, and final exit-code/error parsing. Tests must cover both machine-readable and text fallback paths.
+  - For SXT, collect `status.complete` output paths when available; otherwise resolve documented/expected output paths. Open stars-only outputs as additional AfterNight images when generated.
+- Settings/actions:
+  - Fields: CLI folder, resolved CLI executable/status, default engine, default output depth, per-product model version defaults, activation email as a transient action-only sensitive value, activation key as a transient action-only secret/sensitive value, license status strings, CLI version/update status.
+  - Actions: refresh CLI/license/model status, activate selected/all products, check updates, download update when the CLI supports a non-installing download flow, open downloaded update folder/instructions, download models, force redownload models.
+  - Activation safety:
+    - The activation email and activation key are never saved in AfterNight settings and never returned in action results.
+    - Pass the activation key to the CLI only when the user explicitly chooses an activation action.
+    - Use `--activate` without email/key arguments and feed credentials through stdin, an interactive prompt bridge, or another non-argv channel when automating activation. Never pass activation emails or keys on the command line. If the installed CLI cannot accept activation credentials through a non-argv channel in an automated host action, disable the activation action and show copyable/manual instructions instead.
+    - Clear the in-memory activation email and activation key fields after the action completes, fails, is cancelled, or times out.
+  - Model UI truth: CLI `0.9.2` exposes latest `mlVersion` and `download-models`, not a remote per-model catalog. V1 lists known/latest model versions from product schemas and uses `download-models [--force]` for acquisition.
+  - Update/install safety:
+    - V1 may check for updates and download update artifacts through the RC-Astro CLI when supported.
+    - As of the initial public CLI docs, `rc-astro update --install` is not a safe V1 download flow because it can automatically launch installers on Windows and macOS. V1 may run `rc-astro update` for status only, but must not invoke `--install` unless a future CLI version adds an explicit non-launching download-only mode and the adapter detects that capability.
+    - V1 must not run RC-Astro installers or invoke CLI update modes that automatically launch installers.
+    - Prefer opening the downloaded installer folder or RC-Astro instructions after explicit user confirmation.
+    - Do not run elevated installers from AfterNight and never store downloaded update artifacts in package source.
+
+## Tests
+- AfterNight sibling repo:
+  - Treat the sibling app contract tests as the first implementation milestone; `packages/rc_astro` must not land until these tests and docs exist or an explicit blocker note documents why the package remains out of tree.
+  - Add process-window tests for candidate directory detection and `visible_when`.
+  - Add native process-window tests proving settings-style string `visible_when` works and existing object-form `enabled_when` remains backward-compatible.
+  - Add settings-section/status-page tests for action buttons, secret/sensitive/transient fields, async action result handling, normal save filtering, schema-cache value redaction, and persistence of returned updates only.
+  - Add settings-action tests for unknown update filtering, `secret: true` filtering, `sensitive: true` redaction, `persist: false` filtering, secret/sensitive snapshot transport through stdin/pipe/local IPC rather than argv/env, action timeout/cancel behavior, one-action-at-a-time locking, activation-email/key discard, and redacted logs/errors/crash diagnostics.
+  - Add extension-host tests for `handle_settings_action` one-shot invocation without opening a native process window or using declarative UI protocol messages.
+  - Add resolver-contract tests proving native tool-configuration validation and Python execution use the same resolved `rc-astro` executable record and do not diverge to `PATH` after the host has validated a different binary.
+  - Add settings-schema inspection tests proving all three `rc_astro` process classes expose identical shared package settings/actions, or that a future package-level provider is used instead.
+  - Add SDK/schema documentation tests or doc-review checklist items covering new settings/action metadata and native condition fields.
+- Extension package:
+  - Fake `rc-astro` executable tests for synthetic schema parsing, command generation, mode pins, bool flags, hidden GUI-only params, supported/unsupported condition mapping, allowlisted schema compatibility, fail-closed schema mismatch behavior, NDJSON progress parsing, text-progress fallback, error parsing, license/update parsing, update confirmation behavior, rejection of unsafe `update --install`, non-installing update flows when a future CLI exposes them, activation-key stdin/secure-input handling, activation-key discard, and model-download actions.
+  - Manifest/package validation tests confirming no RC-Astro binaries/models/icons, captured product schema JSON, `README-DEVS.txt` text, activation keys, or RC-Astro license material are bundled, and confirming manifest/package copy attributes the RC-Astro products without listing RC-Astro as the package author unless explicit permission is documented.
+  - Manifest/package validation tests confirming all required package metadata, process entries, package-local `LICENSE`, package-local `THIRD_PARTY_NOTICES.md`, and `repository.json` with `publish:false`.
+  - Index validation test confirming `publish:false` keeps `rc_astro` out of generated `index.json` and the release workflow dropdown.
+- Validation commands:
+  - `python -m ruff format --check .`
+  - `python -m ruff check .`
+  - `python -m unittest discover -s tests`
+  - `python -m unittest discover -s packages/rc_astro/tests`
+  - `python tools/build_package.py packages/rc_astro/package --output-dir dist`
+  - Regenerate a temporary candidate index and confirm checked-in `index.json` is unchanged while `publish:false`.
+  - Targeted sibling app tests for `Test_ProcessFramework` and `Test_AfterNightApp` extension settings/status coverage.
+
+## Assumptions
+- Use recommended defaults from planning: implement app-side settings actions first, then source-stage publication, and use hybrid dynamic parameter schemas.
+- Do not persist activation emails or keys, cache activation emails or keys, include activation values in diagnostics, or log secret/sensitive values. Activation email/key values exist only in memory for the user-triggered activation action and are cleared immediately afterward.
+- Long maintenance commands run through the new async settings-action path, not process-window UI callbacks.
+- Real RC-Astro CLI smoke testing can use the local activated install, but automated tests must use fakes.
+- RC-Astro CLI `0.9.2` / schema `3` is the initial local development baseline, but captured upstream schema snapshots are not committed without explicit redistribution permission. Implementation must record exact local CLI provenance as hashes/summaries and use synthetic test fixtures for automated coverage.
+- RC-Astro execution progress may be JSON/NDJSON or text depending on the final CLI behavior; the adapter must tolerate either shape.

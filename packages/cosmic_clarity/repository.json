@@ -3,7 +3,7 @@
   "releases": [
     {
       "version": "1.0.1",
-      "min_app_version": "2.0.0",
+      "min_app_version": "0.5.2",
       "changelog": "Adds the Cosmic Clarity Satellite trail removal process and process-level GPU controls.",
       "published_at": "2026-05-17T00:00:00Z",
       "asset_base_url": "https://github.com/emruiz81/afternight-extensions/releases/download/cosmic_clarity-v1.0.1",

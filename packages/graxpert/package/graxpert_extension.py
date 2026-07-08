@@ -51,6 +51,87 @@ def _log_launch_banner(process_name, subtitle, *, component):
     )
 
 
+_RESERVED_METADATA_KEYS = {
+    "SIMPLE",
+    "BITPIX",
+    "BZERO",
+    "BSCALE",
+    "EXTEND",
+    "BLOCKED",
+    "BLANK",
+    "BUNIT",
+}
+_STRUCTURED_METADATA_MAP_KEYS = {"fits_header", "exif_header"}
+_STRUCTURED_METADATA_CARD_KEYS = {"fits_cards", "exif_entries"}
+_STRUCTURED_METADATA_SKIP_KEYS = {"astrometry"}
+
+
+def _metadata_key_is_reserved(key):
+    upper = str(key or "").strip().upper()
+    return upper in _RESERVED_METADATA_KEYS or upper.startswith("NAXIS")
+
+
+def _metadata_is_scalar(value):
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _metadata_entries_from_cards(cards):
+    if not isinstance(cards, list):
+        return
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        key = card.get("key", card.get("name"))
+        value = card.get("value")
+        if key and _metadata_is_scalar(value):
+            yield key, value
+
+
+def _metadata_entries(metadata):
+    if not hasattr(metadata, "items"):
+        return
+    for key, value in metadata.items():
+        key_text = str(key or "").strip()
+        if not key_text:
+            continue
+        key_lower = key_text.lower()
+        if key_lower in _STRUCTURED_METADATA_MAP_KEYS:
+            if hasattr(value, "items"):
+                for nested_key, nested_value in value.items():
+                    if nested_key and _metadata_is_scalar(nested_value):
+                        yield nested_key, nested_value
+            continue
+        if key_lower in _STRUCTURED_METADATA_CARD_KEYS:
+            yield from _metadata_entries_from_cards(value)
+            continue
+        if key_lower in _STRUCTURED_METADATA_SKIP_KEYS:
+            continue
+        if _metadata_is_scalar(value):
+            yield key_text, value
+
+
+def _metadata_snapshot(image):
+    try:
+        metadata = image.metadata
+    except Exception:
+        return {}
+    if not hasattr(metadata, "items"):
+        return {}
+    return dict(metadata)
+
+
+def _restore_original_metadata(image, metadata, *, component):
+    if not metadata or not hasattr(image, "set_metadata"):
+        return
+    for key, value in _metadata_entries(metadata) or ():
+        if _metadata_key_is_reserved(key):
+            continue
+        try:
+            image.set_metadata(str(key), "" if value is None else str(value))
+        except Exception as exc:
+            afternight.log_warning(f"Could not restore GraXpert output metadata key {key}: {exc}", component=component)
+
+
 class _GraXpertBase(ui.ProcessWindow):
     component = "extension.graxpert"
     _REMOTE_MODEL_CACHE_TTL_SECONDS = 12 * 60 * 60
@@ -887,6 +968,7 @@ class GraXpertBackgroundExtension(_GraXpertBase):
         except Exception as exc:
             raise RuntimeError("GraXpert background extraction dependencies are unavailable.") from exc
 
+        original_metadata = _metadata_snapshot(src_image)
         source_array = self._source_array(src_image)
         background_model = extract_background(
             source_array,
@@ -904,6 +986,7 @@ class GraXpertBackgroundExtension(_GraXpertBase):
         )
         result_image = source_array
         dst_image.from_numpy(result_image)
+        _restore_original_metadata(dst_image, original_metadata, component=self.component)
         afternight.log_info(
             "GraXpert background extraction: correction image copied to destination.",
             component=self.component,
@@ -914,8 +997,9 @@ class GraXpertBackgroundExtension(_GraXpertBase):
             if artifacts_dir:
                 background_image = afternight.core.from_numpy(
                     background_model,
-                    metadata=src_image.metadata,
+                    metadata=original_metadata,
                 )
+                _restore_original_metadata(background_image, original_metadata, component=self.component)
                 artifact_path = pathlib.Path(artifacts_dir) / "graxpert_background_model.fits"
                 afternight.io.save(
                     background_image,
@@ -996,6 +1080,7 @@ class GraXpertDenoiseExtension(_GraXpertBase):
         except Exception as exc:
             raise RuntimeError("GraXpert denoise dependencies are unavailable.") from exc
 
+        original_metadata = _metadata_snapshot(src_image)
         result = denoise(
             self._source_array(src_image),
             model_path,
@@ -1007,6 +1092,7 @@ class GraXpertDenoiseExtension(_GraXpertBase):
         if result is None:
             raise RuntimeError("GraXpert denoise did not return an output image.")
         dst_image.from_numpy(result)
+        _restore_original_metadata(dst_image, original_metadata, component=self.component)
         afternight.log_info("GraXpert denoise: output image written.", component=self.component)
 
 
@@ -1136,6 +1222,7 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
                     component=self.component,
                 )
 
+        original_metadata = _metadata_snapshot(src_image)
         result = deconvolve(
             self._source_array(src_image),
             model_path,
@@ -1148,6 +1235,7 @@ class GraXpertDeconvolutionExtension(_GraXpertBase):
         if result is None:
             raise RuntimeError("GraXpert deconvolution did not return an output image.")
         dst_image.from_numpy(result)
+        _restore_original_metadata(dst_image, original_metadata, component=self.component)
         afternight.log_info(
             f"GraXpert deconvolution: output image written with FWHM {fwhm:.3f} px.",
             component=self.component,

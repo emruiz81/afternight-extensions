@@ -13,6 +13,8 @@ distributed under GPL-3.0.
 - GraXpert AI Denoise
 - GraXpert AI Deconvolution
 
+All three processes preserve the original image metadata on the AfterNight output image after GraXpert writes the processed pixels. Structural image keys such as `BITPIX` and `NAXIS*` are left to AfterNight to regenerate from the actual output buffer.
+
 ## Runtime Targets
 
 Supported targets:

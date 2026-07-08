@@ -13,7 +13,17 @@ from graxpert_extension import (  # noqa: E402
     GraXpertBackgroundExtension,
     GraXpertDeconvolutionExtension,
     GraXpertDenoiseExtension,
+    _metadata_snapshot,
+    _restore_original_metadata,
 )
+
+
+class FakeImage:
+    def __init__(self, metadata=None):
+        self.metadata = dict(metadata or {})
+
+    def set_metadata(self, key, value):
+        self.metadata[str(key)] = str(value)
 
 
 class GraXpertLoggingTests(unittest.TestCase):
@@ -93,6 +103,42 @@ class GraXpertLoggingTests(unittest.TestCase):
         self.assertNotIn("gpu_enabled", settings_params["GraXpertBackgroundExtension"])
         self.assertIn("gpu_enabled", settings_params["GraXpertDenoiseExtension"])
         self.assertIn("gpu_enabled", settings_params["GraXpertDeconvolutionExtension"])
+
+    def test_metadata_restore_preserves_original_science_keys_only(self):
+        source = FakeImage(
+            {
+                "FILENAME": "original-light.fit",
+                "FILTER": "Ha",
+                "EXPTIME": 300.0,
+                "CRVAL1": "187.5",
+                "CRVAL2": "-45.5",
+                "BITPIX": "-32",
+                "NAXIS1": "640",
+                "fits_header": {
+                    "TELESCOP": "Esprit 100",
+                    "NAXIS2": "480",
+                },
+                "fits_cards": [{"key": "OBJECT", "value": "M31"}],
+                "astrometry": {"solver": "synthetic"},
+            }
+        )
+        destination = FakeImage({"FILTER": "GraXpert"})
+
+        snapshot = _metadata_snapshot(source)
+        source.metadata["FILENAME"] = "temporary.fits"
+        _restore_original_metadata(destination, snapshot, component="test.graxpert")
+
+        self.assertEqual(destination.metadata["FILENAME"], "original-light.fit")
+        self.assertEqual(destination.metadata["FILTER"], "Ha")
+        self.assertEqual(destination.metadata["EXPTIME"], "300.0")
+        self.assertEqual(destination.metadata["CRVAL1"], "187.5")
+        self.assertEqual(destination.metadata["CRVAL2"], "-45.5")
+        self.assertEqual(destination.metadata["TELESCOP"], "Esprit 100")
+        self.assertEqual(destination.metadata["OBJECT"], "M31")
+        self.assertNotIn("BITPIX", destination.metadata)
+        self.assertNotIn("NAXIS1", destination.metadata)
+        self.assertNotIn("NAXIS2", destination.metadata)
+        self.assertNotIn("astrometry", destination.metadata)
 
 
 if __name__ == "__main__":
