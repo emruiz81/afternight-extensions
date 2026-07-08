@@ -42,9 +42,22 @@ class FakeProgress:
 class FakeDestination:
     def __init__(self):
         self.copied = None
+        self.metadata = {}
 
     def copy_from(self, image):
         self.copied = image
+
+    def set_metadata(self, key, value):
+        self.metadata[str(key)] = str(value)
+
+
+class FakeImage:
+    def __init__(self, metadata=None, path=None):
+        self.metadata = dict(metadata or {})
+        self.path = path
+
+    def set_metadata(self, key, value):
+        self.metadata[str(key)] = str(value)
 
 
 def _fake_schema(product):
@@ -212,9 +225,15 @@ def make_fake_cli(directory, executable_name=None):
                 print("rc-astro 9.9.0")
                 raise SystemExit(0)
             if argv == ["--device"]:
-                print("default")
-                print("cpu")
-                print("dml")
+                print("Automatically select device")
+                print("// / //")
+                print("Gpu0: NVIDIA GeForce RTX 5080")
+                print("Gpu1: AMD Radeon(TM) Graphics")
+                print("Cpu: CPU")
+                print("Select a device with")
+                print("E.G.")
+                print("Device Gpu1.")
+                print("0: // / //")
                 raise SystemExit(0)
             if SCHEMA_STYLE == "product_json" and len(argv) >= 2 and argv[1] == "--json":
                 print(json.dumps(SCHEMAS[argv[0]]))
@@ -317,11 +336,13 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self._env.start()
         rc._SCHEMA_CACHE.clear()
+        rc._DEVICE_OPTIONS_CACHE.clear()
 
     def tearDown(self):
         self._env.stop()
         self.temp.cleanup()
         rc._SCHEMA_CACHE.clear()
+        rc._DEVICE_OPTIONS_CACHE.clear()
 
     def _events(self):
         if not self.capture.exists():
@@ -405,12 +426,50 @@ class RcAstroAdapterTests(unittest.TestCase):
         for process_id in ("bxt", "sxt", "nxt"):
             self.assertTrue(processes[process_id]["capabilities"]["keep_open"])
 
+    def test_device_option_parser_accepts_text_and_json_catalogs(self):
+        self.assertEqual(
+            rc._parse_device_options(["Available devices: default, cpu, dml"]),
+            [["Automatically select device", "default"], ["CPU", "cpu"], ["DirectML GPU", "dml"]],
+        )
+        self.assertEqual(
+            rc._parse_device_options(["Available devices: default cpu dml"]),
+            [["Automatically select device", "default"], ["CPU", "cpu"], ["DirectML GPU", "dml"]],
+        )
+        self.assertEqual(
+            rc._parse_device_options(
+                [
+                    "Automatically select device",
+                    "// / //",
+                    "Gpu0: NVIDIA GeForce RTX 5080",
+                    "Gpu1: AMD Radeon(TM) Graphics",
+                    "Cpu: CPU",
+                    "Select a device with",
+                    "E.G.",
+                    "Device Gpu1.",
+                    "0: // / //",
+                ]
+            ),
+            [
+                ["Automatically select device", "default"],
+                ["NVIDIA GeForce RTX 5080", "Gpu0"],
+                ["AMD Radeon(TM) Graphics", "Gpu1"],
+                ["CPU", "Cpu"],
+            ],
+        )
+        self.assertEqual(
+            rc._parse_device_options(
+                ['{"devices":[{"id":"default","label":"Default device"},{"id":"dml","label":"DirectML GPU"}]}']
+            ),
+            [["Automatically select device", "default"], ["DirectML GPU", "dml"]],
+        )
+
     def test_get_params_maps_synthetic_schema_conditions(self):
         extension = RcAstroBxtExtension(None)
         extension.settings.set("resolved_cli_executable", str(self.executable))
 
         params = extension.get_params()
         by_id = {param["id"]: param for param in params}
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
 
         self.assertEqual(by_id["amount"]["type"], "float")
         self.assertEqual(by_id["mode"]["type"], "choice")
@@ -434,7 +493,21 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self.assertEqual(by_id["device"]["group"], "Engine")
         self.assertEqual(by_id["device"]["default"], "default")
-        self.assertEqual(by_id["device"]["options"][0], ["Default Device", "default"])
+        self.assertEqual(
+            by_id["device"]["options"],
+            [
+                ["Automatically select device", "default"],
+                ["NVIDIA GeForce RTX 5080", "Gpu0"],
+                ["AMD Radeon(TM) Graphics", "Gpu1"],
+                ["CPU", "Cpu"],
+            ],
+        )
+        device_options_text = json.dumps(by_id["device"]["options"])
+        self.assertNotIn("// / //", device_options_text)
+        self.assertNotIn("Select a device with", device_options_text)
+        self.assertNotIn("E.G.", device_options_text)
+        self.assertNotIn("Device Gpu1.", device_options_text)
+        self.assertIn(["--device"], argv_events)
         self.assertNotIn("model_status", by_id)
         self.assertNotIn("list_models", by_id)
         self.assertNotIn("download_models", by_id)
@@ -1135,19 +1208,66 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertIn("--gpu", process_argv)
         self.assertIn(100.0, progress.values)
 
+    def test_execute_restores_original_metadata_after_processing(self):
+        extension = RcAstroNxtExtension(None)
+        extension.settings.set("resolved_cli_executable", str(self.executable))
+        source = FakeImage(
+            {
+                "FILENAME": "original-light.fit",
+                "FILTER": "Ha",
+                "EXPTIME": 300.0,
+                "CRVAL1": "187.5",
+                "CRVAL2": "-45.5",
+                "BITPIX": "-32",
+                "NAXIS1": "640",
+                "fits_header": {
+                    "TELESCOP": "Esprit 100",
+                    "NAXIS2": "480",
+                },
+                "fits_cards": [{"key": "OBJECT", "value": "M31"}],
+                "astrometry": {"solver": "synthetic"},
+            }
+        )
+        destination = FakeDestination()
+
+        def save_image(image, path):
+            image.metadata["FILENAME"] = str(path)
+            pathlib.Path(path).write_text("input", encoding="utf-8")
+
+        with mock.patch.object(rc.io, "save", side_effect=save_image):
+            with mock.patch.object(rc.io, "load", side_effect=lambda path: FakeImage(path=path)):
+                extension.execute(None, source, destination, {"amount": 0.2}, FakeProgress())
+
+        self.assertIsNotNone(destination.copied)
+        self.assertEqual(destination.metadata["FILENAME"], "original-light.fit")
+        self.assertEqual(destination.metadata["FILTER"], "Ha")
+        self.assertEqual(destination.metadata["EXPTIME"], "300.0")
+        self.assertEqual(destination.metadata["CRVAL1"], "187.5")
+        self.assertEqual(destination.metadata["CRVAL2"], "-45.5")
+        self.assertEqual(destination.metadata["TELESCOP"], "Esprit 100")
+        self.assertEqual(destination.metadata["OBJECT"], "M31")
+        self.assertNotIn("BITPIX", destination.metadata)
+        self.assertNotIn("NAXIS1", destination.metadata)
+        self.assertNotIn("NAXIS2", destination.metadata)
+        self.assertNotIn("astrometry", destination.metadata)
+
     def test_sxt_opens_secondary_stars_output(self):
         extension = RcAstroSxtExtension(None)
         extension.settings.set("resolved_cli_executable", str(self.executable))
         opened = []
+        source = FakeImage({"FILTER": "OIII", "CRVAL1": "187.5", "BITPIX": "-32"})
 
         with mock.patch.object(rc.io, "save", side_effect=lambda _image, path: pathlib.Path(path).write_text("input")):
-            with mock.patch.object(rc.io, "load", side_effect=lambda path: SimpleNamespace(path=path)):
+            with mock.patch.object(rc.io, "load", side_effect=lambda path: FakeImage(path=path)):
                 with mock.patch.object(
                     rc.ui, "open_image", side_effect=lambda image, title: opened.append((image, title))
                 ):
-                    extension.execute(None, object(), FakeDestination(), {"amount": 0.2}, FakeProgress())
+                    extension.execute(None, source, FakeDestination(), {"amount": 0.2}, FakeProgress())
 
         self.assertEqual(opened[0][1], "RC-Astro SXT Stars")
+        self.assertEqual(opened[0][0].metadata["FILTER"], "OIII")
+        self.assertEqual(opened[0][0].metadata["CRVAL1"], "187.5")
+        self.assertNotIn("BITPIX", opened[0][0].metadata)
 
     def test_activation_uses_stdin_not_argv_for_credentials(self):
         extension = RcAstroBxtExtension(None)

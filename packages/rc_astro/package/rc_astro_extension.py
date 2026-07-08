@@ -66,6 +66,7 @@ _PRODUCTS = {
     },
 }
 _SCHEMA_CACHE = {}
+_DEVICE_OPTIONS_CACHE = {}
 _TEXT_PROGRESS_RE = re.compile(r".*?([0-9]+(?:\.[0-9]+)?)\s*%")
 _FIELD_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _TECHNICAL_OUTPUT_FIELDS = {"depth"}
@@ -302,13 +303,34 @@ _MODEL_VERSION_FALLBACK_MINIMUMS = {
     "bxt": 2,
     "nxt": 2,
 }
+_DEFAULT_DEVICE_OPTION = ["Automatically select device", "default"]
+_DEVICE_DEFAULT_TOKENS = {
+    "default",
+    "auto",
+    "automatic",
+    "automaticdevice",
+    "automaticallyselect",
+    "automaticallyselectdevice",
+}
+_DEVICE_VALUE_LABELS = {
+    "default": _DEFAULT_DEVICE_OPTION[0],
+    "auto": _DEFAULT_DEVICE_OPTION[0],
+    "cpu": "CPU",
+    "dml": "DirectML GPU",
+    "directml": "DirectML GPU",
+    "cuda": "CUDA GPU",
+    "opencl": "OpenCL GPU",
+    "metal": "Metal GPU",
+    "coreml": "Core ML",
+    "rocm": "ROCm GPU",
+}
 _COMMON_DEVICE_FIELD = {
     "id": "device",
     "type": "choice",
     "label": "Acceleration Device",
     "default": "default",
     "flag": "--device",
-    "options": [["Default device", "default"]],
+    "options": [_DEFAULT_DEVICE_OPTION],
 }
 _COMMON_ENGINE_FIELD = {
     "id": "engine",
@@ -442,6 +464,87 @@ class _Workspace:
         self.input_path = self.root / "input.fit"
         self.output_path = self.root / "output.fit"
         self.stars_path = self.root / "stars.fit"
+
+
+_RESERVED_METADATA_KEYS = {
+    "SIMPLE",
+    "BITPIX",
+    "BZERO",
+    "BSCALE",
+    "EXTEND",
+    "BLOCKED",
+    "BLANK",
+    "BUNIT",
+}
+_STRUCTURED_METADATA_MAP_KEYS = {"fits_header", "exif_header"}
+_STRUCTURED_METADATA_CARD_KEYS = {"fits_cards", "exif_entries"}
+_STRUCTURED_METADATA_SKIP_KEYS = {"astrometry"}
+
+
+def _metadata_key_is_reserved(key):
+    upper = str(key or "").strip().upper()
+    return upper in _RESERVED_METADATA_KEYS or upper.startswith("NAXIS")
+
+
+def _metadata_is_scalar(value):
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _metadata_entries_from_cards(cards):
+    if not isinstance(cards, list):
+        return
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        key = card.get("key", card.get("name"))
+        value = card.get("value")
+        if key and _metadata_is_scalar(value):
+            yield key, value
+
+
+def _metadata_entries(metadata):
+    if not hasattr(metadata, "items"):
+        return
+    for key, value in metadata.items():
+        key_text = str(key or "").strip()
+        if not key_text:
+            continue
+        key_lower = key_text.lower()
+        if key_lower in _STRUCTURED_METADATA_MAP_KEYS:
+            if hasattr(value, "items"):
+                for nested_key, nested_value in value.items():
+                    if nested_key and _metadata_is_scalar(nested_value):
+                        yield nested_key, nested_value
+            continue
+        if key_lower in _STRUCTURED_METADATA_CARD_KEYS:
+            yield from _metadata_entries_from_cards(value)
+            continue
+        if key_lower in _STRUCTURED_METADATA_SKIP_KEYS:
+            continue
+        if _metadata_is_scalar(value):
+            yield key_text, value
+
+
+def _metadata_snapshot(image):
+    try:
+        metadata = image.metadata
+    except Exception:
+        return {}
+    if not hasattr(metadata, "items"):
+        return {}
+    return dict(metadata)
+
+
+def _restore_original_metadata(image, metadata):
+    if not metadata or not hasattr(image, "set_metadata"):
+        return
+    for key, value in _metadata_entries(metadata) or ():
+        if _metadata_key_is_reserved(key):
+            continue
+        try:
+            image.set_metadata(str(key), "" if value is None else str(value))
+        except Exception as exc:
+            _log_warning(f"Could not restore RC-Astro output metadata key {key}: {exc}")
 
 
 def _terminate_process(process, reason):
@@ -735,7 +838,244 @@ def _json_payload_from_lines(lines):
         ends = [index for index in (payload.rfind("}"), payload.rfind("]")) if index >= 0]
         if not starts or not ends:
             raise
-        return json.loads(payload[min(starts) : max(ends) + 1])
+    return json.loads(payload[min(starts) : max(ends) + 1])
+
+
+def _strip_ansi(text):
+    return re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", str(text or ""))
+
+
+def _device_label_for_value(value):
+    text = str(value or "").strip()
+    key = re.sub(r"[^a-z0-9]+", "", text.lower())
+    if key in _DEVICE_VALUE_LABELS:
+        return _DEVICE_VALUE_LABELS[key]
+    if text.islower() or "_" in text or "-" in text:
+        return text.replace("_", " ").replace("-", " ").title()
+    return text
+
+
+def _normalise_device_value(value):
+    text = _strip_ansi(value).strip().strip("`'\"")
+    text = re.sub(r"^\[\s*|\s*\]$", "", text).strip()
+    text = re.sub(r"^\(?\s*(?:default|selected|current)\s*\)?\s+", "", text, flags=re.IGNORECASE).strip()
+    text = text.strip().strip(",;")
+    if _identity_token(text) in _DEVICE_DEFAULT_TOKENS:
+        return "default"
+    return text
+
+
+def _normalise_device_label(label):
+    text = _strip_ansi(label).strip().strip("`'\"")
+    text = re.sub(r"\s+", " ", text).strip()
+    text = text.strip(",;")
+    if _identity_token(text) in _DEVICE_DEFAULT_TOKENS:
+        return _DEFAULT_DEVICE_OPTION[0]
+    return text
+
+
+def _device_text_has_identifier(text):
+    return bool(re.search(r"[A-Za-z0-9]", str(text or "")))
+
+
+def _is_device_output_footer_line(line):
+    text = str(line or "").strip()
+    lowered = text.lower()
+    token = _identity_token(text)
+    if token in {"eg", "example", "examples"}:
+        return True
+    if re.match(r"^(?:e\.?\s*g\.?|for example)\b", lowered):
+        return True
+    if lowered.startswith(("select a device", "choose a device")):
+        return True
+    if "device" in lowered and lowered.startswith(("run ", "use ", "with ")):
+        return True
+    if re.match(r"^device\s+[A-Za-z0-9_.:-]+\.?$", text, flags=re.IGNORECASE):
+        return True
+    return False
+
+
+def _append_device_option(options, seen, value, label=""):
+    value_text = _normalise_device_value(value)
+    raw_label = _normalise_device_label(label)
+    combined_token = _identity_token(f"{value_text} {raw_label}".strip())
+    if _identity_token(raw_label) in _DEVICE_DEFAULT_TOKENS or combined_token in _DEVICE_DEFAULT_TOKENS:
+        value_text = "default"
+    if not value_text or not _device_text_has_identifier(value_text):
+        return
+    key = value_text.lower()
+    if key in seen:
+        return
+    label_text = raw_label if _device_text_has_identifier(raw_label) else _device_label_for_value(value_text)
+    if not _device_text_has_identifier(label_text):
+        return
+    if value_text.isdigit() and label_text == value_text:
+        return
+    seen.add(key)
+    options.append([label_text, value_text])
+
+
+def _append_device_options_from_payload(options, seen, payload):
+    if isinstance(payload, dict):
+        for key in (
+            "devices",
+            "availableDevices",
+            "available_devices",
+            "accelerationDevices",
+            "acceleration_devices",
+            "deviceOptions",
+            "device_options",
+        ):
+            value = payload.get(key)
+            if isinstance(value, (list, tuple, dict)):
+                _append_device_options_from_payload(options, seen, value)
+                return
+        value = payload.get("id", payload.get("value", payload.get("key", payload.get("device"))))
+        label = payload.get("label", payload.get("display", payload.get("title", payload.get("name"))))
+        if value is None and label is not None:
+            value = label
+            label = ""
+        if value is not None:
+            _append_device_option(options, seen, value, label)
+            return
+        for key, value in payload.items():
+            if isinstance(value, str):
+                _append_device_option(options, seen, key, value)
+        return
+    if isinstance(payload, (list, tuple)):
+        for item in payload:
+            _append_device_options_from_payload(options, seen, item)
+        return
+    if isinstance(payload, str):
+        for item in payload.split(","):
+            _append_device_option(options, seen, item)
+
+
+def _append_device_options_from_text(options, seen, lines):
+    for raw_line in lines:
+        line = _strip_ansi(raw_line).strip()
+        if not line:
+            continue
+        line = re.sub(r"^[>*+\-\s]+", "", line).strip()
+        line = re.sub(r"^\d+[.)]\s*", "", line).strip()
+        if not line:
+            continue
+        if _identity_token(line) in _DEVICE_DEFAULT_TOKENS:
+            _append_device_option(options, seen, "default", _DEFAULT_DEVICE_OPTION[0])
+            continue
+        lowered = line.lower()
+        if _is_device_output_footer_line(line):
+            break
+        if not line or line.startswith("--") or lowered.startswith(("usage", "version")):
+            continue
+        if lowered.rstrip(":") in {
+            "device",
+            "devices",
+            "available devices",
+            "available acceleration devices",
+            "acceleration devices",
+        }:
+            continue
+        if ":" in line:
+            left, right = line.split(":", 1)
+            if "device" in left.lower():
+                separator = "," if "," in right else None
+                for item in right.split(separator):
+                    _append_device_option(options, seen, item)
+                continue
+            if "device" not in left.lower():
+                _append_device_option(options, seen, left, right)
+                continue
+        if "," in line:
+            for item in line.split(","):
+                _append_device_option(options, seen, item)
+            continue
+        parts = re.split(r"\s+-\s+|\t+", line, maxsplit=1)
+        if len(parts) == 2:
+            _append_device_option(options, seen, parts[0], parts[1])
+            continue
+        match = re.match(r"^([A-Za-z0-9_.:-]+)\s+\(([^)]+)\)$", line)
+        if match:
+            _append_device_option(options, seen, match.group(1), match.group(2))
+            continue
+        match = re.match(r"^([A-Za-z0-9_.:-]+)(?:\s+(.+))?$", line)
+        if match:
+            value, label = match.group(1), match.group(2) or ""
+            _append_device_option(options, seen, value, label)
+
+
+def _parse_device_options(lines):
+    options = [_DEFAULT_DEVICE_OPTION.copy()]
+    seen = {"default"}
+    try:
+        payload = _json_payload_from_lines(lines)
+    except Exception:
+        payload = None
+    if payload is not None:
+        _append_device_options_from_payload(options, seen, payload)
+        if options:
+            return options
+    _append_device_options_from_text(options, seen, lines)
+    return options
+
+
+def _device_options_for_cli(executable, version=""):
+    try:
+        resolved = str(pathlib.Path(executable).resolve())
+    except Exception:
+        resolved = str(executable)
+    key = (resolved, str(version or ""))
+    if key in _DEVICE_OPTIONS_CACHE:
+        return [list(option) for option in _DEVICE_OPTIONS_CACHE[key]]
+    try:
+        lines, console_output = _run_cli([executable, "--device"], timeout_seconds=3.0, capture_console=True)
+    except Exception:
+        options = []
+    else:
+        output_lines = [entry["text"] for entry in console_output] if console_output else lines
+        options = _parse_device_options(output_lines)
+    _DEVICE_OPTIONS_CACHE[key] = [list(option) for option in options]
+    return [list(option) for option in options]
+
+
+def _schema_runtime_device_options(schema):
+    raw_options = schema.get("_afternight_device_options")
+    if not isinstance(raw_options, list):
+        return []
+    options = []
+    for item in raw_options:
+        if isinstance(item, (list, tuple)) and len(item) >= 2:
+            options.append([str(item[0]), str(item[1])])
+    return options
+
+
+def _schema_uses_device(schema):
+    if _schema_version_major(schema) >= 4:
+        return True
+    for field in [*_schema_fields(schema), *_schema_mode_fields(schema)]:
+        field_id = _schema_field_id(field)
+        flag = str(field.get("flag", "") or "").strip()
+        if field_id == "device" or flag == "--device":
+            return True
+    return False
+
+
+def _apply_runtime_device_options(schema, executable, version=""):
+    if not _schema_uses_device(schema):
+        return schema
+    options = _device_options_for_cli(executable, version)
+    if not options:
+        return schema
+    schema["_afternight_device_options"] = [list(option) for option in options]
+    for field in _schema_fields(schema):
+        field_id = _schema_field_id(field)
+        flag = str(field.get("flag", "") or "").strip()
+        if field_id != "device" and flag != "--device":
+            continue
+        field["type"] = "choice"
+        field["options"] = [list(option) for option in options]
+        field.setdefault("default", "default")
+    return schema
 
 
 def _schema_from_json_payload(payload, product):
@@ -1422,6 +1762,7 @@ def _load_product_schema(executable, product):
             last_error = exc
         else:
             schema = _apply_product_schema_overrides(schema, product)
+            schema = _apply_runtime_device_options(schema, executable, version)
             _SCHEMA_CACHE[key] = schema
             return schema
 
@@ -1433,6 +1774,7 @@ def _load_product_schema(executable, product):
         last_error = exc
     else:
         schema = _apply_product_schema_overrides(schema, product)
+        schema = _apply_runtime_device_options(schema, executable, version)
         _SCHEMA_CACHE[key] = schema
         return schema
 
@@ -1533,6 +1875,10 @@ def _synthetic_schema_fields(schema):
     if schema_major < 4 and product != "bxt":
         return []
     field = dict(_COMMON_DEVICE_FIELD if schema_major >= 4 else _COMMON_ENGINE_FIELD)
+    if field["id"] == "device":
+        device_options = _schema_runtime_device_options(schema)
+        if device_options:
+            field["options"] = device_options
     field_groups = {
         "bxt": _BXT_FIELD_GROUPS,
         "nxt": _NXT_FIELD_GROUPS,
@@ -2514,6 +2860,7 @@ class _RcAstroBase(ui.ProcessWindow):
         _require_activated_product(executable, self.product, schema)
         workspace = _Workspace()
         _progress_text(progress, f"Preparing {_PRODUCTS[self.product]['name']}...")
+        original_metadata = _metadata_snapshot(src_image)
         io.save(src_image, workspace.input_path)
         command = _command_for_schema(
             executable,
@@ -2529,9 +2876,11 @@ class _RcAstroBase(ui.ProcessWindow):
             raise RcAstroError(f"RC-Astro did not produce the expected output: {workspace.output_path}")
         result = io.load(workspace.output_path)
         dst_image.copy_from(result)
+        _restore_original_metadata(dst_image, original_metadata)
         if self.product == "sxt" and workspace.stars_path.exists():
             try:
                 stars_image = io.load(workspace.stars_path)
+                _restore_original_metadata(stars_image, original_metadata)
                 ui.open_image(stars_image, title="RC-Astro SXT Stars")
             except Exception as exc:
                 _log_warning(f"Could not open SXT stars output: {exc}")
