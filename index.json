@@ -24,7 +24,7 @@
       "releases": [
         {
           "version": "1.0.1",
-          "min_app_version": "2.0.0",
+          "min_app_version": "0.5.2",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
@@ -74,7 +74,7 @@
       "releases": [
         {
           "version": "1.0.2",
-          "min_app_version": "2.0.0",
+          "min_app_version": "0.5.2",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
@@ -88,7 +88,7 @@
             {
               "name": "graxpert-1.0.2-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/graxpert-v1.0.2/graxpert-1.0.2-all.tar.zst",
-              "package_hash": "sha256:8f5f226a91137f0fe1c6d7dbbb179ccbf8f1487a22460c844788dd535aab50f4",
+              "package_hash": "sha256:d9d293db847498f1f010d1a0348a626441f2f3a339a7be74aaab046acf9bfd02",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -137,7 +137,7 @@
       "releases": [
         {
           "version": "0.1.0",
-          "min_app_version": "2.0.0",
+          "min_app_version": "0.5.2",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
@@ -151,7 +151,7 @@
             {
               "name": "veralux-0.1.0-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/veralux-v0.1.0/veralux-0.1.0-all.tar.zst",
-              "package_hash": "sha256:4b12ab5d36795d536008f821e0f116b6778aec247f5891878e16fe79fe458814",
+              "package_hash": "sha256:a6ed52664665a03e18a66a153b72dc36ee71b33099feaeb8cb6c2f68bcd5cc5b",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
