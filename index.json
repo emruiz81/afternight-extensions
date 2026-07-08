@@ -112,6 +112,58 @@
       "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
     },
     {
+      "id": "rc_astro",
+      "name": "RC-Astro XTerminators",
+      "summary": "Adapter for user-installed RC-Astro BlurXTerminator, StarXTerminator, and NoiseXTerminator CLI tools.",
+      "description": "AfterNight native process-window adapter for RC-Astro XTerminator command-line tools. The package contains adapter code only; users provide their own RC-Astro CLI installation, models, and activation material.",
+      "author": "AfterNight",
+      "license": "GPL-3.0",
+      "publisher_id": "afternight",
+      "latest_version": "1.0.0",
+      "tags": [
+        "rc-astro",
+        "blurxterminator",
+        "starxterminator",
+        "noisexterminator",
+        "external-tool"
+      ],
+      "releases": [
+        {
+          "version": "1.0.0",
+          "min_app_version": "0.5.2",
+          "package_format_version": 1,
+          "protocol_version": 1,
+          "sdk_version": 1,
+          "sdk_backend": "runtime",
+          "launch_mode": "single_image",
+          "runtime_targets": [
+            "linux-clang-x86_64",
+            "windows-msvc-x86_64"
+          ],
+          "assets": [
+            {
+              "name": "rc_astro-1.0.0-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/rc_astro-v1.0.0/rc_astro-1.0.0-all.tar.zst",
+              "package_hash": "sha256:12fe81ec3e07fe19ad71b79dd796115f887d2786ed5d1b29d0894844f7a7982b",
+              "signature_state": "verified",
+              "runtime_targets": [
+                "linux-clang-x86_64",
+                "windows-msvc-x86_64"
+              ],
+              "signature_detail": "Verified official AfterNight package signature (Ed25519 key afternight-official-ed25519-v1).",
+              "signature_algorithm": "ed25519",
+              "signature_key_id": "afternight-official-ed25519-v1",
+              "signature": "7qRblIFWbFYRNZBVsAO9q8qF7f1niZT4p5mTyR4cs37P5ZpKqfvs0F33Dr5BDNoDdpgsesdzJYq4gvlJxIAdBw=="
+            }
+          ],
+          "changelog": "Initial official RC-Astro XTerminators adapter release with BlurXTerminator, StarXTerminator, NoiseXTerminator, user-installed CLI discovery, activation and update actions, schema-driven controls, model selection, and acceleration device handling.",
+          "published_at": "2026-07-08T00:00:00Z"
+        }
+      ],
+      "homepage_url": "https://www.rc-astro.com/",
+      "support_url": "https://github.com/emruiz81/afternight-extensions/issues"
+    },
+    {
       "id": "veralux",
       "name": "VeraLux Suite",
       "summary": "VeraLux astrophotography post-processing suite ported from the original VeraLux scripts.",
