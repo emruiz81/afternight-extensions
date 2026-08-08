@@ -113,7 +113,7 @@
       "author": "AfterNight",
       "license": "GPL-3.0",
       "publisher_id": "afternight",
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.1",
       "tags": [
         "rc-astro",
         "blurxterminator",
@@ -123,7 +123,7 @@
       ],
       "releases": [
         {
-          "version": "1.0.0",
+          "version": "1.0.1",
           "min_app_version": "0.5.2",
           "package_format_version": 1,
           "protocol_version": 1,
@@ -136,9 +136,9 @@
           ],
           "assets": [
             {
-              "name": "rc_astro-1.0.0-all.tar.zst",
-              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/rc_astro-v1.0.0/rc_astro-1.0.0-all.tar.zst",
-              "package_hash": "sha256:12fe81ec3e07fe19ad71b79dd796115f887d2786ed5d1b29d0894844f7a7982b",
+              "name": "rc_astro-1.0.1-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/rc_astro-v1.0.1/rc_astro-1.0.1-all.tar.zst",
+              "package_hash": "sha256:66a8c8a0d01f3e3054e90057e3fa84257465043f8007e56251b2716f445e64ba",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -147,8 +147,8 @@
               "signature_detail": "Unsigned official package; SHA-256 verified from index"
             }
           ],
-          "changelog": "Initial official RC-Astro XTerminators adapter release with BlurXTerminator, StarXTerminator, NoiseXTerminator, user-installed CLI discovery, activation and update actions, schema-driven controls, model selection, and acceleration device handling.",
-          "published_at": "2026-07-08T00:00:00Z"
+          "changelog": "Fix StarXTerminator stars-only output generation and workspace loading for RC-Astro CLI 0.9.9.",
+          "published_at": "2026-08-08T00:00:00Z"
         }
       ],
       "homepage_url": "https://www.rc-astro.com/",

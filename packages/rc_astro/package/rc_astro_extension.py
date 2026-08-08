@@ -173,7 +173,19 @@ _PARAM_VALUE_ALIASES = {
     "dn": ("denoise", "amount"),
     "denoise": ("dn", "amount"),
     "amount": ("dn", "denoise"),
+    "stars": (
+        "generate_stars",
+        "generate_star_image",
+        "generate_stars_image",
+        "generateStars",
+        "generateStarImage",
+        "generateStarsImage",
+        "create_stars",
+        "create_star_image",
+        "create_stars_image",
+    ),
     "generate_stars_image": (
+        "stars",
         "generate_stars",
         "generate_star_image",
         "generateStars",
@@ -191,7 +203,16 @@ _PARAM_VALUE_ALIASES = {
     "create_stars": ("generate_stars_image",),
     "create_star_image": ("generate_stars_image",),
     "create_stars_image": ("generate_stars_image",),
+    "unscreen": (
+        "unscreen_stars",
+        "unscreenStars",
+        "unscreen_star_image",
+        "unscreen_stars_image",
+        "unscreenStarImage",
+        "unscreenStarsImage",
+    ),
     "unscreen_stars": (
+        "unscreen",
         "unscreenStars",
         "unscreen_star_image",
         "unscreen_stars_image",
@@ -285,6 +306,7 @@ _NXT_FIELD_DEFAULTS = {
     "amount": 0.9,
 }
 _SXT_GENERATE_STARS_TOKENS = {
+    "stars",
     "generatestars",
     "generatestarimage",
     "generatestarsimage",
@@ -295,11 +317,13 @@ _SXT_GENERATE_STARS_TOKENS = {
     "starsimage",
 }
 _SXT_UNSCREEN_STARS_TOKENS = {
+    "unscreen",
     "unscreenstars",
     "unscreenstarimage",
     "unscreenstarsimage",
 }
 _SXT_FIELD_GROUPS = {
+    "stars": "Options",
     "generate_stars": "Options",
     "generate_star_image": "Options",
     "generate_stars_image": "Options",
@@ -309,6 +333,7 @@ _SXT_FIELD_GROUPS = {
     "create_stars": "Options",
     "create_star_image": "Options",
     "create_stars_image": "Options",
+    "unscreen": "Options",
     "unscreen_stars": "Options",
     "unscreenStars": "Options",
     "unscreen_star_image": "Options",
@@ -327,6 +352,7 @@ _SXT_GROUP_ORDER = {
     "": 2,
 }
 _SXT_FIELD_ORDER = {
+    "stars": 0,
     "generate_stars": 0,
     "generate_star_image": 0,
     "generate_stars_image": 0,
@@ -336,6 +362,7 @@ _SXT_FIELD_ORDER = {
     "create_stars": 0,
     "create_star_image": 0,
     "create_stars_image": 0,
+    "unscreen": 1,
     "unscreen_stars": 1,
     "unscreenStars": 1,
     "unscreen_star_image": 1,
@@ -795,6 +822,52 @@ def _run_cli(
             raise RcAstroCliError(error_message, console_output or _console_output_from_lines(all_output_lines[-40:]))
         raise RcAstroError(error_message)
     return (output_lines, console_output) if capture_console else output_lines
+
+
+def _sxt_stars_output_paths(output_lines, workspace):
+    paths = [workspace.stars_path] if workspace.stars_path.exists() else []
+    workspace_root = workspace.root.resolve()
+
+    def add_path(value):
+        if not isinstance(value, str) or not value.strip():
+            return
+        candidate = pathlib.Path(value).expanduser()
+        if not candidate.is_absolute():
+            candidate = workspace_root / candidate
+        try:
+            candidate = candidate.resolve()
+            candidate.relative_to(workspace_root)
+        except OSError, ValueError:
+            return
+        if candidate.is_file() and candidate not in paths:
+            paths.append(candidate)
+
+    def collect(value, key=""):
+        if isinstance(value, dict):
+            for child_key, child_value in value.items():
+                collect(child_value, str(child_key))
+            return
+        if isinstance(value, list):
+            for item in value:
+                collect(item, key)
+            return
+        token = _identity_token(key)
+        if "star" in token and "starless" not in token and (token == "stars" or "output" in token or "path" in token):
+            add_path(value)
+
+    for line in output_lines:
+        event = _json_event(line)
+        if event:
+            collect(event)
+    try:
+        workspace_files = workspace_root.iterdir()
+    except OSError:
+        workspace_files = ()
+    for candidate in workspace_files:
+        token = _identity_token(candidate.stem)
+        if candidate.is_file() and "star" in token and "starless" not in token:
+            add_path(str(candidate))
+    return paths
 
 
 def _resolved_cli_from_mapping(mapping):
@@ -1585,25 +1658,18 @@ def _fast_product_schema(product, device_options=None):
             "mlVersion": 3,
             "parameters": [
                 {
-                    "id": "generate_stars_image",
+                    "id": "stars",
                     "type": "bool",
                     "label": "Generate Stars Image",
-                    "flag": "--generate-stars",
+                    "flag": "--stars",
                     "default": False,
                 },
                 {
-                    "id": "unscreen_stars",
+                    "id": "unscreen",
                     "type": "bool",
                     "label": "Unscreen Stars",
-                    "flag": "--unscreen-stars",
+                    "flag": "--unscreen",
                     "default": False,
-                },
-                {
-                    "id": "stars_output",
-                    "type": "string",
-                    "label": "Stars Output",
-                    "flag": "--stars-output",
-                    "hidden": True,
                 },
                 device_field,
                 {
@@ -3163,19 +3229,20 @@ class _RcAstroBase(ui.ProcessWindow):
             workspace.stars_path,
             params or {},
         )
-        _run_cli(command, timeout_seconds=_RUN_TIMEOUT_SECONDS, progress=progress, cwd=workspace.root)
+        output_lines = _run_cli(command, timeout_seconds=_RUN_TIMEOUT_SECONDS, progress=progress, cwd=workspace.root)
         if not workspace.output_path.exists():
             raise RcAstroError(f"RC-Astro did not produce the expected output: {workspace.output_path}")
         result = io.load(workspace.output_path)
         dst_image.copy_from(result)
         _restore_original_metadata(dst_image, original_metadata)
-        if self.product == "sxt" and workspace.stars_path.exists():
-            try:
-                stars_image = io.load(workspace.stars_path)
-                _restore_original_metadata(stars_image, original_metadata)
-                ui.open_image(stars_image, title="RC-Astro SXT Stars")
-            except Exception as exc:
-                _log_warning(f"Could not open SXT stars output: {exc}")
+        if self.product == "sxt":
+            for stars_path in _sxt_stars_output_paths(output_lines, workspace):
+                try:
+                    stars_image = io.load(stars_path)
+                    _restore_original_metadata(stars_image, original_metadata)
+                    ui.open_image(stars_image, title="RC-Astro SXT Stars")
+                except Exception as exc:
+                    _log_warning(f"Could not open SXT stars output: {exc}")
         _progress_value(progress, 100.0)
         _progress_text(progress, f"{_PRODUCTS[self.product]['name']} complete")
 

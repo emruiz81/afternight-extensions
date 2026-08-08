@@ -104,6 +104,15 @@ def _fake_schema(product):
     if product == "sxt":
         parameters.append(
             {
+                "id": "generate_stars_image",
+                "type": "bool",
+                "label": "Generate Stars Image",
+                "flag": "--generate-stars",
+                "default": False,
+            }
+        )
+        parameters.append(
+            {
                 "id": "stars_output",
                 "type": "string",
                 "label": "Stars Output",
@@ -642,6 +651,59 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self.assertIn("--stars-output", command_with_stars)
         self.assertIn("--unscreen-stars", command_with_stars)
+
+    def test_sxt_live_schema_emits_stars_and_unscreen_flags(self):
+        schema = rc._apply_product_schema_overrides(
+            {
+                "schemaVersion": 4,
+                "product": "sxt",
+                "parameters": [
+                    {
+                        "name": "stars",
+                        "type": "bool",
+                        "label": "Generate Stars Image",
+                        "flag": "--stars",
+                        "default": False,
+                    },
+                    {
+                        "name": "unscreen",
+                        "type": "bool",
+                        "label": "Unscreen Stars",
+                        "flag": "--unscreen",
+                        "default": False,
+                    },
+                ],
+            },
+            "sxt",
+        )
+
+        params = rc._schema_params(schema)
+        by_id = {param["id"]: param for param in params}
+        command = rc._command_for_schema(
+            self.executable,
+            "sxt",
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            {"stars": True, "unscreen": True},
+        )
+
+        self.assertEqual(by_id["unscreen"]["enabled_when"], "stars == true")
+        self.assertIn("--stars", command)
+        self.assertIn("--unscreen", command)
+        self.assertNotIn("--stars-output", command)
+
+    def test_sxt_discovers_cli_generated_sibling_stars_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            generated_stars = root / "output-stars.fit"
+            generated_stars.write_text("synthetic stars", encoding="utf-8")
+            workspace = SimpleNamespace(root=root, stars_path=root / "stars.fit")
+
+            paths = rc._sxt_stars_output_paths([], workspace)
+
+        self.assertEqual(paths, [generated_stars])
 
     def test_get_params_opens_before_host_resolved_cli_record_exists(self):
         extension = RcAstroBxtExtension(None)
@@ -1272,7 +1334,7 @@ class RcAstroAdapterTests(unittest.TestCase):
         self.assertNotIn("NAXIS2", destination.metadata)
         self.assertNotIn("astrometry", destination.metadata)
 
-    def test_sxt_opens_secondary_stars_output(self):
+    def test_sxt_opens_secondary_stars_output_when_selected(self):
         extension = RcAstroSxtExtension(None)
         extension.settings.set("resolved_cli_executable", str(self.executable))
         opened = []
@@ -1283,12 +1345,48 @@ class RcAstroAdapterTests(unittest.TestCase):
                 with mock.patch.object(
                     rc.ui, "open_image", side_effect=lambda image, title: opened.append((image, title))
                 ):
-                    extension.execute(None, source, FakeDestination(), {"amount": 0.2}, FakeProgress())
+                    extension.execute(
+                        None,
+                        source,
+                        FakeDestination(),
+                        {"generate_stars_image": True},
+                        FakeProgress(),
+                    )
 
         self.assertEqual(opened[0][1], "RC-Astro SXT Stars")
         self.assertEqual(opened[0][0].metadata["FILTER"], "OIII")
         self.assertEqual(opened[0][0].metadata["CRVAL1"], "187.5")
         self.assertNotIn("BITPIX", opened[0][0].metadata)
+        process_argv = [event["payload"] for event in self._events() if event["kind"] == "argv"][-1]
+        self.assertIn("--generate-stars", process_argv)
+        self.assertIn("--stars-output", process_argv)
+
+    def test_sxt_uses_reported_stars_output_inside_workspace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            reported_stars = root / "reported-stars.fit"
+            reported_stars.write_text("synthetic stars", encoding="utf-8")
+            external_stars = self.root / "external-stars.fit"
+            external_stars.write_text("must not load", encoding="utf-8")
+            workspace = SimpleNamespace(root=root, stars_path=root / "stars.fit")
+
+            paths = rc._sxt_stars_output_paths(
+                [
+                    json.dumps(
+                        {
+                            "status": {
+                                "complete": {
+                                    "stars_output": "reported-stars.fit",
+                                    "stars_path": str(external_stars),
+                                }
+                            }
+                        }
+                    )
+                ],
+                workspace,
+            )
+
+        self.assertEqual(paths, [reported_stars])
 
     def test_activation_uses_stdin_not_argv_for_credentials(self):
         extension = RcAstroBxtExtension(None)
