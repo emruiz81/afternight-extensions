@@ -432,17 +432,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+          for attempt in {1..10}; do
+            if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > selected-release.json; then
+              break
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "release $RELEASE_TAG was not found after create/upload step" >&2
+              exit 1
+            fi
+            sleep 2
+          done
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
-          import os
           import pathlib
 
-          release_tag = os.environ["RELEASE_TAG"]
-          releases = json.loads(pathlib.Path("releases.json").read_text(encoding="utf-8"))
-          release = next((item for item in releases if item.get("tag_name") == release_tag), None)
-          if release is None:
-              raise SystemExit(f"release {release_tag} was not found after create/upload step")
+          release = json.loads(pathlib.Path("selected-release.json").read_text(encoding="utf-8"))
           print(f"release_id={release['id']}")
           print(f"release_is_draft={str(release.get('draft')).lower()}")
           PY
