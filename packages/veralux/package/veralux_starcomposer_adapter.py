@@ -67,46 +67,10 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
             return int(data.shape[1]), int(data.shape[2])
         return int(data.shape[0]), int(data.shape[1])
 
-    @staticmethod
-    def _crop_array(array, x, y, width, height):
-        data = np.asarray(array)
-        if data.ndim == 2:
-            return data[y : y + height, x : x + width]
-        if data.ndim == 3 and data.shape[0] in (1, 3) and data.shape[-1] not in (1, 3, 4):
-            return data[:, y : y + height, x : x + width]
-        return data[y : y + height, x : x + width, ...]
-
     def _align_stars_to_starless_preview(self, stars, starless, src_image, *, preview):
         if not preview:
             return stars
-
-        target_h, target_w = self._array_hw(starless)
-        stars_h, stars_w = self._array_hw(stars)
-        if target_h <= 0 or target_w <= 0 or (stars_h, stars_w) == (target_h, target_w):
-            return stars
-
-        properties = {}
-        try:
-            properties = dict(getattr(src_image, "properties", {}) or {})
-        except Exception:
-            properties = {}
-
-        required_keys = ("offset_x", "offset_y", "source_width", "source_height")
-        if all(key in properties for key in required_keys):
-            offset_x = int(properties["offset_x"])
-            offset_y = int(properties["offset_y"])
-            source_w = int(properties["source_width"])
-            source_h = int(properties["source_height"])
-            if (
-                (stars_h, stars_w) == (source_h, source_w)
-                and offset_x >= 0
-                and offset_y >= 0
-                and offset_x + target_w <= stars_w
-                and offset_y + target_h <= stars_h
-            ):
-                return self._crop_array(stars, offset_x, offset_y, target_w, target_h)
-
-        return stars
+        return sdk.cut_to_frame(stars, src_image, self._array_hw(starless))
 
     @staticmethod
     def _resize_array(array, out_h, out_w, *, downsample):
@@ -161,12 +125,26 @@ class VeraLuxStarComposerExtension(ui.RTPreviewProcess):
     def _read_stars_for_preview(self, params, starless, src_image, proxy_shape):
         target_h, target_w = self._array_hw(starless)
         proxy_h, proxy_w = proxy_shape
+        stars = sdk.read_image(self._stars_image_handle(params))
         stars_view = self._stars_view_cache_name(params)
-        cache_key = (stars_view, target_h, target_w, proxy_h, proxy_w) if stars_view else None
+        # The key holds what the stars view holds, not only its name, so stars changed in place at the same size are
+        # composed afresh, as Apply composes them; the frame's placement keeps same-size frames of other parts apart.
+        cache_key = (
+            (
+                stars_view,
+                sdk.frame_placement(src_image),
+                target_h,
+                target_w,
+                proxy_h,
+                proxy_w,
+                sdk.content_key(stars),
+            )
+            if stars_view
+            else None
+        )
         if cache_key is not None and cache_key == self._preview_stars_proxy_cache_key:
             return self._preview_stars_proxy_cache
 
-        stars = sdk.read_image(self._stars_image_handle(params))
         stars = self._align_stars_to_starless_preview(stars, starless, src_image, preview=True)
         stars_proxy = self._resize_array(
             stars,

@@ -910,9 +910,9 @@ class RepositoryPackageTests(unittest.TestCase):
 
         self.assertIsNot(repository_metadata.get("publish"), False)
         release = repository_metadata["releases"][0]
-        self.assertEqual(release["version"], "0.1.0")
-        self.assertIn("veralux-v0.1.0", release["asset_base_url"])
-        self.assertIn("Status: published as `veralux` version `0.1.0`.", readiness)
+        self.assertEqual(release["version"], "0.1.1")
+        self.assertIn("veralux-v0.1.1", release["asset_base_url"])
+        self.assertIn("Status: published as `veralux` version `0.1.1`.", readiness)
         self.assertIn("Representative real-image visual QA", readiness)
         self.assertIn("Manual release testing covered representative", readiness)
         self.assertIn("Release signoff", readiness)

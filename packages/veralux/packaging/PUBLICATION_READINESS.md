@@ -1,6 +1,6 @@
 # VeraLux Publication Readiness
 
-Status: published as `veralux` version `0.1.0`.
+Status: published as `veralux` version `0.1.1`.
 
 The package is included in the official repository index. The release asset is
 hash-pinned in `index.json` and uses `signature_state: "unsigned"` until package
@@ -24,13 +24,29 @@ signing is implemented.
   process discovery, native parameter schemas, runtime host execution, and
   large NumPy image round-trips.
 - Representative real-image visual QA: maintainer manual testing completed
-  before release and confirmed outputs are visually sane in AfterNight.
+  before the `0.1.0` release and confirmed outputs are visually sane in
+  AfterNight. Version `0.1.1` changes the preview path only, so Apply output is
+  unchanged and stays covered by the numerical regression metrics.
 - Release signoff: maintainer release request accepted for version `0.1.0` on
-  2026-05-07.
+  2026-05-07, and for version `0.1.1` on 2026-10-26.
+
+## Version 0.1.1 Changes
+
+- Each process declares its `preview_scaling`: Curves previews a drag over the
+  view's reduction (`decimated`); every other process previews the whole image
+  (`full_only`).
+- Nox keys its on-demand preview cache on the image's content, not only its
+  size, so an image changed in place shows the current image until Update
+  Preview is pressed, never the correction of an earlier image.
+- Nox cuts a manual protection mask that covers the whole image to the
+  previewed part instead of resizing it onto the part.
+- StarComposer keys its cached stars proxy on the stars image's content and
+  the frame's placement, so the preview composes the stars as Apply does after
+  the stars view changes in place.
 
 ## Release Validation
 
-Release validation for `0.1.0` used an isolated Python environment with the
+Release validation for `0.1.1` used an isolated Python environment with the
 host-provided scientific runtime dependency (`numpy`) plus the packages declared
 in `package/requirements.lock`.
 
@@ -38,21 +54,21 @@ Commands run:
 
 ```bash
 python -m unittest discover -s packages/veralux/tests
-python -m unittest tests/test_package_tools.py tests/test_veralux_upstream_tools.py
+python -m unittest discover -s tests
 python tools/check_veralux_upstream.py --upstream-checkout ../siril-scripts
 VERALUX_UPSTREAM_CHECKOUT=../siril-scripts \
   python -m unittest packages/veralux/tests/test_veralux_upstream_quality.py
-python tools/build_package.py packages/veralux/package --output-dir dist-veralux
+python tools/build_repository_assets.py --output-dir dist
 python tools/generate_index.py \
   --packages-root packages \
   --assets-dir dist \
-  --updated-at 2026-05-07T02:30:30Z \
+  --updated-at "$(python -c 'import json; print(json.load(open("index.json", encoding="utf-8"))["updated_at"])')" \
   --output index.json
 ```
 
 ## Representative QA Signoff
 
-Manual release testing covered representative:
+Manual release testing covered representative inputs for `0.1.0`:
 
 - linear RGB data
 - stretched RGB data
