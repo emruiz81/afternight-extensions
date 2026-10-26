@@ -40,6 +40,9 @@ signing is implemented.
   Preview is pressed, never the correction of an earlier image.
 - Nox cuts a manual protection mask that covers the whole image to the
   previewed part instead of resizing it onto the part.
+- Nox's preview before its first update reads an image of integer samples in
+  the range the correction is shown in, so it shows the image instead of
+  white.
 - StarComposer keys its cached stars proxy on the stars image's content and
   the frame's placement, so the preview composes the stars as Apply does after
   the stars view changes in place.

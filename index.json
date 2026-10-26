@@ -200,7 +200,7 @@
             {
               "name": "veralux-0.1.1-all.tar.zst",
               "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/veralux-v0.1.1/veralux-0.1.1-all.tar.zst",
-              "package_hash": "sha256:aaaa5ccf842fc993283358ac7b2fb5d32b1fb14e4d282d6ed1730bf5d59f3953",
+              "package_hash": "sha256:577a4c89c126b7d619676369ea01a603c78d1e188d009fffe77b2ba049e67d9f",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -209,7 +209,7 @@
               "signature_detail": "Unsigned official package; SHA-256 verified from index"
             }
           ],
-          "changelog": "Each VeraLux process now states what a drag's preview frame may run over: VeraLux Curves, whose curve reads each pixel alone, previews a drag over the view's reduction; Alchemy, HyperMetric Stretch, Nox, Silentium, Revela, Vectra and StarComposer, which measure the whole image in every preview, state that they preview it whole. VeraLux Nox no longer shows the correction of an earlier image after the image changes in place at the same size, and cuts a manual protection mask that covers the whole image to the previewed part instead of resizing it; VeraLux StarComposer's preview composes the stars image as it is now, as Apply does, after the stars view changes in place.",
+          "changelog": "Each VeraLux process now states what a drag's preview frame may run over: VeraLux Curves, whose curve reads each pixel alone, previews a drag over the view's reduction; Alchemy, HyperMetric Stretch, Nox, Silentium, Revela, Vectra and StarComposer, which measure the whole image in every preview, state that they preview it whole. VeraLux Nox no longer shows the correction of an earlier image after the image changes in place at the same size, and cuts a manual protection mask that covers the whole image to the previewed part instead of resizing it; VeraLux StarComposer's preview composes the stars image as it is now, as Apply does, after the stars view changes in place. Nox's preview before its first update shows an image of integer samples as it is, no longer white.",
           "published_at": "2026-10-26T00:00:00Z"
         }
       ],

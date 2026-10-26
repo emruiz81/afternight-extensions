@@ -36,6 +36,17 @@ class FakeImage:
         self.metadata[str(key)] = str(value)
 
 
+class PreservingFakeImage(FakeImage):
+    """A FakeImage that keeps its samples' own type, as a host image of integer samples does."""
+
+    def __init__(self, array, properties=None):
+        super().__init__(array, properties)
+        self.array = np.asarray(array)
+
+    def from_numpy(self, array):
+        self.array = np.asarray(array)
+
+
 class FakeProgress:
     def __init__(self):
         self.text = ""
@@ -419,6 +430,30 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         extension.execute_preview(None, src, preview, params, progress)
         self.assertEqual(len(calls), 2)
         self.assertTrue(np.allclose(preview.array, model))
+
+    def test_preview_before_any_update_shows_an_integer_image_as_it_is(self):
+        source_array = np.round(np.clip(synthetic_gradient_field(size=24), 0.0, 1.0) * 65535.0).astype(np.uint16)
+        src = PreservingFakeImage(source_array)
+        preview = PreservingFakeImage(np.zeros_like(source_array))
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+
+        def fake_process(src_image, params, progress, masks=None):
+            raise AssertionError("no preview update was asked for")
+
+        extension._process = fake_process
+        params = {
+            "preview_mode": nox_ui.PREVIEW_CORRECTED,
+            "auto_mask": False,
+            "stiffness": 2.0,
+            "rejection_power": 50.0,
+        }
+
+        extension.execute_preview(None, src, preview, params, progress)
+
+        self.assertEqual(preview.array.dtype, np.uint16)
+        difference = np.abs(preview.array.astype(np.int64) - source_array.astype(np.int64))
+        self.assertLessEqual(int(difference.max()), 1)
 
     def test_whole_image_manual_mask_is_cut_to_a_partial_frame(self):
         whole_mask = np.zeros((20, 24), dtype=np.float32)

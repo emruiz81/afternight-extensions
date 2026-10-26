@@ -144,10 +144,12 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         if preview_mode == nox_ui.PREVIEW_PROTECTION_MASK:
             return core.source_with_protection_overlay(source, user_mask)
 
-        return self._preview_cache.get(
-            nox_ui.PREVIEW_CORRECTED,
-            np.asarray(source, dtype=np.float32),
-        )
+        corrected = self._preview_cache.get(nox_ui.PREVIEW_CORRECTED)
+        if corrected is not None:
+            return corrected
+        # Until a preview is rendered the image is shown as it is, read in the range the correction is shown in: the
+        # samples of an integer image are not fractions.
+        return np.clip(core.normalize_input(source), 0.0, 1.0).astype(np.float32, copy=False)
 
     def execute_preview(
         self,
