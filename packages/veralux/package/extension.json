@@ -1,7 +1,7 @@
 {
   "id": "veralux",
   "name": "VeraLux Suite",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "summary": "VeraLux astrophotography post-processing suite ported from the original VeraLux scripts.",
   "description": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti; AfterNight port by Ezequiel Ruiz. This suite package includes Revela local contrast enhancement, Alchemy linear narrowband normalization/mixing, HyperMetric Stretch nonlinear tone mapping, Curves photometric curve sculpting, Nox additive gradient reduction, Silentium linear noise suppression, Vectra LCH color grading, StarComposer star-mask shaping and starless recomposition, and a package-local Starting Point workflow guide, with all VeraLux processes sharing one install, one dependency environment, and one requirements lock.",
   "author": "Riccardo Paterniti (original) / Ezequiel Ruiz (port)",
@@ -73,7 +73,8 @@
         "execute": true,
         "preview": true,
         "keep_open": true,
-        "source_channel_filter": [3]
+        "source_channel_filter": [3],
+        "preview_scaling": "full_only"
       }
     },
     {
@@ -85,7 +86,8 @@
       "capabilities": {
         "execute": true,
         "preview": true,
-        "keep_open": true
+        "keep_open": true,
+        "preview_scaling": "decimated"
       }
     },
     {
@@ -97,7 +99,8 @@
       "capabilities": {
         "execute": true,
         "preview": true,
-        "keep_open": true
+        "keep_open": true,
+        "preview_scaling": "full_only"
       }
     },
     {
@@ -112,7 +115,8 @@
         "keep_open": true,
         "masks": {
           "input": true
-        }
+        },
+        "preview_scaling": "full_only"
       }
     },
     {
@@ -124,7 +128,8 @@
       "capabilities": {
         "execute": true,
         "preview": true,
-        "keep_open": true
+        "keep_open": true,
+        "preview_scaling": "full_only"
       }
     },
     {
@@ -137,7 +142,8 @@
         "execute": true,
         "preview": true,
         "keep_open": true,
-        "source_channel_filter": [3]
+        "source_channel_filter": [3],
+        "preview_scaling": "full_only"
       }
     },
     {
@@ -149,7 +155,8 @@
       "capabilities": {
         "execute": true,
         "preview": true,
-        "keep_open": true
+        "keep_open": true,
+        "preview_scaling": "full_only"
       }
     },
     {
@@ -161,7 +168,8 @@
       "capabilities": {
         "execute": true,
         "preview": true,
-        "keep_open": true
+        "keep_open": true,
+        "preview_scaling": "full_only"
       }
     }
   ]

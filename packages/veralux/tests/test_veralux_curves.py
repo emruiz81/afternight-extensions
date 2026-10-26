@@ -49,6 +49,29 @@ class FakeProgress:
         return self.cancelled
 
 
+class TypedFakeImage:
+    """An image handle that keeps its samples' representation, as the host's buffers do."""
+
+    def __init__(self, array):
+        self.array = np.asarray(array)
+        self.metadata = {}
+
+    def to_numpy(self):
+        return self.array
+
+    def from_numpy(self, array):
+        self.array = np.asarray(array, dtype=self.array.dtype)
+
+    def set_metadata(self, key, value):
+        self.metadata[str(key)] = str(value)
+
+
+def scattered_rgb(height=48, width=64):
+    """An RGB image in [0, 1) whose every pixel differs from its neighbours."""
+
+    return np.random.default_rng(20261026).random((height, width, 3), dtype=np.float32)
+
+
 def synthetic_rgb_gradient(size=64):
     y, x = np.mgrid[0:size, 0:size].astype(np.float32)
     gradient = (x + y) / float((size - 1) * 2)
@@ -172,7 +195,7 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
 
         self.assertEqual(
             processes["curves"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True},
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "decimated"},
         )
 
     def test_execute_writes_processed_image_and_provenance_metadata(self):
@@ -229,6 +252,69 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
 
     def test_suite_entry_point_exports_curves_process(self):
         self.assertIs(SuiteCurvesExtension, VeraLuxCurvesExtension)
+
+
+class VeraLuxCurvesPreviewScalingTests(unittest.TestCase):
+    """What the manifest's `decimated` declares of Curves: its preview at a pixel is a function of the pixel's value and
+    the parameters, of nothing about where the pixel lies or about the rest of the image, so a drag's frame over a crop,
+    a reduction or any rearrangement of the image previews each pixel as the whole image's frame does. A curve of block
+    means differs from the block means of a curve; that is the approximation every decimated preview accepts until
+    its settled frame, and not what these cases hold."""
+
+    CURVE = [[0.0, 0.0], [0.25, 0.35], [0.6, 0.72], [1.0, 1.0]]
+    CROP = (slice(10, 40), slice(5, 50))
+
+    def preview_of(self, source, params):
+        src = TypedFakeImage(np.ascontiguousarray(source))
+        preview = TypedFakeImage(np.zeros_like(src.array))
+        VeraLuxCurvesExtension(None).execute_preview(None, src, preview, params, FakeProgress())
+        return preview.array
+
+    def assert_same_pixels(self, part, whole_part):
+        # Within the last unit of what a colour conversion rounds by where a pixel falls in a vector, which a crop
+        # moves: a few units of a Float32 sample, one code of a sixteen-bit one - measured 2.3e-6 and one code in the
+        # Lab domains. A preview that read the rest of the image would differ by orders of magnitude more.
+        full_scale = float(np.iinfo(part.dtype).max) if np.issubdtype(part.dtype, np.integer) else 1.0
+        np.testing.assert_allclose(
+            part.astype(np.float64) / full_scale,
+            whole_part.astype(np.float64) / full_scale,
+            rtol=0.0,
+            atol=2e-5,
+        )
+
+    def test_a_pixels_preview_reads_nothing_but_the_pixel(self):
+        floating = scattered_rgb()
+        sources = {"uint16": (floating * 65535.0).astype(np.uint16), "float32": floating}
+        # Every third pixel each way, as a reduction picks its blocks, and the image turned end to end.
+        strided = (slice(None, None, 3), slice(None, None, 3))
+        reversed_order = (slice(None, None, -1), slice(None, None, -1))
+        for name, source in sources.items():
+            for domain in core.CHANNELS:
+                for range_enabled in (False, True):
+                    with self.subTest(source=name, domain=domain, range_enabled=range_enabled):
+                        params = {
+                            "domain": domain,
+                            "curve_points": self.CURVE,
+                            "range_enabled": range_enabled,
+                            "lum_min": 0.3,
+                            "lum_max": 0.7,
+                            "feather": 0.2,
+                        }
+                        whole = self.preview_of(source, params)
+                        self.assertFalse(np.array_equal(whole, source), "the curve leaves the image as it was")
+                        for picked in (self.CROP, strided, reversed_order):
+                            self.assert_same_pixels(self.preview_of(source[picked], params), whole[picked])
+
+    def test_a_floating_point_image_beyond_one_is_scaled_by_what_the_frame_holds(self):
+        # The one value of the whole image Curves reads: a floating-point frame whose maximum passes one is taken as
+        # counts and divided down, so a crop that leaves the bright pixel out previews differently. The settled frame
+        # and the Apply run over the whole image; a drag's frame of such an image is the limit the declaration accepts.
+        source = scattered_rgb()
+        source[0, 0, :] = 2.0
+        params = {"domain": "RGB/K", "curve_points": self.CURVE, "range_enabled": False}
+        whole = self.preview_of(source, params)
+        part = self.preview_of(source[self.CROP], params)
+        self.assertFalse(np.allclose(part, whole[self.CROP], rtol=0.0, atol=2e-5))
 
 
 if __name__ == "__main__":

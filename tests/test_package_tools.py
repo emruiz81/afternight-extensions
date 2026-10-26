@@ -867,7 +867,7 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertEqual(processes["starcomposer"]["category"], "star_object")
         self.assertEqual(
             processes["starcomposer"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True},
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "full_only"},
         )
         self.assertEqual(processes["vectra"]["class"], "VeraLuxVectraExtension")
         self.assertEqual(processes["vectra"]["category"], "color")
@@ -921,12 +921,12 @@ class RepositoryPackageTests(unittest.TestCase):
         self.assertIn("published through the official AfterNight extension index", packaging_notes)
 
     def test_release_metadata_resolves_github_release_tag(self):
-        metadata = resolve_release_metadata(REPO_ROOT / "packages", "veralux", "0.1.0")
+        metadata = resolve_release_metadata(REPO_ROOT / "packages", "veralux", "0.1.1")
 
         self.assertEqual(metadata["package_id"], "veralux")
-        self.assertEqual(metadata["version"], "0.1.0")
-        self.assertEqual(metadata["release_tag"], "veralux-v0.1.0")
-        self.assertEqual(metadata["release_title"], "VeraLux Suite 0.1.0")
+        self.assertEqual(metadata["version"], "0.1.1")
+        self.assertEqual(metadata["release_tag"], "veralux-v0.1.1")
+        self.assertEqual(metadata["release_title"], "VeraLux Suite 0.1.1")
         self.assertIn("github.com/emruiz81/afternight-extensions", metadata["asset_base_url"])
 
     def test_release_metadata_rejects_version_mismatch(self):
@@ -943,7 +943,7 @@ class RepositoryPackageTests(unittest.TestCase):
             asset = build_package(package_dir, root / "dist", compression_level=3)
 
             self.assertEqual(asset["package_id"], "veralux")
-            self.assertEqual(asset["name"], "veralux-0.1.0-all.tar.zst")
+            self.assertEqual(asset["name"], "veralux-0.1.1-all.tar.zst")
             self.assertEqual(
                 asset["runtime_targets"],
                 ["linux-clang-x86_64", "windows-msvc-x86_64"],

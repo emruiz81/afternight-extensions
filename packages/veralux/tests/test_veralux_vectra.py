@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -224,6 +225,21 @@ class VeraLuxVectraAdapterTests(unittest.TestCase):
         self.assertGreater(float(np.mean(np.abs(preview.array - src.array))), 1e-3)
         self.assertNotIn("afternight.extension", preview.metadata)
         self.assertEqual(progress.value, 100.0)
+
+    def test_manifest_declares_vectra_preview_capabilities(self):
+        manifest = json.loads((PACKAGE_ROOT / "extension.json").read_text(encoding="utf-8"))
+        processes = {process["id_suffix"]: process for process in manifest["processes"]}
+
+        self.assertEqual(
+            processes["vectra"]["capabilities"],
+            {
+                "execute": True,
+                "preview": True,
+                "keep_open": True,
+                "source_channel_filter": [3],
+                "preview_scaling": "full_only",
+            },
+        )
 
     def test_suite_entry_point_exports_vectra_process(self):
         self.assertIs(SuiteVectraExtension, VeraLuxVectraExtension)

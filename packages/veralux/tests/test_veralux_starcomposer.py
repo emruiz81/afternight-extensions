@@ -216,7 +216,7 @@ class VeraLuxStarComposerAdapterTests(unittest.TestCase):
 
         self.assertEqual(
             processes["starcomposer"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True},
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "full_only"},
         )
 
     def test_execute_writes_composited_starless_and_provenance_metadata(self):

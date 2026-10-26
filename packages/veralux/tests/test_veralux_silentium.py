@@ -312,7 +312,10 @@ class VeraLuxSilentiumAdapterTests(unittest.TestCase):
             manifest = json.load(handle)
 
         silentium = next(process for process in manifest["processes"] if process["id_suffix"] == "silentium")
-        self.assertEqual(silentium["capabilities"], {"execute": True, "preview": True, "keep_open": True})
+        self.assertEqual(
+            silentium["capabilities"],
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "full_only"},
+        )
 
     def test_suite_entry_point_exports_silentium_process(self):
         self.assertIs(SuiteSilentiumExtension, VeraLuxSilentiumExtension)

@@ -531,6 +531,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
                 "preview": True,
                 "keep_open": True,
                 "masks": {"input": True},
+                "preview_scaling": "full_only",
             },
         )
 

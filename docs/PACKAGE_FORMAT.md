@@ -115,16 +115,27 @@ host-mode matrix, allowed imports, and license restrictions.
 
 Each `processes[]` entry may declare a `capabilities` object. Missing fields use
 AfterNight defaults. In addition to execution, preview, mask, weight, and source
-channel metadata, star-separation processes can advertise reusable output roles:
+channel metadata, a previewing process states what a drag's preview frame may run
+over, and star-separation processes can advertise reusable output roles:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
+| `preview_scaling` | string | What a preview frame of a drag hands `execute_preview` in AfterNight's native process window. `full_only`, the default, hands it the whole image in every frame: correct for any preview, and the only correct one for a preview that measures the image as a whole (a median, a percentile, a noise estimate, a fitted background). `decimated` hands it the image reduced to what the preview view paints, each pixel the mean of a block: correct only when the preview changes every pixel by a rule that depends neither on where the pixel lies nor on the image's size. `native_region` hands it the part of the image the view shows, at full scale, grown by `preview_region_margin`: correct only when the preview's answer at a pixel reads nothing farther away than that margin. |
+| `preview_region_margin` | integer, 0 to 4096 | For `native_region`, how far in pixels a pixel's preview reads around it; the part a frame is handed is grown by it. |
 | `starless_generator` | boolean | The process can generate a starless image usable by other native or extension processes. |
 | `star_mask_generator` | boolean | The process can generate an extracted-stars or star-mask image usable by other processes. |
 
-These flags are discovery metadata only. The process is still launched through
-its normal `launch_mode`, and availability follows the package environment state
-reported by AfterNight.
+The settled frame after a drag and every `execute` are handed the whole image
+whatever `preview_scaling` states, so a scaling that does not suit a preview shows
+a wrong drag and nothing else. AfterNight refuses another word or a margin out of
+range by name; releases older than the field ignore both, so declaring them does
+not raise `min_app_version`. The full rule is the package author guide's *Real-Time
+Preview Scaling* section, `docs/extension-examples/PACKAGE_AUTHOR_GUIDE.md` in the
+AfterNight repository.
+
+The star-separation flags are discovery metadata only. The process is still
+launched through its normal `launch_mode`, and availability follows the package
+environment state reported by AfterNight.
 
 ## Runtime Targets
 
