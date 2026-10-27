@@ -208,7 +208,7 @@ class VeraLuxHyperMetricStretchAdapterTests(unittest.TestCase):
 
         self.assertEqual(
             processes["hypermetric_stretch"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True},
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "full_only"},
         )
 
     def test_execute_writes_processed_image_and_provenance_metadata(self):

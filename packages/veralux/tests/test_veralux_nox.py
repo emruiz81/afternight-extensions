@@ -21,9 +21,10 @@ from veralux_nox_adapter import VeraLuxNoxExtension  # noqa: E402
 
 
 class FakeImage:
-    def __init__(self, array):
+    def __init__(self, array, properties=None):
         self.array = np.asarray(array, dtype=np.float32)
         self.metadata = {}
+        self.properties = dict(properties or {})
 
     def to_numpy(self):
         return self.array
@@ -33,6 +34,17 @@ class FakeImage:
 
     def set_metadata(self, key, value):
         self.metadata[str(key)] = str(value)
+
+
+class PreservingFakeImage(FakeImage):
+    """A FakeImage that keeps its samples' own type, as a host image of integer samples does."""
+
+    def __init__(self, array, properties=None):
+        super().__init__(array, properties)
+        self.array = np.asarray(array)
+
+    def from_numpy(self, array):
+        self.array = np.asarray(array)
 
 
 class FakeProgress:
@@ -370,6 +382,121 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
         self.assertTrue(np.allclose(preview.array, model))
         self.assertEqual(progress.value, 100.0)
 
+    def test_preview_cache_is_dropped_when_the_image_changes_in_place_at_the_same_size(self):
+        src = FakeImage(synthetic_gradient_field(size=24))
+        preview = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+        calls = []
+
+        corrected = np.full_like(src.array, 0.25, dtype=np.float32)
+        model = np.full_like(src.array, 0.75, dtype=np.float32)
+
+        def fake_process(src_image, params, progress, masks=None):
+            del src_image, progress, masks
+            calls.append(dict(params))
+            return corrected, model, None, 4.0
+
+        extension._process = fake_process
+        params = {
+            "preview_mode": nox_ui.PREVIEW_CORRECTED,
+            "auto_mask": False,
+            "stiffness": 2.0,
+            "rejection_power": 50.0,
+        }
+
+        params.update(extension.handle_param_action("refresh_preview", None, src, params))
+        extension.execute_preview(None, src, preview, params, progress)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(np.allclose(preview.array, corrected))
+
+        src.array = src.array.copy()
+        extension.execute_preview(None, src, preview, params, progress)
+        self.assertTrue(np.allclose(preview.array, corrected))
+
+        # Another process, an undo, or Nox's own Apply leaves an image of the same size with other content.
+        changed = np.clip(src.array * 0.5 + 0.1, 0.0, 1.0).astype(np.float32)
+        src.array = changed
+        extension.execute_preview(None, src, preview, params, progress)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(np.allclose(preview.array, changed))
+
+        params["preview_mode"] = nox_ui.PREVIEW_BACKGROUND
+        extension.execute_preview(None, src, preview, params, progress)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(np.allclose(preview.array, 0.0))
+
+        params.update(extension.handle_param_action("refresh_preview", None, src, params))
+        extension.execute_preview(None, src, preview, params, progress)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(np.allclose(preview.array, model))
+
+    def test_preview_before_any_update_shows_an_integer_image_as_it_is(self):
+        source_array = np.round(np.clip(synthetic_gradient_field(size=24), 0.0, 1.0) * 65535.0).astype(np.uint16)
+        src = PreservingFakeImage(source_array)
+        preview = PreservingFakeImage(np.zeros_like(source_array))
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+
+        def fake_process(src_image, params, progress, masks=None):
+            raise AssertionError("no preview update was asked for")
+
+        extension._process = fake_process
+        params = {
+            "preview_mode": nox_ui.PREVIEW_CORRECTED,
+            "auto_mask": False,
+            "stiffness": 2.0,
+            "rejection_power": 50.0,
+        }
+
+        extension.execute_preview(None, src, preview, params, progress)
+
+        self.assertEqual(preview.array.dtype, np.uint16)
+        difference = np.abs(preview.array.astype(np.int64) - source_array.astype(np.int64))
+        self.assertLessEqual(int(difference.max()), 1)
+
+    def test_whole_image_manual_mask_is_cut_to_a_partial_frame(self):
+        whole_mask = np.zeros((20, 24), dtype=np.float32)
+        whole_mask[9:11, 10:12] = 1.0
+        frame_array = synthetic_gradient_field(size=24)[:5, :6]
+        src = FakeImage(
+            frame_array,
+            properties={"offset_x": 8, "offset_y": 7, "source_width": 24, "source_height": 20},
+        )
+        preview = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxNoxExtension(None)
+        params = {
+            "preview_mode": nox_ui.PREVIEW_PROTECTION_MASK,
+            "auto_mask": False,
+            "stiffness": 2.0,
+            "rejection_power": 50.0,
+            "use_manual_mask": True,
+        }
+
+        extension.execute_preview(None, src, preview, params, progress, masks=[FakeImage(whole_mask)])
+
+        painted = np.zeros((5, 6), dtype=bool)
+        painted[2:4, 2:4] = True
+        tinted = np.any(np.abs(preview.array - src.array) > 1e-6, axis=-1)
+        self.assertTrue(np.array_equal(tinted, painted))
+
+        observed = []
+
+        def fake_gradient_reduction(source, **kwargs):
+            observed.append(np.asarray(kwargs["user_mask"]).copy())
+            return np.asarray(source, dtype=np.float32), np.zeros_like(source, dtype=np.float32)
+
+        original_gradient_reduction = nox_adapter.core.process_gradient_reduction
+        try:
+            nox_adapter.core.process_gradient_reduction = fake_gradient_reduction
+            extension._process(src, params, progress, masks=[FakeImage(whole_mask)])
+        finally:
+            nox_adapter.core.process_gradient_reduction = original_gradient_reduction
+
+        self.assertEqual(len(observed), 1)
+        self.assertTrue(np.array_equal(observed[0], whole_mask[7:12, 8:14]))
+
     def test_manual_mask_is_ignored_until_enabled(self):
         src = FakeImage(synthetic_gradient_field(size=18))
         preview = FakeImage(np.zeros_like(src.array))
@@ -531,6 +658,7 @@ class VeraLuxNoxAdapterTests(unittest.TestCase):
                 "preview": True,
                 "keep_open": True,
                 "masks": {"input": True},
+                "preview_scaling": "full_only",
             },
         )
 

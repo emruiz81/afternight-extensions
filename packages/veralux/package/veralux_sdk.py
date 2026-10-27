@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import math
+import zlib
 
 import numpy as np
 
@@ -63,6 +64,83 @@ def first_mask_array(masks):
     if hasattr(first_mask, "to_numpy"):
         return np.asarray(first_mask.to_numpy(), dtype=np.float32)
     return np.asarray(first_mask, dtype=np.float32)
+
+
+def _plane_axes(data):
+    if data.ndim == 3 and data.shape[0] in (1, 3) and data.shape[-1] not in (1, 3, 4):
+        return 1, 2
+    return 0, 1
+
+
+def plane_hw(array):
+    """Return the height and width of an HW, HWC, or CHW array."""
+
+    data = np.asarray(array)
+    if data.ndim < 2:
+        return 0, 0
+    height_axis, width_axis = _plane_axes(data)
+    return int(data.shape[height_axis]), int(data.shape[width_axis])
+
+
+def content_key(array):
+    """Return a key that changes when an image's content changes, for keying preview caches.
+
+    The key holds the shape, the dtype, and a CRC-32 of every byte of the samples. A change within any 32 consecutive
+    bits, such as one Float32 or sixteen-bit sample - a hot pixel fixed, a pixel cloned - always changes it; any other
+    change leaves it as it was only by a one-in-2**32 chance. zlib reads the samples in place, so the key of a
+    contiguous image costs less than a copy of it.
+    """
+
+    data = np.asarray(array)
+    return tuple(data.shape), data.dtype.str, zlib.crc32(np.ascontiguousarray(data))
+
+
+def frame_placement(image_handle):
+    """Return ``(offset_x, offset_y, source_width, source_height)`` of a frame, or None when the handle states none."""
+
+    try:
+        properties = dict(getattr(image_handle, "properties", {}) or {})
+    except Exception:
+        return None
+    keys = ("offset_x", "offset_y", "source_width", "source_height")
+    if not all(key in properties for key in keys):
+        return None
+    try:
+        return tuple(int(properties[key]) for key in keys)
+    except TypeError, ValueError:
+        return None
+
+
+def cut_to_frame(array, image_handle, frame_hw):
+    """Cut a whole-image array to the part of the image that ``image_handle``'s frame covers.
+
+    An array already at the frame's size, or one that is not the size of the whole image the frame was cut from, is
+    returned unchanged.
+    """
+
+    data = np.asarray(array)
+    frame_h, frame_w = (int(value) for value in frame_hw)
+    if data.ndim < 2 or frame_h <= 0 or frame_w <= 0 or plane_hw(data) == (frame_h, frame_w):
+        return data
+
+    placement = frame_placement(image_handle)
+    if placement is None:
+        return data
+    offset_x, offset_y, source_w, source_h = placement
+    if (
+        plane_hw(data) != (source_h, source_w)
+        or offset_x < 0
+        or offset_y < 0
+        or offset_x + frame_w > source_w
+        or offset_y + frame_h > source_h
+    ):
+        return data
+
+    height_axis, width_axis = _plane_axes(data)
+    index = [slice(None)] * data.ndim
+    index[height_axis] = slice(offset_y, offset_y + frame_h)
+    index[width_axis] = slice(offset_x, offset_x + frame_w)
+    return data[tuple(index)]
 
 
 def stamp_result(

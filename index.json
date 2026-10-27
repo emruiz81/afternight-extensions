@@ -162,7 +162,7 @@
       "author": "Riccardo Paterniti (original) / Ezequiel Ruiz (port)",
       "license": "GPL-3.0-or-later",
       "publisher_id": "afternight",
-      "latest_version": "0.1.0",
+      "latest_version": "0.1.1",
       "tags": [
         "VeraLux",
         "narrowband",
@@ -185,7 +185,7 @@
       ],
       "releases": [
         {
-          "version": "0.1.0",
+          "version": "0.1.1",
           "min_app_version": "0.5.2",
           "package_format_version": 1,
           "protocol_version": 1,
@@ -198,9 +198,9 @@
           ],
           "assets": [
             {
-              "name": "veralux-0.1.0-all.tar.zst",
-              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/veralux-v0.1.0/veralux-0.1.0-all.tar.zst",
-              "package_hash": "sha256:a6ed52664665a03e18a66a153b72dc36ee71b33099feaeb8cb6c2f68bcd5cc5b",
+              "name": "veralux-0.1.1-all.tar.zst",
+              "download_url": "https://github.com/emruiz81/afternight-extensions/releases/download/veralux-v0.1.1/veralux-0.1.1-all.tar.zst",
+              "package_hash": "sha256:925bfc6abd016380740354bec8e06fd260fb9bb7e682be9a3d7569d62a364a71",
               "signature_state": "unsigned",
               "runtime_targets": [
                 "linux-clang-x86_64",
@@ -209,8 +209,8 @@
               "signature_detail": "Unsigned official package; SHA-256 verified from index"
             }
           ],
-          "changelog": "Initial official VeraLux suite release with Revela, Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, StarComposer, the Starting Point workflow guide, and packaged upstream quality-validation notes.",
-          "published_at": "2026-05-07T02:30:30Z"
+          "changelog": "Each VeraLux process now states what a drag's preview frame may run over, and all eight preview the whole image: Alchemy, HyperMetric Stretch, Nox, Silentium, Revela, Vectra and StarComposer measure the whole image in every preview, and Curves scales a floating-point image by its brightest sample. VeraLux Nox no longer shows the correction of an earlier image after the image changes in place at the same size, and cuts a manual protection mask that covers the whole image to the previewed part instead of resizing it; VeraLux StarComposer's preview composes the stars image as it is now, as Apply does, after the stars view changes in place. Nox's preview before its first update shows an image of integer samples as it is, no longer white.",
+          "published_at": "2026-10-26T00:00:00Z"
         }
       ],
       "attribution": "AfterNight port of the VeraLux suite, originally authored by Riccardo Paterniti. AfterNight port by Ezequiel Ruiz.",

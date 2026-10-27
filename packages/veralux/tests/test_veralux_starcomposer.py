@@ -12,6 +12,7 @@ sys.path.insert(0, str(PACKAGE_ROOT))
 sys.path.insert(0, str(APP_REPO / "python" / "modules"))
 
 from afternight import ui  # noqa: E402
+import veralux_starcomposer_adapter as starcomposer_adapter  # noqa: E402
 import veralux_starcomposer_core as core  # noqa: E402
 import veralux_starcomposer_ui as starcomposer_ui  # noqa: E402
 from veralux_extension import VeraLuxStarComposerExtension as SuiteStarComposerExtension  # noqa: E402
@@ -65,6 +66,37 @@ def synthetic_starless_base(size=64):
     y, x = np.mgrid[0:size, 0:size].astype(np.float32)
     background = 0.12 + 0.08 * (x / max(size - 1, 1)) + 0.04 * (y / max(size - 1, 1))
     return np.repeat(background[..., None], 3, axis=2).astype(np.float32)
+
+
+def shaping_params(**overrides):
+    params = {
+        "log_d": 1.0,
+        "profile_hardness": 50.0,
+        "color_grip": 0.5,
+        "shadow_convergence": 0.0,
+        "large_structure_rejection": 0.0,
+        "star_reduction": 0.0,
+        "optical_healing": 0.0,
+        "use_adaptive_anchor": False,
+        "blend_mode": "screen",
+    }
+    params.update(overrides)
+    return params
+
+
+class StarsViewSnapshot:
+    """Stand in for ``afternight.snapshot_view`` serving one stars view whose image the test can change in place."""
+
+    def __init__(self, view_name, image):
+        self.view_name = view_name
+        self.image = image
+        self.reads = 0
+
+    def __call__(self, view_name=None):
+        if view_name != self.view_name:
+            raise AssertionError(f"unexpected view {view_name!r}")
+        self.reads += 1
+        return type("ViewRef", (), {"source_image": self.image})()
 
 
 class VeraLuxStarComposerCoreTests(unittest.TestCase):
@@ -216,7 +248,7 @@ class VeraLuxStarComposerAdapterTests(unittest.TestCase):
 
         self.assertEqual(
             processes["starcomposer"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True},
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "full_only"},
         )
 
     def test_execute_writes_composited_starless_and_provenance_metadata(self):
@@ -406,6 +438,104 @@ class VeraLuxStarComposerAdapterTests(unittest.TestCase):
         self.assertEqual(preview.array.shape, starless_crop.shape)
         self.assertGreater(float(preview.array[2, 3, 0]), 0.12)
         self.assertGreater(float(np.max(preview.array)), 0.12)
+
+    def _run_with_stars_view(self, snapshot, callback):
+        original_snapshot_view = starcomposer_adapter.afternight.snapshot_view
+        original_process_star_mask = core.process_star_mask
+        shaped = []
+
+        def spy_process_star_mask(starmask, *args, **kwargs):
+            shaped.append(np.asarray(starmask).copy())
+            return original_process_star_mask(starmask, *args, **kwargs)
+
+        starcomposer_adapter.afternight.snapshot_view = snapshot
+        core.process_star_mask = spy_process_star_mask
+        try:
+            callback()
+        finally:
+            starcomposer_adapter.afternight.snapshot_view = original_snapshot_view
+            core.process_star_mask = original_process_star_mask
+        return shaped
+
+    def test_preview_composes_stars_changed_in_place_in_the_stars_view(self):
+        src = FakeImage(synthetic_starless_base(32))
+        stars = FakeImage(synthetic_star_mask(32))
+        snapshot = StarsViewSnapshot("Stars", stars)
+        preview = FakeImage(np.zeros_like(src.array))
+        applied = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxStarComposerExtension(None)
+        params = shaping_params(stars_view="Stars")
+        previews = []
+
+        def run():
+            extension.execute_preview(None, src, preview, params, progress)
+            previews.append(preview.array.copy())
+            stars.array = np.clip(stars.array * 0.35, 0.0, 1.0).astype(np.float32)
+            params["log_d"] = 1.2
+            extension.execute_preview(None, src, preview, params, progress)
+            previews.append(preview.array.copy())
+            extension.execute(None, src, applied, params, progress)
+
+        shaped = self._run_with_stars_view(snapshot, run)
+
+        self.assertEqual(snapshot.reads, 3)
+        self.assertEqual(len(shaped), 3)
+        self.assertTrue(np.allclose(shaped[1], stars.array))
+        self.assertFalse(np.allclose(previews[0], previews[1]))
+        self.assertTrue(np.allclose(previews[1], applied.array, atol=1e-6))
+
+    def test_preview_keeps_shaped_stars_while_the_stars_view_is_unchanged(self):
+        src = FakeImage(synthetic_starless_base(32))
+        stars = FakeImage(synthetic_star_mask(32))
+        snapshot = StarsViewSnapshot("Stars", stars)
+        preview = FakeImage(np.zeros_like(src.array))
+        progress = FakeProgress()
+        extension = VeraLuxStarComposerExtension(None)
+        params = shaping_params(stars_view="Stars")
+
+        def run():
+            extension.execute_preview(None, src, preview, params, progress)
+            stars.array = stars.array.copy()
+            params["blend_mode"] = "linear_add"
+            extension.execute_preview(None, src, preview, params, progress)
+
+        shaped = self._run_with_stars_view(snapshot, run)
+
+        self.assertEqual(snapshot.reads, 2)
+        self.assertEqual(len(shaped), 1)
+
+    def test_preview_keeps_same_size_frames_of_other_places_apart(self):
+        full_stars = np.zeros((20, 24, 3), dtype=np.float32)
+        full_stars[9, 11] = [1.0, 0.8, 0.6]
+        stars = FakeImage(full_stars)
+        snapshot = StarsViewSnapshot("Stars", stars)
+        progress = FakeProgress()
+        extension = VeraLuxStarComposerExtension(None)
+        params = shaping_params(stars_view="Stars")
+
+        def frame(offset_x, offset_y):
+            return FakeImage(
+                np.full((5, 6, 3), 0.12, dtype=np.float32),
+                properties={
+                    "offset_x": offset_x,
+                    "offset_y": offset_y,
+                    "source_width": 24,
+                    "source_height": 20,
+                },
+            )
+
+        with_star = FakeImage(np.zeros((5, 6, 3), dtype=np.float32))
+        without_star = FakeImage(np.zeros((5, 6, 3), dtype=np.float32))
+
+        def run():
+            extension.execute_preview(None, frame(8, 7), with_star, params, progress)
+            extension.execute_preview(None, frame(0, 0), without_star, params, progress)
+
+        self._run_with_stars_view(snapshot, run)
+
+        self.assertGreater(float(with_star.array[2, 3, 0]), 0.12)
+        self.assertTrue(np.allclose(without_star.array, 0.12, atol=1e-6))
 
     def test_execute_requires_second_stars_image(self):
         src = FakeImage(synthetic_starless_base())

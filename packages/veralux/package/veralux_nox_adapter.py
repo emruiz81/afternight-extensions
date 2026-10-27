@@ -25,7 +25,7 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         super().__init__(context)
         self._preview_refresh_requested = False
         self._preview_cache = {}
-        self._preview_cache_source_shape = None
+        self._preview_cache_source_key = None
 
     def get_params(self):
         return nox_ui.parameter_defs()
@@ -61,6 +61,17 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
             )
             return None, 4.0
 
+    @staticmethod
+    def _manual_mask(src_image, source, params, masks):
+        if not bool(params.get("use_manual_mask", False)):
+            return None
+        user_mask = sdk.first_mask_array(masks)
+        if user_mask is None:
+            return None
+        # A mask that covers the whole image is cut to the frame, never squeezed onto it; the core resizes only a
+        # mask that covers the same image at another resolution.
+        return sdk.cut_to_frame(user_mask, src_image, sdk.plane_hw(source))
+
     def _process(self, src_image, params, progress, masks=None):
         if progress.is_cancelled():
             raise RuntimeError("VeraLux Nox processing was cancelled.")
@@ -72,7 +83,7 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         )
 
         source = sdk.read_image(src_image)
-        user_mask = sdk.first_mask_array(masks) if bool(params.get("use_manual_mask", False)) else None
+        user_mask = self._manual_mask(src_image, source, params, masks)
         star_mask, fwhm_val = self._star_physics(src_image, params)
         sdk.log_info(
             "VeraLux Nox: Running Zenith membrane engine "
@@ -119,8 +130,8 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
 
         return {}
 
-    def _reset_preview_cache(self, source_shape):
-        self._preview_cache_source_shape = source_shape
+    def _reset_preview_cache(self, source_key):
+        self._preview_cache_source_key = source_key
         self._preview_cache = {}
 
     def _cached_preview_for_mode(self, source, user_mask, preview_mode):
@@ -133,10 +144,12 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
         if preview_mode == nox_ui.PREVIEW_PROTECTION_MASK:
             return core.source_with_protection_overlay(source, user_mask)
 
-        return self._preview_cache.get(
-            nox_ui.PREVIEW_CORRECTED,
-            np.asarray(source, dtype=np.float32),
-        )
+        corrected = self._preview_cache.get(nox_ui.PREVIEW_CORRECTED)
+        if corrected is not None:
+            return corrected
+        # Until a preview is rendered the image is shown as it is, read in the range the correction is shown in: the
+        # samples of an integer image are not fractions.
+        return np.clip(core.normalize_input(source), 0.0, 1.0).astype(np.float32, copy=False)
 
     def execute_preview(
         self,
@@ -150,12 +163,14 @@ class VeraLuxNoxExtension(ui.RTPreviewProcess):
     ):
         del target, weights
         source = sdk.read_image(src_image)
-        source_shape = tuple(np.asarray(source).shape)
-        if source_shape != self._preview_cache_source_shape:
-            self._reset_preview_cache(source_shape)
+        # The image can change in place at the same size (another process, an undo, Nox's own Apply). The cache is
+        # keyed on what the image holds, so a correction of an earlier image is never shown over the current one.
+        source_key = sdk.content_key(source)
+        if source_key != self._preview_cache_source_key:
+            self._reset_preview_cache(source_key)
 
         preview_mode = str(params.get("preview_mode", nox_ui.PREVIEW_CORRECTED))
-        user_mask = sdk.first_mask_array(masks) if bool(params.get("use_manual_mask", False)) else None
+        user_mask = self._manual_mask(src_image, source, params, masks)
         if not self._preview_refresh_requested:
             output = self._cached_preview_for_mode(source, user_mask, preview_mode)
             sdk.write_image(preview_image, output)

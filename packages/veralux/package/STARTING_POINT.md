@@ -21,7 +21,10 @@ the eight native VeraLux process entries in this suite package.
    membrane-stiffness, automatic calculation, and optional manual protection
    mask workflow. Press Update Preview to render the selected Nox display:
    input with protection overlay, corrected image, or extracted gradient
-   model. When Save Gradient Model is enabled, the model opens as a separate
+   model. If the image changes while Nox is open, for example after another
+   process, an undo, or Nox's own Apply, the preview drops the earlier
+   correction and shows the current image until Update Preview is pressed
+   again. When Save Gradient Model is enabled, the model opens as a separate
    image while the active image receives the gradient-removed result.
 
 2. VeraLux Silentium

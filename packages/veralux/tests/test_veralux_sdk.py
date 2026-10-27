@@ -1,4 +1,5 @@
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -118,6 +119,76 @@ class VeraLuxSdkTests(unittest.TestCase):
         self.assertGreaterEqual(float(stretched.min()), 0.0)
         self.assertLessEqual(float(stretched.max()), 1.0)
         self.assertGreater(float(stretched[-1, -1]), float(stretched[0, 0]))
+
+    def test_content_key_follows_content_not_the_buffer(self):
+        rng = np.random.default_rng(3)
+        image = rng.random((24, 32, 3), dtype=np.float32)
+        key = sdk.content_key(image)
+
+        self.assertEqual(sdk.content_key(image.copy()), key)
+
+        one_pixel = image.copy()
+        one_pixel[17, 29, 1] += 0.001
+        self.assertNotEqual(sdk.content_key(one_pixel), key)
+        self.assertNotEqual(sdk.content_key(image.astype(np.float64)), key)
+        self.assertNotEqual(sdk.content_key(image[:, :-1]), key)
+        self.assertNotEqual(sdk.content_key(np.moveaxis(image, -1, 0)), key)
+
+    def test_content_key_reads_every_sample_of_a_large_image(self):
+        # A grid sample of a 2048 x 2048 image would read every second pixel each way and miss an edit at (1, 1), as a
+        # hot pixel fixed or a pixel cloned between grid points is.
+        image = np.zeros((2048, 2048), dtype=np.float32)
+        key = sdk.content_key(image)
+
+        for y, x in ((1, 1), (0, 0), (1023, 1), (2047, 2047)):
+            edited = image.copy()
+            edited[y, x] = 1.0e-6
+            self.assertNotEqual(sdk.content_key(edited), key, (y, x))
+        sixteen_bit = np.zeros((64, 64), dtype=np.uint16)
+        one_code = sixteen_bit.copy()
+        one_code[1, 1] = 1
+        self.assertNotEqual(sdk.content_key(one_code), sdk.content_key(sixteen_bit))
+
+    def test_content_key_follows_where_each_value_lies(self):
+        rng = np.random.default_rng(5)
+        image = rng.random((40, 64, 3), dtype=np.float32)
+        key = sdk.content_key(image)
+
+        self.assertNotEqual(sdk.content_key(np.ascontiguousarray(image[:, ::-1])), key)
+        strided = image[::2, ::3]
+        self.assertEqual(sdk.content_key(strided), sdk.content_key(strided.copy()))
+
+    def test_frame_placement_reads_the_frame_properties(self):
+        frame = types.SimpleNamespace(
+            properties={"offset_x": 8, "offset_y": 7, "source_width": 24, "source_height": 20, "width": 6}
+        )
+
+        self.assertEqual(sdk.frame_placement(frame), (8, 7, 24, 20))
+        self.assertIsNone(sdk.frame_placement(types.SimpleNamespace(properties={"offset_x": 8, "offset_y": 7})))
+        self.assertIsNone(sdk.frame_placement(FakeImage(np.zeros((2, 2), dtype=np.float32))))
+
+    def test_cut_to_frame_cuts_whole_image_arrays_in_every_layout(self):
+        frame = types.SimpleNamespace(
+            properties={"offset_x": 8, "offset_y": 7, "source_width": 24, "source_height": 20}
+        )
+        whole = np.arange(20 * 24, dtype=np.float32).reshape(20, 24)
+        expected = whole[7:12, 8:14]
+
+        self.assertTrue(np.array_equal(sdk.cut_to_frame(whole, frame, (5, 6)), expected))
+        hwc = np.repeat(whole[..., np.newaxis], 3, axis=-1)
+        self.assertTrue(np.array_equal(sdk.cut_to_frame(hwc, frame, (5, 6)), hwc[7:12, 8:14, :]))
+        chw = np.moveaxis(hwc, -1, 0)
+        self.assertTrue(np.array_equal(sdk.cut_to_frame(chw, frame, (5, 6)), chw[:, 7:12, 8:14]))
+
+        frame_sized = np.ones((5, 6), dtype=np.float32)
+        self.assertIs(sdk.cut_to_frame(frame_sized, frame, (5, 6)), frame_sized)
+        other_resolution = np.ones((10, 12), dtype=np.float32)
+        self.assertIs(sdk.cut_to_frame(other_resolution, frame, (5, 6)), other_resolution)
+        self.assertIs(sdk.cut_to_frame(whole, types.SimpleNamespace(properties={}), (5, 6)), whole)
+        outside = types.SimpleNamespace(
+            properties={"offset_x": 20, "offset_y": 7, "source_width": 24, "source_height": 20}
+        )
+        self.assertIs(sdk.cut_to_frame(whole, outside, (5, 6)), whole)
 
     def test_star_mask_from_find_stars_uses_engine_star_positions(self):
         image = FakeImage(np.zeros((40, 48, 3), dtype=np.float32))
