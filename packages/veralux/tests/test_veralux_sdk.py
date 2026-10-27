@@ -134,20 +134,29 @@ class VeraLuxSdkTests(unittest.TestCase):
         self.assertNotEqual(sdk.content_key(image[:, :-1]), key)
         self.assertNotEqual(sdk.content_key(np.moveaxis(image, -1, 0)), key)
 
-    def test_content_key_samples_a_large_image_on_a_fixed_grid(self):
-        image = np.zeros((40, 64), dtype=np.float32)
-        key = sdk.content_key(image, sample_pixels=160)
-        stride = key[2]
+    def test_content_key_reads_every_sample_of_a_large_image(self):
+        # A grid sample of a 2048 x 2048 image would read every second pixel each way and miss an edit at (1, 1), as a
+        # hot pixel fixed or a pixel cloned between grid points is.
+        image = np.zeros((2048, 2048), dtype=np.float32)
+        key = sdk.content_key(image)
 
-        self.assertEqual(stride, 4)
-        sampled = image.copy()
-        sampled[stride * 3, stride * 5] = 1.0
-        self.assertNotEqual(sdk.content_key(sampled, sample_pixels=160), key)
-        between = image.copy()
-        between[1, 1] = 1.0
-        self.assertEqual(sdk.content_key(between, sample_pixels=160), key)
-        mono_chw = np.zeros((1, 40, 64), dtype=np.float32)
-        self.assertEqual(sdk.content_key(mono_chw, sample_pixels=160)[2], 4)
+        for y, x in ((1, 1), (0, 0), (1023, 1), (2047, 2047)):
+            edited = image.copy()
+            edited[y, x] = 1.0e-6
+            self.assertNotEqual(sdk.content_key(edited), key, (y, x))
+        sixteen_bit = np.zeros((64, 64), dtype=np.uint16)
+        one_code = sixteen_bit.copy()
+        one_code[1, 1] = 1
+        self.assertNotEqual(sdk.content_key(one_code), sdk.content_key(sixteen_bit))
+
+    def test_content_key_follows_where_each_value_lies(self):
+        rng = np.random.default_rng(5)
+        image = rng.random((40, 64, 3), dtype=np.float32)
+        key = sdk.content_key(image)
+
+        self.assertNotEqual(sdk.content_key(np.ascontiguousarray(image[:, ::-1])), key)
+        strided = image[::2, ::3]
+        self.assertEqual(sdk.content_key(strided), sdk.content_key(strided.copy()))
 
     def test_frame_placement_reads_the_frame_properties(self):
         frame = types.SimpleNamespace(

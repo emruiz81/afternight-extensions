@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import math
+import zlib
 
 import numpy as np
 
@@ -66,9 +66,6 @@ def first_mask_array(masks):
     return np.asarray(first_mask, dtype=np.float32)
 
 
-CONTENT_KEY_SAMPLE_PIXELS = 1 << 20
-
-
 def _plane_axes(data):
     if data.ndim == 3 and data.shape[0] in (1, 3) and data.shape[-1] not in (1, 3, 4):
         return 1, 2
@@ -85,30 +82,17 @@ def plane_hw(array):
     return int(data.shape[height_axis]), int(data.shape[width_axis])
 
 
-def content_key(array, *, sample_pixels=CONTENT_KEY_SAMPLE_PIXELS):
+def content_key(array):
     """Return a key that changes when an image's content changes, for keying preview caches.
 
-    The key holds the shape, the dtype, and a digest of a fixed strided sample of about ``sample_pixels`` pixels, every
-    pixel of a smaller image. A change is seen whenever it reaches a sampled pixel, which every whole-image process and
-    every undo of one does.
+    The key holds the shape, the dtype, and a CRC-32 of every byte of the samples. A change within any 32 consecutive
+    bits, such as one Float32 or sixteen-bit sample - a hot pixel fixed, a pixel cloned - always changes it; any other
+    change leaves it as it was only by a one-in-2**32 chance. zlib reads the samples in place, so the key of a
+    contiguous image costs less than a copy of it.
     """
 
     data = np.asarray(array)
-    stride = 1
-    if data.ndim >= 2:
-        height, width = plane_hw(data)
-        pixels = height * width
-        if pixels > sample_pixels:
-            stride = int(math.ceil(math.sqrt(pixels / float(max(1, sample_pixels)))))
-        height_axis, width_axis = _plane_axes(data)
-        index = [slice(None)] * data.ndim
-        index[height_axis] = slice(None, None, stride)
-        index[width_axis] = slice(None, None, stride)
-        data_sample = data[tuple(index)]
-    else:
-        data_sample = data
-    digest = hashlib.blake2b(np.ascontiguousarray(data_sample).tobytes(), digest_size=16).hexdigest()
-    return tuple(data.shape), data.dtype.str, stride, digest
+    return tuple(data.shape), data.dtype.str, zlib.crc32(np.ascontiguousarray(data))
 
 
 def frame_placement(image_handle):
