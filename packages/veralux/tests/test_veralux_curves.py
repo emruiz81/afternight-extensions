@@ -195,7 +195,7 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
 
         self.assertEqual(
             processes["curves"]["capabilities"],
-            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "decimated"},
+            {"execute": True, "preview": True, "keep_open": True, "preview_scaling": "full_only"},
         )
 
     def test_execute_writes_processed_image_and_provenance_metadata(self):
@@ -255,11 +255,13 @@ class VeraLuxCurvesAdapterTests(unittest.TestCase):
 
 
 class VeraLuxCurvesPreviewScalingTests(unittest.TestCase):
-    """What the manifest's `decimated` declares of Curves: its preview at a pixel is a function of the pixel's value and
-    the parameters, of nothing about where the pixel lies or about the rest of the image, so a drag's frame over a crop,
-    a reduction or any rearrangement of the image previews each pixel as the whole image's frame does. A curve of block
-    means differs from the block means of a curve; that is the approximation every decimated preview accepts until
-    its settled frame, and not what these cases hold."""
+    """Why the manifest keeps Curves at `full_only`. Within [0, 1] its preview at a pixel is a function of the pixel's
+    value and the parameters alone, so a frame over a crop or any rearrangement of the image previews each pixel as the
+    whole image's frame does. A floating-point image whose brightest sample passes one is the exception: Curves takes
+    it as counts and divides the whole image down, while a reduced frame, each pixel the mean of a block, can average
+    that sample below one and skip the division, so a drag would preview an exposure that neither the settled frame
+    nor Apply gives. Floating-point samples above one are ordinary in AfterNight - a calibrated light, a Linear Match
+    result - so Curves previews the whole image in every frame."""
 
     CURVE = [[0.0, 0.0], [0.25, 0.35], [0.6, 0.72], [1.0, 1.0]]
     CROP = (slice(10, 40), slice(5, 50))
@@ -285,7 +287,7 @@ class VeraLuxCurvesPreviewScalingTests(unittest.TestCase):
     def test_a_pixels_preview_reads_nothing_but_the_pixel(self):
         floating = scattered_rgb()
         sources = {"uint16": (floating * 65535.0).astype(np.uint16), "float32": floating}
-        # Every third pixel each way, as a reduction picks its blocks, and the image turned end to end.
+        # Every third pixel each way and the image turned end to end.
         strided = (slice(None, None, 3), slice(None, None, 3))
         reversed_order = (slice(None, None, -1), slice(None, None, -1))
         for name, source in sources.items():
@@ -307,14 +309,25 @@ class VeraLuxCurvesPreviewScalingTests(unittest.TestCase):
 
     def test_a_floating_point_image_beyond_one_is_scaled_by_what_the_frame_holds(self):
         # The one value of the whole image Curves reads: a floating-point frame whose maximum passes one is taken as
-        # counts and divided down, so a crop that leaves the bright pixel out previews differently. The settled frame
-        # and the Apply run over the whole image; a drag's frame of such an image is the limit the declaration accepts.
+        # counts and divided down, so a crop that leaves the bright pixel out previews differently.
         source = scattered_rgb()
         source[0, 0, :] = 2.0
         params = {"domain": "RGB/K", "curve_points": self.CURVE, "range_enabled": False}
         whole = self.preview_of(source, params)
         part = self.preview_of(source[self.CROP], params)
         self.assertFalse(np.allclose(part, whole[self.CROP], rtol=0.0, atol=2e-5))
+
+    def test_a_reduced_frame_of_an_image_beyond_one_would_preview_another_exposure(self):
+        # Each 2 x 2 block holds one sample at 2.0 and three at 0.5. The whole image passes one and is divided down to
+        # near black, as Apply gives it; its block means, 0.875 everywhere, are read as they are and curved bright. A
+        # `decimated` frame would show the second over the first while a person drags.
+        source = np.full((48, 64, 3), 0.5, dtype=np.float32)
+        source[::2, ::2, :] = 2.0
+        reduced = source.reshape(24, 2, 32, 2, 3).mean(axis=(1, 3))
+        params = {"domain": "RGB/K", "curve_points": self.CURVE, "range_enabled": False}
+
+        self.assertLess(float(self.preview_of(source, params).max()), 0.01)
+        self.assertGreater(float(self.preview_of(reduced, params).min()), 0.5)
 
 
 if __name__ == "__main__":

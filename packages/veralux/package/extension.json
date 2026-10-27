@@ -87,7 +87,7 @@
         "execute": true,
         "preview": true,
         "keep_open": true,
-        "preview_scaling": "decimated"
+        "preview_scaling": "full_only"
       }
     },
     {

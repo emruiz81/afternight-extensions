@@ -32,12 +32,16 @@ signing is implemented.
 
 ## Version 0.1.1 Changes
 
-- Each process declares its `preview_scaling`: Curves previews a drag over the
-  view's reduction (`decimated`); every other process previews the whole image
-  (`full_only`).
+- Each process declares its `preview_scaling`, and every process previews the
+  whole image (`full_only`). Seven measure the whole image in every preview.
+  Curves stays whole too: it divides a floating-point image whose brightest
+  sample passes one down as counts, and a reduced frame can average that
+  sample below one, so a `decimated` drag would preview another exposure than
+  Apply gives.
 - Nox keys its on-demand preview cache on the image's content, not only its
   size, so an image changed in place shows the current image until Update
-  Preview is pressed, never the correction of an earlier image.
+  Preview is pressed, never the correction of an earlier image. The key is a
+  CRC-32 of every sample, so a change to one pixel is seen.
 - Nox cuts a manual protection mask that covers the whole image to the
   previewed part instead of resizing it onto the part.
 - Nox's preview before its first update reads an image of integer samples in
