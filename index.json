@@ -24,7 +24,7 @@
       "releases": [
         {
           "version": "1.0.1",
-          "min_app_version": "0.5.2",
+          "min_app_version": "1.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
@@ -74,7 +74,7 @@
       "releases": [
         {
           "version": "1.0.2",
-          "min_app_version": "0.5.2",
+          "min_app_version": "1.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
@@ -124,7 +124,7 @@
       "releases": [
         {
           "version": "1.0.1",
-          "min_app_version": "0.5.2",
+          "min_app_version": "1.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
@@ -186,7 +186,7 @@
       "releases": [
         {
           "version": "0.1.1",
-          "min_app_version": "0.5.2",
+          "min_app_version": "1.0.0",
           "package_format_version": 1,
           "protocol_version": 1,
           "sdk_version": 1,
