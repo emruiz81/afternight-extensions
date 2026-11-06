@@ -8,6 +8,7 @@ import os
 import pathlib
 import queue
 import re
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -48,7 +49,11 @@ _SCHEMA_TIMEOUT_SECONDS = 5.0
 _ACTION_TIMEOUT_SECONDS = 30.0
 _UPDATE_TIMEOUT_SECONDS = 300.0
 _RUN_TIMEOUT_SECONDS = 60.0 * 60.0
-_SUPPORTED_SCHEMA_MAJORS = {1, 2, 3, 4}
+# RC-Astro schema versions are additive: newer CLIs only add keys, so a newer
+# major is accepted with a warning instead of being rejected.
+_MIN_SCHEMA_MAJOR = 1
+_MAX_KNOWN_SCHEMA_MAJOR = 6
+_DEVICE_PROBE_TIMEOUT_SECONDS = 2.0
 _PRODUCTS = {
     "bxt": {
         "name": "BlurXTerminator",
@@ -74,15 +79,15 @@ _FIELD_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _TECHNICAL_OUTPUT_FIELDS = {"depth"}
 _MODEL_SELECTOR_FIELDS = {"ml_version", "mlVersion", "model_version", "modelVersion"}
 _BXT_CORRECT_ONLY_FIELD_IDS = {"correct_only", "correctOnlyMode"}
+_BXT_NONSTELLAR_SIZE_FIELD_IDS = {"nsr", "nonstellar_radius", "nsd", "nonstellar_diameter"}
+_BXT_AUTO_NONSTELLAR_FIELD_IDS = {"ansr", "auto_nonstellar_radius", "ansp", "auto_nonstellar_psf"}
 _BXT_CORRECT_ONLY_DISABLED_FIELD_IDS = {
     "ss",
     "sharpen_stars",
     "ash",
     "adjust_star_halos",
-    "nsr",
-    "nonstellar_radius",
-    "ansr",
-    "auto_nonstellar_radius",
+    *_BXT_NONSTELLAR_SIZE_FIELD_IDS,
+    *_BXT_AUTO_NONSTELLAR_FIELD_IDS,
     "sn",
     "sharpen_nonstellar",
 }
@@ -96,6 +101,8 @@ _BXT_CORRECT_ONLY_ALLOWED_FIELD_IDS = {
 _BXT_NONSTELLAR_RADIUS_ENABLED_WHEN = {
     "nsr": "correct_only != true && ansr != true",
     "nonstellar_radius": "correct_only != true && auto_nonstellar_radius != true",
+    "nsd": "correct_only != true && ansp != true",
+    "nonstellar_diameter": "correct_only != true && auto_nonstellar_psf != true",
 }
 _BXT_FIELD_GROUPS = {
     "ss": "Stellar Adjustments",
@@ -104,8 +111,12 @@ _BXT_FIELD_GROUPS = {
     "adjust_star_halos": "Stellar Adjustments",
     "nsr": "Non stellar adjustments",
     "nonstellar_radius": "Non stellar adjustments",
+    "nsd": "Non stellar adjustments",
+    "nonstellar_diameter": "Non stellar adjustments",
     "ansr": "Non stellar adjustments",
     "auto_nonstellar_radius": "Non stellar adjustments",
+    "ansp": "Non stellar adjustments",
+    "auto_nonstellar_psf": "Non stellar adjustments",
     "sn": "Non stellar adjustments",
     "sharpen_nonstellar": "Non stellar adjustments",
     "correct_only": "Options",
@@ -128,8 +139,12 @@ _BXT_FIELD_ORDER = {
     "adjust_star_halos": 1,
     "ansr": 0,
     "auto_nonstellar_radius": 0,
+    "ansp": 0,
+    "auto_nonstellar_psf": 0,
     "nsr": 1,
     "nonstellar_radius": 1,
+    "nsd": 1,
+    "nonstellar_diameter": 1,
     "sn": 2,
     "sharpen_nonstellar": 2,
     "correct_only": 0,
@@ -146,6 +161,8 @@ _BXT_FIELD_DEFAULTS = {
     "adjust_star_halos": 0.0,
     "ansr": True,
     "auto_nonstellar_radius": True,
+    "ansp": True,
+    "auto_nonstellar_psf": True,
     "sn": 0.5,
     "sharpen_nonstellar": 0.5,
     "correct_only": False,
@@ -162,10 +179,16 @@ _PARAM_VALUE_ALIASES = {
     "sharpen_stars": ("ss",),
     "ash": ("adjust_star_halos",),
     "adjust_star_halos": ("ash",),
-    "nsr": ("nonstellar_radius",),
-    "nonstellar_radius": ("nsr",),
-    "ansr": ("auto_nonstellar_radius",),
-    "auto_nonstellar_radius": ("ansr",),
+    # RC-Astro CLI 2.x renamed the nonstellar radius controls to PSF diameter
+    # (nsd) and automatic PSF (ansp); the native window keeps the stable ids.
+    "nsr": ("nonstellar_radius", "nsd", "nonstellar_diameter"),
+    "nonstellar_radius": ("nsr", "nsd", "nonstellar_diameter"),
+    "nsd": ("nonstellar_diameter", "nonstellar_radius", "nsr"),
+    "nonstellar_diameter": ("nsd", "nonstellar_radius", "nsr"),
+    "ansr": ("auto_nonstellar_radius", "ansp", "auto_nonstellar_psf"),
+    "auto_nonstellar_radius": ("ansr", "ansp", "auto_nonstellar_psf"),
+    "ansp": ("auto_nonstellar_psf", "auto_nonstellar_radius", "ansr"),
+    "auto_nonstellar_psf": ("ansp", "auto_nonstellar_radius", "ansr"),
     "sn": ("sharpen_nonstellar",),
     "sharpen_nonstellar": ("sn",),
     "correct_only": ("correctOnlyMode",),
@@ -183,9 +206,12 @@ _PARAM_VALUE_ALIASES = {
         "create_stars",
         "create_star_image",
         "create_stars_image",
+        "output_stars",
     ),
+    "output_stars": ("stars", "generate_stars_image"),
     "generate_stars_image": (
         "stars",
+        "output_stars",
         "generate_stars",
         "generate_star_image",
         "generateStars",
@@ -307,6 +333,7 @@ _NXT_FIELD_DEFAULTS = {
 }
 _SXT_GENERATE_STARS_TOKENS = {
     "stars",
+    "outputstars",
     "generatestars",
     "generatestarimage",
     "generatestarsimage",
@@ -324,6 +351,7 @@ _SXT_UNSCREEN_STARS_TOKENS = {
 }
 _SXT_FIELD_GROUPS = {
     "stars": "Options",
+    "output_stars": "Options",
     "generate_stars": "Options",
     "generate_star_image": "Options",
     "generate_stars_image": "Options",
@@ -353,6 +381,7 @@ _SXT_GROUP_ORDER = {
 }
 _SXT_FIELD_ORDER = {
     "stars": 0,
+    "output_stars": 0,
     "generate_stars": 0,
     "generate_star_image": 0,
     "generate_stars_image": 0,
@@ -399,7 +428,20 @@ _DEVICE_VALUE_LABELS = {
     "metal": "Metal GPU",
     "coreml": "Core ML",
     "rocm": "ROCm GPU",
+    "gpu": "GPU",
 }
+_GPU_ORDINAL_RE = re.compile(r"^gpu(\d+)$", re.IGNORECASE)
+# Documented RC-Astro --device designators (schema v4+). Saved catalogs are
+# filtered with this so stale text-scrape artifacts never reach the selector.
+_DEVICE_DESIGNATOR_RE = re.compile(r"^(?:default|auto|cpu|gpu\d*)$", re.IGNORECASE)
+# Used only when no RC-Astro CLI can be queried while the parameter schema is
+# built; the CLI rejects an unavailable designator with a clear error.
+_FALLBACK_DEVICE_OPTIONS = [
+    _DEFAULT_DEVICE_OPTION,
+    ["GPU 0", "gpu0"],
+    ["GPU 1", "gpu1"],
+    ["CPU", "cpu"],
+]
 _COMMON_DEVICE_FIELD = {
     "id": "device",
     "type": "choice",
@@ -416,17 +458,27 @@ _COMMON_ENGINE_FIELD = {
     "flag": "--engine",
     "options": ["auto", "dml", "cpu"],
 }
+# CLI11 help may suffix negated flags with their value, e.g. "--no-ansp{false}".
+_HELP_FLAG_PATTERN = r"--[A-Za-z0-9][A-Za-z0-9-]*(?:\{[^}]*\})?"
 _HELP_OPTION_RE = re.compile(
-    r"^\s*(?P<names>(?:-[A-Za-z0-9],\s*)?--[A-Za-z0-9][A-Za-z0-9-]*(?:,\s*--[A-Za-z0-9][A-Za-z0-9-]*)*)"
+    r"^\s*(?P<names>(?:-[A-Za-z0-9],\s*)?" + _HELP_FLAG_PATTERN + r"(?:,\s*" + _HELP_FLAG_PATTERN + r")*)"
     r"(?:\s*\((?P<meta>[^)]*)\))?"
 )
 _HELP_SKIP_FLAGS = {
     "--activate",
+    "--benchmark",
+    "--benchmark-all",
+    "--deactivate",
     "--debug",
+    "--device-default",
     "--help",
+    "--host",
+    "--json",
     "--license",
+    "--no-banner",
     "--output",
     "--overwrite",
+    "--xisf-compression",
 }
 
 
@@ -925,7 +977,10 @@ def _cli_version(executable):
 
 
 def _schema_inspection_commands(executable, product):
+    # The documented parameter-document query comes first; the rest cover
+    # older CLI builds.
     return [
+        [executable, product, "--json"],
         [executable, "schema", product, "--json"],
         [executable, product, "--schema", "--json"],
         [executable, product, "--schema"],
@@ -933,7 +988,6 @@ def _schema_inspection_commands(executable, product):
         [executable, "--schema", product, "--json"],
         [executable, product, "--dump-schema", "--json"],
         [executable, product, "--json-schema"],
-        [executable, product, "--json"],
     ]
 
 
@@ -972,6 +1026,9 @@ def _device_label_for_value(value):
     key = re.sub(r"[^a-z0-9]+", "", text.lower())
     if key in _DEVICE_VALUE_LABELS:
         return _DEVICE_VALUE_LABELS[key]
+    gpu_match = _GPU_ORDINAL_RE.match(text)
+    if gpu_match:
+        return f"GPU {gpu_match.group(1)}"
     if text.islower() or "_" in text or "-" in text:
         return text.replace("_", " ").replace("-", " ").title()
     return text
@@ -1033,6 +1090,9 @@ def _append_device_option(options, seen, value, label=""):
         return
     if value_text.isdigit() and label_text == value_text:
         return
+    if any(existing_label == label_text for existing_label, _existing_value in options):
+        # Identical GPU models must stay distinguishable in the selector.
+        label_text = f"{label_text} ({value_text})"
     seen.add(key)
     options.append([label_text, value_text])
 
@@ -1073,8 +1133,29 @@ def _append_device_options_from_payload(options, seen, payload):
             _append_device_option(options, seen, item)
 
 
+_DEVICE_LIST_HEADERS = {
+    "device",
+    "devices",
+    "available devices",
+    "available compute devices",
+    "available acceleration devices",
+    "acceleration devices",
+    "compute devices",
+}
+
+
+def _device_listing_lines(lines):
+    """Return the lines after a device-list header, skipping any CLI banner above it."""
+    lines = list(lines)
+    for index, raw_line in enumerate(lines):
+        line = _strip_ansi(raw_line).strip()
+        if line.endswith(":") and line.rstrip(":").strip().lower() in _DEVICE_LIST_HEADERS:
+            return lines[index + 1 :]
+    return lines
+
+
 def _append_device_options_from_text(options, seen, lines):
-    for raw_line in lines:
+    for raw_line in _device_listing_lines(lines):
         line = _strip_ansi(raw_line).strip()
         if not line:
             continue
@@ -1090,13 +1171,7 @@ def _append_device_options_from_text(options, seen, lines):
             break
         if not line or line.startswith("--") or lowered.startswith(("usage", "version")):
             continue
-        if lowered.rstrip(":") in {
-            "device",
-            "devices",
-            "available devices",
-            "available acceleration devices",
-            "acceleration devices",
-        }:
+        if lowered.rstrip(":") in _DEVICE_LIST_HEADERS:
             continue
         if ":" in line:
             left, right = line.split(":", 1)
@@ -1173,12 +1248,21 @@ def _device_options_from_json(value):
     return _normalised_device_options(payload)
 
 
+def _designator_device_options(options):
+    """Keep entries whose value is a documented RC-Astro --device designator."""
+    filtered = [
+        [label, value] for label, value in _normalised_device_options(options) if _DEVICE_DESIGNATOR_RE.match(value)
+    ]
+    # A catalog that only offers the automatic choice is not a usable catalog.
+    return filtered if len(filtered) > 1 else []
+
+
 def _device_options_from_settings(settings):
     try:
         raw_options = settings.get(_DEVICE_OPTIONS_SETTING_KEY, "")
     except Exception:
         raw_options = ""
-    options = _device_options_from_json(raw_options)
+    options = _designator_device_options(_device_options_from_json(raw_options))
     if options:
         return options
 
@@ -1198,7 +1282,7 @@ def _device_options_from_settings(settings):
     cache_keys.extend(key for key in _DEVICE_OPTIONS_CACHE if key[0] == resolved and key not in cache_keys)
     for key in cache_keys:
         cached = _DEVICE_OPTIONS_CACHE.get(key)
-        if cached:
+        if cached and len(cached) > 1:
             return _normalised_device_options(cached)
     return []
 
@@ -1210,7 +1294,18 @@ def _device_option_setting_updates(executable, version=""):
     return {_DEVICE_OPTIONS_SETTING_KEY: _device_options_json(options)}
 
 
-def _device_options_for_cli(executable, version=""):
+def _device_options_from_device_document(lines):
+    try:
+        payload = _json_payload_from_lines(lines)
+    except Exception:
+        return []
+    if not isinstance(payload, dict) or not isinstance(payload.get("devices"), list):
+        return []
+    options = _parse_device_options([json.dumps({"devices": payload["devices"]})])
+    return options if len(options) > 1 else []
+
+
+def _device_options_for_cli(executable, version="", timeout_seconds=3.0):
     try:
         resolved = str(pathlib.Path(executable).resolve())
     except Exception:
@@ -1218,15 +1313,84 @@ def _device_options_for_cli(executable, version=""):
     key = (resolved, str(version or ""))
     if key in _DEVICE_OPTIONS_CACHE:
         return [list(option) for option in _DEVICE_OPTIONS_CACHE[key]]
+    options = []
     try:
-        lines, console_output = _run_cli([executable, "--device"], timeout_seconds=3.0, capture_console=True)
+        # Schema v4+ CLIs document `rc-astro --device --json` as the
+        # machine-readable device listing; the text listing is for display.
+        options = _device_options_from_device_document(
+            _run_cli([executable, "--device", "--json"], timeout_seconds=timeout_seconds)
+        )
     except Exception:
         options = []
-    else:
-        output_lines = [entry["text"] for entry in console_output] if console_output else lines
-        options = _parse_device_options(output_lines)
+    if not options:
+        try:
+            lines, console_output = _run_cli(
+                [executable, "--device"], timeout_seconds=timeout_seconds, capture_console=True
+            )
+        except Exception:
+            options = []
+        else:
+            output_lines = [entry["text"] for entry in console_output] if console_output else lines
+            options = _parse_device_options(output_lines)
     _DEVICE_OPTIONS_CACHE[key] = [list(option) for option in options]
     return [list(option) for option in options]
+
+
+def _device_probe_executable(settings):
+    """Locate an RC-Astro CLI for a quick device query.
+
+    Settings paths and the default install folders are checked directly, and
+    PATH uses a plain executable lookup instead of the case-insensitive folder
+    scan used by Detect Installation, so parameter-schema inspection stays fast.
+    """
+    candidates = []
+    for key in (_RESOLVED_CLI_KEY, _CLI_SETTING_KEY, _LEGACY_CLI_SETTING_KEY, "configured_folder"):
+        try:
+            value = str(settings.get(key, "") or "").strip()
+        except Exception:
+            value = ""
+        if value:
+            candidates.append(value)
+    try:
+        candidates.extend(_default_cli_directories())
+    except Exception:
+        pass
+    for candidate in _dedupe_paths(candidates):
+        try:
+            executable = _find_cli_in_directory(candidate)
+        except Exception:
+            executable = None
+        if executable:
+            return executable
+    try:
+        search_path = os.pathsep.join(str(path) for path in _path_cli_directories())
+    except Exception:
+        search_path = ""
+    if search_path:
+        for name in _CLI_EXECUTABLE_BASENAMES:
+            found = shutil.which(name, path=search_path)
+            if found:
+                return pathlib.Path(found)
+    return None
+
+
+def _device_options_for_params(settings):
+    """Device selector options for get_params().
+
+    AfterNight caches the get_params() result when a runtime package is
+    installed, before the user has opened the extension settings, so saved
+    settings alone cannot populate the selector. Query the CLI directly when
+    no saved catalog exists, and fall back to the documented designators.
+    """
+    options = _device_options_from_settings(settings)
+    if options:
+        return options
+    executable = _device_probe_executable(settings)
+    if executable is not None:
+        options = _device_options_for_cli(executable, timeout_seconds=_DEVICE_PROBE_TIMEOUT_SECONDS)
+        if len(options) > 1:
+            return options
+    return [list(option) for option in _FALLBACK_DEVICE_OPTIONS]
 
 
 def _schema_runtime_device_options(schema):
@@ -1301,8 +1465,14 @@ def _validate_product_schema(schema, product):
     declared_product = str(schema.get("product", product)).strip().lower()
     if declared_product and declared_product != product:
         raise RcAstroError(f"RC-Astro schema product mismatch: expected {product}, received {declared_product}.")
-    if _schema_version_major(schema) not in _SUPPORTED_SCHEMA_MAJORS:
+    schema_major = _schema_version_major(schema)
+    if schema_major < _MIN_SCHEMA_MAJOR:
         raise RcAstroError("RC-Astro schema version is not supported by this adapter.")
+    if schema_major > _MAX_KNOWN_SCHEMA_MAJOR:
+        _log_warning(
+            f"RC-Astro schema version {schema_major} is newer than this adapter knows "
+            f"({_MAX_KNOWN_SCHEMA_MAJOR}); newer CLI capabilities may not be surfaced."
+        )
 
 
 def _field_id_from_flag(flag):
@@ -1340,8 +1510,10 @@ def _help_field_from_line(line, next_line=""):
     match = _HELP_OPTION_RE.match(line)
     if not match:
         return None
-    raw_names = [name.strip() for name in match.group("names").split(",")]
-    long_flags = [name for name in raw_names if name.startswith("--") and name not in _HELP_SKIP_FLAGS]
+    raw_names = [re.sub(r"\{[^}]*\}$", "", name.strip()) for name in match.group("names").split(",")]
+    if any(name in _HELP_SKIP_FLAGS for name in raw_names):
+        return None
+    long_flags = [name for name in raw_names if name.startswith("--")]
     positive_flags = [name for name in long_flags if not name.startswith("--no-")]
     if not positive_flags:
         return None
@@ -1356,6 +1528,9 @@ def _help_field_from_line(line, next_line=""):
         "label": _label_from_field_id(field_id),
         "flag": flag,
     }
+    aliases = [_field_id_from_flag(name) for name in positive_flags[:-1]]
+    if aliases:
+        field["aliases"] = aliases
     if false_flag:
         field["false_flag"] = false_flag
     if "float" in meta_lower:
@@ -2080,6 +2255,33 @@ def _update_info_from_lines(lines, current_version=""):
     }
 
 
+def _products_document(executable):
+    """Bare `rc-astro --json` products document, or None when the CLI does not provide one."""
+    try:
+        payload = _json_payload_from_lines(_run_cli([executable, "--json"], timeout_seconds=_SCHEMA_TIMEOUT_SECONDS))
+    except Exception:
+        return None
+    if isinstance(payload, dict) and isinstance(payload.get("products"), list):
+        return payload
+    return None
+
+
+def _apply_product_catalog(schema, executable, product):
+    """Add the license-covered model versions, which only the products document reports."""
+    if _covered_model_versions(schema):
+        return schema
+    document = _products_document(executable)
+    if not document:
+        return schema
+    for entry in document["products"]:
+        if not isinstance(entry, dict) or str(entry.get("key", "") or "").strip().lower() != product:
+            continue
+        if isinstance(entry.get("mlVersions"), list):
+            schema["mlVersions"] = list(entry["mlVersions"])
+        break
+    return schema
+
+
 def _load_product_schema(executable, product):
     version = _cli_version(executable)
     key = (str(executable.resolve()), version, product)
@@ -2103,6 +2305,7 @@ def _load_product_schema(executable, product):
         else:
             schema = _apply_product_schema_overrides(schema, product)
             schema = _apply_runtime_device_options(schema, executable, version)
+            schema = _apply_product_catalog(schema, executable, product)
             _SCHEMA_CACHE[key] = schema
             return schema
 
@@ -2115,6 +2318,7 @@ def _load_product_schema(executable, product):
     else:
         schema = _apply_product_schema_overrides(schema, product)
         schema = _apply_runtime_device_options(schema, executable, version)
+        schema = _apply_product_catalog(schema, executable, product)
         _SCHEMA_CACHE[key] = schema
         return schema
 
@@ -2637,12 +2841,42 @@ def _param_value(params, field_id, default=None):
     return default
 
 
+def _field_param_value(params, field, field_id, default=None):
+    """Read a field value by its id, its help-declared flag aliases, or their known aliases."""
+    names = [field_id]
+    for alias in field.get("aliases", ()) or ():
+        alias_id = _safe_field_id(alias)
+        if alias_id and alias_id not in names:
+            names.append(alias_id)
+    for name in names:
+        if name in params:
+            return params.get(name)
+    for name in names:
+        for alias in _PARAM_VALUE_ALIASES.get(name, ()):
+            if alias in params:
+                return params.get(alias)
+    return default
+
+
 def _bool_param(params, field_ids):
-    for field_id in field_ids:
+    for field_id in sorted(field_ids):
         value = _param_value(params, field_id, _MISSING)
         if value is not _MISSING:
             return bool(value)
     return False
+
+
+def _engaged_mode_pins(schema, state):
+    """Parameter names pinned by any engaged schema mode; the CLI applies pins itself."""
+    pinned = set()
+    for mode in _schema_modes(schema):
+        mode_field_id = _mode_field_id(mode)
+        if not mode_field_id or not _truthy_condition_value(_param_value(state, mode_field_id, False)):
+            continue
+        pins = mode.get("pins")
+        if isinstance(pins, dict):
+            pinned.update(str(name) for name in pins)
+    return pinned
 
 
 def _should_emit_field(product, field, field_id, params):
@@ -2651,13 +2885,87 @@ def _should_emit_field(product, field, field_id, params):
     visible_when = field.get("visibleIf", field.get("visible_when"))
     if visible_when and not _condition_matches(visible_when, params):
         return False
+    disabled_when = field.get("disabledIf", field.get("disabled_when"))
+    if disabled_when and _condition_text(disabled_when) and _condition_matches(disabled_when, params):
+        # The CLI applies disabledValue itself; an explicit value can conflict with it.
+        return False
     if product == "bxt" and _bool_param(params, _BXT_CORRECT_ONLY_FIELD_IDS):
         return field_id in _BXT_CORRECT_ONLY_ALLOWED_FIELD_IDS
-    if product == "bxt" and field_id in {"nsr", "nonstellar_radius"}:
-        return not _bool_param(params, {"ansr", "auto_nonstellar_radius"})
+    if product == "bxt" and field_id in _BXT_NONSTELLAR_SIZE_FIELD_IDS:
+        return not _bool_param(params, _BXT_AUTO_NONSTELLAR_FIELD_IDS)
     if product == "sxt" and _schema_field_matches_tokens(field, _SXT_UNSCREEN_STARS_TOKENS):
         return any(_identity_token(key) in _SXT_GENERATE_STARS_TOKENS and bool(value) for key, value in params.items())
     return True
+
+
+def _format_command_value(param_type, value):
+    if param_type == "int" and not isinstance(value, bool):
+        try:
+            return str(int(round(float(value))))
+        except TypeError, ValueError:
+            return str(value)
+    return str(value)
+
+
+def _covered_model_versions(schema):
+    """Model versions the CLI reports as covered (JSON numbers, possibly fractional such as 3.1)."""
+    for key in (
+        "mlVersions",
+        "ml_versions",
+        "modelVersions",
+        "model_versions",
+        "availableModelVersions",
+        "available_model_versions",
+    ):
+        raw_versions = schema.get(key)
+        if not isinstance(raw_versions, list):
+            continue
+        versions = []
+        for item in raw_versions:
+            if isinstance(item, dict):
+                item = item.get("version", item.get("value", item.get("id")))
+            if item is None or isinstance(item, bool):
+                continue
+            try:
+                number = float(item)
+            except TypeError, ValueError:
+                continue
+            if number > 0 and number not in versions:
+                versions.append(number)
+        if versions:
+            return versions
+    return []
+
+
+def _format_model_version(number):
+    return f"{number:g}"
+
+
+def _model_version_argument(schema, product, requested):
+    """Map a pinned model version onto one the CLI covers.
+
+    A whole version such as 3 selects its newest covered bugfix release (3.1)
+    when the CLI only covers fractional releases of it; RC-Astro rejects
+    "--ml-version 3" when only 3.1 is installed.
+    """
+    text = str(requested or "").strip()
+    try:
+        requested_number = float(text)
+    except ValueError:
+        return text
+    covered = _covered_model_versions(schema)
+    if not covered or requested_number in covered:
+        return text
+    if requested_number.is_integer():
+        bugfix_releases = [version for version in covered if int(version) == int(requested_number)]
+        if bugfix_releases:
+            return _format_model_version(max(bugfix_releases))
+    available = ", ".join(_format_model_version(version) for version in sorted(covered, reverse=True))
+    product_name = _PRODUCTS.get(product, {}).get("name", product.upper())
+    raise RcAstroError(
+        f"{product_name} model version {text} is not available from this RC-Astro CLI "
+        f"(available: {available}). Select Latest or one of the available model versions."
+    )
 
 
 def _should_omit_field_value(field_id, flag, value):
@@ -2682,21 +2990,29 @@ def _command_for_schema(executable, product, schema, input_path, output_path, st
             command.extend([stars_flag, str(stars_path)])
     model_version = str((params or {}).get(_MODEL_VERSION_PARAM_ID, "") or "").strip().lower()
     if model_version and model_version not in {"latest", "0"}:
-        command.extend(["--ml-version", model_version])
+        command.extend(["--ml-version", _model_version_argument(schema, product, model_version)])
+    # Help text carries no visibility or conflict metadata, so a help-derived
+    # schema only passes options the process window actually supplied.
+    explicit_only = str(schema.get("schema_source", "") or "") == "help"
     fields = _ordered_schema_fields(schema)
     state = {}
     for field in fields:
         param = _param_from_schema_field(field)
         if param:
-            state[param["id"]] = _param_value(params, param["id"], param.get("default"))
+            state[param["id"]] = _field_param_value(params, field, param["id"], param.get("default"))
+    pinned = _engaged_mode_pins(schema, state)
     for field in fields:
         param = _param_from_schema_field(field)
         if not param:
             continue
         field_id = param["id"]
-        if not _should_emit_field(product, field, field_id, state):
+        if field_id in pinned or not _should_emit_field(product, field, field_id, state):
             continue
-        value = _param_value(params, field_id, param.get("default"))
+        value = _field_param_value(params, field, field_id, _MISSING)
+        if value is _MISSING:
+            if explicit_only:
+                continue
+            value = param.get("default")
         if value is None:
             continue
         flag = str(field.get("flag", "") or "").strip() or _flag_name(field_id)
@@ -2707,8 +3023,12 @@ def _command_for_schema(executable, product, schema, input_path, output_path, st
                 command.append(flag)
             elif field.get("false_flag"):
                 command.append(str(field["false_flag"]))
+            elif _truthy_condition_value(param.get("default", False)):
+                # A bool that defaults on must be switched off explicitly, or
+                # the CLI keeps its default (e.g. BXT automatic PSF).
+                command.append(f"{flag}=false")
             continue
-        command.extend([flag, str(value)])
+        command.extend([flag, _format_command_value(param["type"], value)])
     return command
 
 
@@ -3174,7 +3494,7 @@ class _RcAstroBase(ui.ProcessWindow):
 
     def get_params(self):
         params = self._meta_params()
-        params.extend(_schema_params(_fast_product_schema(self.product, _device_options_from_settings(self.settings))))
+        params.extend(_schema_params(_fast_product_schema(self.product, _device_options_for_params(self.settings))))
         return params
 
     def validate_process(self, params, input_metadata):

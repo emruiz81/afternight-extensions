@@ -195,6 +195,118 @@ def _fake_nxt_grouped_schema():
     }
 
 
+def _schema_v6(product):
+    """Synthetic parameter document shaped like the RC-Astro CLI 2.x (schemaVersion 6) contract."""
+
+    def number(name, default, low, high, **extra):
+        return {
+            "name": name,
+            "flag": f"--{name}",
+            "type": "float",
+            "default": default,
+            "min": low,
+            "max": high,
+            **extra,
+        }
+
+    document = {
+        "schemaVersion": 6,
+        "cliVersion": "9.9.0",
+        "key": product,
+        "license": {"status": "permanent", "valid": True, "message": "Synthetic license"},
+        "activationUrl": "https://example.invalid/account",
+        "devices": [{"id": "auto", "kind": "auto", "device": "cpu"}, {"id": "cpu", "kind": "cpu"}],
+    }
+    overlap = number("overlap", 0.2, 0.0, 0.5)
+    if product == "bxt":
+        document.update(
+            {
+                "mlVersion": 4,
+                "parameters": [
+                    overlap,
+                    number("ss", 0.5, 0.0, 0.7),
+                    number("ash", 0.0, -0.5, 0.5),
+                    number("nsd", 0.0, 0.0, 8.0, disabledIf="ansp", disabledValue=0.0),
+                    {"name": "ansp", "flag": "--ansp", "type": "bool", "default": True},
+                    number("sn", 0.5, 0.0, 1.0),
+                ],
+                "groups": [
+                    {"name": "stellarGroup", "label": "Stellar Adjustments", "params": ["ss", "ash"]},
+                    {"name": "nonstellarGroup", "label": "Nonstellar Adjustments", "params": ["ansp", "nsd", "sn"]},
+                    {"name": "optionsGroup", "label": "Options", "params": [], "modes": ["correctOnlyMode"]},
+                    {"name": "engineGroup", "label": "Engine", "params": ["overlap"]},
+                ],
+                "modes": [
+                    {
+                        "name": "correctOnlyMode",
+                        "flag": "--correct-only",
+                        "label": "Correct Only",
+                        "pins": {"ansp": True, "ash": 0.0, "nsd": 0.0, "sn": 0.0, "ss": 0.0},
+                    }
+                ],
+            }
+        )
+    elif product == "sxt":
+        document.update(
+            {
+                "mlVersion": 11,
+                "parameters": [
+                    overlap,
+                    {"name": "stars", "flag": "--stars", "type": "bool", "default": False},
+                    {
+                        "name": "unscreen",
+                        "flag": "--unscreen",
+                        "type": "bool",
+                        "default": False,
+                        "disabledIf": "!stars",
+                        "disabledValue": False,
+                    },
+                ],
+                "groups": [
+                    {"name": "optionsGroup", "label": "Options", "params": ["stars", "unscreen"]},
+                    {"name": "engineGroup", "label": "Engine", "params": ["overlap"]},
+                ],
+            }
+        )
+    else:
+        document.update(
+            {
+                "mlVersion": 3.1,
+                "parameters": [
+                    overlap,
+                    number("dn", 0.9, 0.0, 1.0, visibleIf="!csep && !fsep"),
+                    {"name": "csep", "guiOnly": True, "type": "bool", "default": False},
+                    number("di", 0.9, 0.0, 1.0, visibleIf="csep && !fsep"),
+                    number("dc", 0.9, 0.0, 1.0, visibleIf="csep && !fsep"),
+                    {"name": "fsep", "guiOnly": True, "type": "bool", "default": False},
+                    number("dhf", 0.9, 0.0, 1.0, visibleIf="!csep && fsep"),
+                    number("dlf", 0.9, 0.0, 1.0, visibleIf="!csep && fsep"),
+                    number("fs", 5.0, 1.0, 100.0, visibleIf="fsep"),
+                    {"name": "it", "flag": "--it", "type": "int", "default": 2, "min": 1, "max": 5},
+                ],
+                "groups": [
+                    {"name": "optionsGroup", "label": "Options", "params": ["csep", "fsep"]},
+                    {
+                        "name": "denoiseGroup",
+                        "label": "Denoise",
+                        "params": ["dn", "di", "dc", "dhf", "dlf", "fs", "it"],
+                    },
+                    {"name": "engineGroup", "label": "Engine", "params": ["overlap"]},
+                ],
+            }
+        )
+    return document
+
+
+def _window_params(extension_class, **overrides):
+    """Parameter values exactly as the native process window submits them."""
+    with mock.patch.object(rc, "_device_options_for_params", return_value=[["Automatically select device", "default"]]):
+        params = extension_class(None).get_params()
+    values = {param["id"]: param.get("default") for param in params if param.get("type") not in {"section", "meta"}}
+    values.update(overrides)
+    return values
+
+
 def make_fake_cli(directory, executable_name=None):
     directory = pathlib.Path(directory)
     if executable_name is None:
@@ -213,6 +325,8 @@ def make_fake_cli(directory, executable_name=None):
             SCHEMA_STYLE = os.environ.get("FAKE_RC_SCHEMA_STYLE", "product_json")
             LICENSE_STATUS = os.environ.get("FAKE_RC_LICENSE_STATUS", "activated").strip().lower()
             UPDATE_STATUS = os.environ.get("FAKE_RC_UPDATE_STATUS", "none").strip().lower()
+            DEVICE_STYLE = os.environ.get("FAKE_RC_DEVICE_STYLE", "text").strip().lower()
+            PRODUCTS = json.loads(os.environ.get("FAKE_RC_PRODUCTS", "[]"))
 
             def record(kind, payload):
                 existing = []
@@ -228,7 +342,26 @@ def make_fake_cli(directory, executable_name=None):
                 print("Version 9.9.0")
                 raise SystemExit(0)
             if argv == ["--json"]:
-                print(json.dumps({"schemaVersion": 4, "cliVersion": "9.9.0", "products": []}))
+                print(json.dumps({"schemaVersion": 4, "cliVersion": "9.9.0", "products": PRODUCTS}))
+                raise SystemExit(0)
+            if argv == ["--device", "--json"]:
+                if DEVICE_STYLE != "json":
+                    print("The following argument was not expected: --json", file=sys.stderr)
+                    raise SystemExit(109)
+                print(
+                    json.dumps(
+                        {
+                            "schemaVersion": 6,
+                            "cliVersion": "9.9.0",
+                            "devices": [
+                                {"id": "auto", "kind": "auto", "device": "gpu0", "name": "Synthetic GPU A"},
+                                {"id": "gpu0", "kind": "gpu", "name": "Synthetic GPU A"},
+                                {"id": "gpu1", "kind": "gpu", "name": "Synthetic GPU A"},
+                                {"id": "cpu", "kind": "cpu"},
+                            ],
+                        }
+                    )
+                )
                 raise SystemExit(0)
             if argv == ["--version"]:
                 print("rc-astro 9.9.0")
@@ -311,6 +444,10 @@ def make_fake_cli(directory, executable_name=None):
                 pathlib.Path(output).write_text("synthetic output", encoding="utf-8")
             if stars:
                 pathlib.Path(stars).write_text("synthetic stars", encoding="utf-8")
+            if output and "--stars" in argv:
+                output_path = pathlib.Path(output)
+                sibling = output_path.with_name(output_path.stem + "-stars" + output_path.suffix)
+                sibling.write_text("synthetic stars", encoding="utf-8")
             print(json.dumps({"progress": {"percent": 25, "message": "working"}}))
             print("Progress: 100%")
             raise SystemExit(0)
@@ -472,11 +609,11 @@ class RcAstroAdapterTests(unittest.TestCase):
             [["Automatically select device", "default"], ["DirectML GPU", "dml"]],
         )
 
-    def test_get_params_uses_fast_schema_without_cli_subprocess(self):
+    def test_get_params_uses_fast_schema_and_device_designator_fallback(self):
         extension = RcAstroBxtExtension(None)
         extension.settings.set("resolved_cli_executable", str(self.executable))
 
-        with mock.patch.object(rc, "_run_cli", side_effect=AssertionError("get_params must not spawn rc-astro")):
+        with mock.patch.object(rc, "_run_cli", side_effect=RcAstroError("RC-Astro CLI is unavailable")):
             params = extension.get_params()
 
         by_id = {param["id"]: param for param in params}
@@ -509,7 +646,12 @@ class RcAstroAdapterTests(unittest.TestCase):
         )
         self.assertEqual(by_id["device"]["group"], "Engine")
         self.assertEqual(by_id["device"]["default"], "default")
-        self.assertEqual(by_id["device"]["options"], [["Automatically select device", "default"]])
+        # AfterNight caches get_params() at install time, so the selector must
+        # never collapse to the automatic choice when the CLI cannot be queried.
+        self.assertEqual(
+            by_id["device"]["options"],
+            [["Automatically select device", "default"], ["GPU 0", "gpu0"], ["GPU 1", "gpu1"], ["CPU", "cpu"]],
+        )
         device_options_text = json.dumps(by_id["device"]["options"])
         self.assertNotIn("// / //", device_options_text)
         self.assertNotIn("Select a device with", device_options_text)
@@ -550,6 +692,241 @@ class RcAstroAdapterTests(unittest.TestCase):
                 ["CPU", "Cpu"],
             ],
         )
+
+    def test_get_params_queries_cli_device_document_when_no_catalog_is_saved(self):
+        extension = RcAstroNxtExtension(None)
+        extension.settings.set("resolved_cli_executable", str(self.executable))
+
+        with mock.patch.dict(os.environ, {"FAKE_RC_DEVICE_STYLE": "json"}):
+            params = extension.get_params()
+
+        by_id = {param["id"]: param for param in params}
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertIn(["--device", "--json"], argv_events)
+        self.assertEqual(
+            by_id["device"]["options"],
+            [
+                ["Automatically select device", "default"],
+                ["Synthetic GPU A", "gpu0"],
+                ["Synthetic GPU A (gpu1)", "gpu1"],
+                ["CPU", "cpu"],
+            ],
+        )
+
+    def test_saved_device_catalog_drops_cli_banner_artifacts(self):
+        extension = RcAstroSxtExtension(None)
+        extension.settings.set(
+            rc._DEVICE_OPTIONS_SETTING_KEY,
+            json.dumps(
+                [
+                    ["Automatically select device", "default"],
+                    ["image processing tools", "Astronomical"],
+                    ["Synthetic GPU A", "gpu0"],
+                    ["CPU", "cpu"],
+                ]
+            ),
+        )
+
+        with mock.patch.object(rc, "_run_cli", side_effect=AssertionError("a saved catalog needs no CLI query")):
+            params = extension.get_params()
+
+        by_id = {param["id"]: param for param in params}
+        self.assertEqual(
+            by_id["device"]["options"],
+            [["Automatically select device", "default"], ["Synthetic GPU A", "gpu0"], ["CPU", "cpu"]],
+        )
+
+    def test_text_device_listing_skips_cli_banner(self):
+        self.assertEqual(
+            rc._parse_device_options(
+                [
+                    "Synthetic image processing tools",
+                    "Version 9.9.0 (build 1)",
+                    "Available compute devices:",
+                    "  auto  - Automatically select device (currently gpu0)",
+                    "  gpu0  - Synthetic GPU A",
+                    "  gpu1  - Synthetic GPU B",
+                    "  cpu",
+                    "Select a device with, e.g., --device gpu1.",
+                ]
+            ),
+            [
+                ["Automatically select device", "default"],
+                ["Synthetic GPU A", "gpu0"],
+                ["Synthetic GPU B", "gpu1"],
+                ["CPU", "cpu"],
+            ],
+        )
+
+    def test_schema_v6_parameter_document_is_loaded_from_documented_query(self):
+        schemas = {product: _schema_v6(product) for product in ("bxt", "sxt", "nxt")}
+        with mock.patch.dict(os.environ, {"FAKE_RC_SCHEMAS": json.dumps(schemas)}):
+            schema = rc._load_product_schema(self.executable, "nxt")
+
+        argv_events = [event["payload"] for event in self._events() if event["kind"] == "argv"]
+        self.assertEqual(rc._schema_version_major(schema), 6)
+        self.assertNotEqual(schema.get("schema_source"), "help")
+        self.assertIn(["nxt", "--json"], argv_events)
+        self.assertNotIn(["schema", "nxt", "--json"], argv_events)
+
+    def test_newer_schema_versions_are_accepted_with_a_warning(self):
+        schema = _schema_v6("sxt")
+        schema["schemaVersion"] = rc._MAX_KNOWN_SCHEMA_MAJOR + 1
+        normalized = rc._schema_from_json_payload(schema, "sxt")
+
+        with mock.patch.object(rc, "_log_warning") as log_warning:
+            rc._validate_product_schema(normalized, "sxt")
+
+        log_warning.assert_called_once()
+        with self.assertRaises(RcAstroError):
+            rc._validate_product_schema({"product": "sxt", "parameters": []}, "sxt")
+
+    def _v6_command(self, product, params):
+        schema = rc._apply_product_schema_overrides(rc._schema_from_json_payload(_schema_v6(product), product), product)
+        return rc._command_for_schema(
+            self.executable,
+            product,
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            params,
+        )
+
+    def test_nxt_v6_window_defaults_emit_only_active_denoise_controls(self):
+        command = self._v6_command("nxt", _window_params(RcAstroNxtExtension))
+
+        self.assertEqual(command[command.index("--dn") + 1], "0.9")
+        self.assertEqual(command[command.index("--it") + 1], "2")
+        self.assertIn("--overlap", command)
+        for flag in ("--di", "--dc", "--dhf", "--dlf", "--fs", "--csep", "--fsep", "--device", "--ml-version"):
+            self.assertNotIn(flag, command)
+
+    def test_bxt_v6_window_controls_map_to_psf_flags(self):
+        default_command = self._v6_command("bxt", _window_params(RcAstroBxtExtension))
+        self.assertIn("--ss", default_command)
+        self.assertIn("--ansp", default_command)
+        self.assertNotIn("--nsd", default_command)
+
+        manual_command = self._v6_command(
+            "bxt", _window_params(RcAstroBxtExtension, auto_nonstellar_radius=False, nonstellar_radius=2.0)
+        )
+        self.assertIn("--ansp=false", manual_command)
+        self.assertEqual(manual_command[manual_command.index("--nsd") + 1], "2.0")
+
+        correct_only_command = self._v6_command(
+            "bxt", _window_params(RcAstroBxtExtension, correct_only=True, sharpen_stars=0.6, device="gpu1")
+        )
+        self.assertIn("--correct-only", correct_only_command)
+        self.assertEqual(correct_only_command[correct_only_command.index("--device") + 1], "gpu1")
+        for flag in ("--ss", "--ash", "--nsd", "--ansp", "--ansp=false", "--sn"):
+            self.assertNotIn(flag, correct_only_command)
+
+    def test_sxt_v6_window_stars_checkbox_emits_stars_flag(self):
+        stars_command = self._v6_command("sxt", _window_params(RcAstroSxtExtension, stars=True, unscreen=True))
+        self.assertIn("--stars", stars_command)
+        self.assertIn("--unscreen", stars_command)
+
+        starless_command = self._v6_command("sxt", _window_params(RcAstroSxtExtension, stars=False, unscreen=True))
+        self.assertNotIn("--stars", starless_command)
+        self.assertNotIn("--unscreen", starless_command)
+
+    def test_sxt_execute_opens_stars_image_written_by_v6_cli(self):
+        schemas = {product: _schema_v6(product) for product in ("bxt", "sxt", "nxt")}
+        extension = RcAstroSxtExtension(None)
+        extension.settings.set("resolved_cli_executable", str(self.executable))
+        opened = []
+
+        with mock.patch.dict(os.environ, {"FAKE_RC_SCHEMAS": json.dumps(schemas)}):
+            with mock.patch.object(rc.io, "save", side_effect=lambda _image, path: pathlib.Path(path).write_text("in")):
+                with mock.patch.object(rc.io, "load", side_effect=lambda path: FakeImage(path=path)):
+                    with mock.patch.object(
+                        rc.ui, "open_image", side_effect=lambda image, title: opened.append((image, title))
+                    ):
+                        extension.execute(
+                            None,
+                            FakeImage({"FILTER": "Ha"}),
+                            FakeDestination(),
+                            _window_params(RcAstroSxtExtension, stars=True),
+                            FakeProgress(),
+                        )
+
+        process_argv = [event["payload"] for event in self._events() if event["kind"] == "argv"][-1]
+        self.assertIn("--stars", process_argv)
+        self.assertEqual(len(opened), 1)
+        self.assertEqual(opened[0][1], "RC-Astro SXT Stars")
+        self.assertEqual(pathlib.Path(opened[0][0].path).name, "output-stars.fit")
+        self.assertEqual(opened[0][0].metadata["FILTER"], "Ha")
+
+    def test_model_version_pin_selects_covered_bugfix_release(self):
+        schema = {"product": "nxt", "mlVersions": [3.1, 2]}
+
+        self.assertEqual(rc._model_version_argument(schema, "nxt", "3"), "3.1")
+        self.assertEqual(rc._model_version_argument(schema, "nxt", "2"), "2")
+        self.assertEqual(rc._model_version_argument({"product": "nxt"}, "nxt", "3"), "3")
+        with self.assertRaisesRegex(RcAstroError, r"model version 4 is not available.*3\.1, 2"):
+            rc._model_version_argument(schema, "nxt", "4")
+
+    def test_load_product_schema_merges_covered_model_versions_from_products_document(self):
+        schemas = {product: _schema_v6(product) for product in ("bxt", "sxt", "nxt")}
+        products = [{"key": "nxt", "mlVersions": [3.1, 2]}]
+        with mock.patch.dict(
+            os.environ, {"FAKE_RC_SCHEMAS": json.dumps(schemas), "FAKE_RC_PRODUCTS": json.dumps(products)}
+        ):
+            schema = rc._load_product_schema(self.executable, "nxt")
+
+        self.assertEqual(schema["mlVersions"], [3.1, 2])
+        command = rc._command_for_schema(
+            self.executable,
+            "nxt",
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            _window_params(RcAstroNxtExtension, model_version="3"),
+        )
+        self.assertEqual(command[command.index("--ml-version") + 1], "3.1")
+
+    def test_help_fallback_parses_negated_flags_aliases_and_skips_actions(self):
+        field = rc._help_field_from_line(
+            "  --ansp, --auto-nonstellar-psf, --no-ansp{false}, --no-auto-nonstellar-psf{false} (default true)"
+        )
+
+        self.assertEqual(field["id"], "auto_nonstellar_psf")
+        self.assertEqual(field["aliases"], ["ansp"])
+        self.assertEqual(field["false_flag"], "--no-ansp")
+        self.assertTrue(field["default"])
+        self.assertIsNone(rc._help_field_from_line("  --benchmark (int)   Measure throughput"))
+        self.assertIsNone(rc._help_field_from_line("  --deactivate        Release this activation"))
+
+    def test_help_fallback_command_only_passes_window_supplied_options(self):
+        help_lines = [
+            "OPTIONS:",
+            "  --dn, --denoise (float in [0, 1], default 0.90)",
+            "  --di, --denoise-intensity (float in [0, 1], default 0.90)",
+            "  --dhf, --denoise-high-freq (float in [0, 1], default 0.90)",
+            "  --it, --iterations (float in [1, 5], default 2)",
+            "  --overlap (float in [0, 0.5], default 0.2)",
+        ]
+        with mock.patch.object(rc, "_run_cli", return_value=help_lines):
+            schema = rc._apply_product_schema_overrides(
+                rc._load_product_schema_from_help(self.executable, "nxt"), "nxt"
+            )
+
+        command = rc._command_for_schema(
+            self.executable,
+            "nxt",
+            schema,
+            pathlib.Path("input.fit"),
+            pathlib.Path("output.fit"),
+            pathlib.Path("stars.fit"),
+            _window_params(RcAstroNxtExtension),
+        )
+
+        self.assertEqual(command[command.index("--denoise") + 1], "0.9")
+        self.assertIn("--overlap", command)
+        for flag in ("--denoise-intensity", "--denoise-high-freq", "--iterations"):
+            self.assertNotIn(flag, command)
 
     def test_sxt_model_selector_does_not_invent_fixed_versions(self):
         extension = RcAstroSxtExtension(None)
