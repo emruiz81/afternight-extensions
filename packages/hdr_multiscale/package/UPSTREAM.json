@@ -1,0 +1,30 @@
+{
+  "upstream_repo_url": "https://gitlab.com/free-astro/siril-scripts.git",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "port_package_version": "0.1.0",
+  "original_author": "Franklin Marek, Cyril Richard",
+  "license": "GPL-3.0-or-later",
+  "sources": [
+    {
+      "tool": "HDR Multiscale",
+      "port_modules": [
+        "hdr_multiscale_core.py",
+        "hdr_multiscale_extension.py",
+        "hdr_multiscale_ui.py"
+      ],
+      "original_path": "processing/HDR_multiscale.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/HDR_multiscale.py",
+      "original_file_sha256": "a8b09d84b6b9132f8afff5eb41d91ae44dc2fade04580c4dff5b5666a21d168a",
+      "original_file_last_commit": "adec9065c0c095af0cf7d245f76adcfbc38a62d3",
+      "original_version": "1.0.2",
+      "intentional_divergences": [
+        "Replace sirilpy image access, undo and logging with AfterNight SDK image handles, metadata and logging.",
+        "Replace the PyQt6 dialog, its worker thread and its explicit Preview button with native AfterNight parameters and RT preview over the whole image or the chosen preview sub-area.",
+        "Compute the reflect-padded a-trous convolution from the kernel's non-zero taps in NumPy instead of scipy.ndimage.convolve, which returns run-to-run different values, NaN included, when a scale's dilated kernel is much longer than the image; the result is bit-identical to SciPy's wherever SciPy is stable, and the package no longer needs SciPy.",
+        "Move the dialog's luminance-mask blend and mono handling into apply_hdr_multiscale, next to the unchanged core.",
+        "Divide integer images by their sample type's maximum, as sirilpy's float conversion does, and write the result back in the source's sample type.",
+        "Add a Show Luminance Mask option that outputs the blending mask, to help set Mask Gamma."
+      ]
+    }
+  ]
+}

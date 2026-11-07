@@ -1,0 +1,13 @@
+{
+  "publish": false,
+  "latest_version": "0.1.0",
+  "releases": [
+    {
+      "version": "0.1.0",
+      "min_app_version": "1.0.0",
+      "changelog": "Initial source-staged port of the HDR Multiscale Siril script. Release assets stay unpublished until it has been checked on real stretched images in AfterNight.",
+      "published_at": "2026-11-07T00:00:00Z",
+      "signature_state": "unsigned"
+    }
+  ]
+}

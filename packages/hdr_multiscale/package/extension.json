@@ -1,0 +1,59 @@
+{
+  "id": "hdr_multiscale",
+  "name": "HDR Multiscale",
+  "version": "0.1.0",
+  "summary": "Wavelet-based dynamic range compression for stretched images, ported from the HDR Multiscale Siril script.",
+  "description": "AfterNight port of HDR Multiscale for Siril, written by Franklin Marek for Seti Astro Suite and adapted for Siril by Cyril Richard. On a stretched mono or RGB image it decomposes Lab lightness with an a-trous B3-spline wavelet, boosts the detail layers through a luminance mask with a per-scale decay, realigns the midtones, applies a dimming curve, and blends the result in through the luminance mask so the background keeps its values. It runs on NumPy alone. AfterNight port by Ezequiel Ruiz.",
+  "author": "Franklin Marek and Cyril Richard (original) / Ezequiel Ruiz (port)",
+  "license": "GPL-3.0-or-later",
+  "publisher_id": "afternight",
+  "attribution": "AfterNight port of HDR Multiscale for Siril, written by Franklin Marek (Seti Astro Suite) and adapted for Siril by Cyril Richard. AfterNight port by Ezequiel Ruiz.",
+  "original_author": "Franklin Marek, Cyril Richard",
+  "original_project": "HDR Multiscale for Siril",
+  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/HDR_multiscale.py",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/main/processing/HDR_multiscale.py",
+  "repository_url": "https://gitlab.com/free-astro/siril-scripts",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
+  "type": "python",
+  "entry_point": "hdr_multiscale_extension",
+  "category": "tone_brightness",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "HDR",
+    "dynamic range",
+    "wavelet",
+    "a trous",
+    "contrast",
+    "tone mapping",
+    "post-processing"
+  ],
+  "dependencies": {
+    "dependency_context": "shared_host",
+    "shared_host_profile": "scientific_core"
+  },
+  "processes": [
+    {
+      "id_suffix": "compress",
+      "class": "HdrMultiscaleExtension",
+      "display_name": "HDR Multiscale",
+      "category": "tone_brightness",
+      "action_object_name": "actionHDR_Multiscale",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true,
+        "preview_scaling": "full_only"
+      }
+    }
+  ]
+}

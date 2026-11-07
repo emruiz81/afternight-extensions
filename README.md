@@ -47,6 +47,9 @@ These packages validate and are tested here but stay out of the index
 - Narrowband Normalization: a GPL-3.0-or-later port of Yannick Dutertre's
   NarrowbandNormalization Siril script, built on Bill Blanshan and Mike
   Cranfield's mathematics, for stretched HOO, SHO, HSO and HOS images.
+- HDR Multiscale: a GPL-3.0-or-later port of the HDR Multiscale Siril script
+  by Franklin Marek and Cyril Richard, a wavelet dynamic-range compression for
+  stretched images.
 
 ## Repository Layout
 
