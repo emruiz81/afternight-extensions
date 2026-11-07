@@ -39,6 +39,15 @@ The live Extension Manager feed currently publishes:
   Alchemy, HyperMetric Stretch, Curves, Nox, Silentium, Vectra, StarComposer,
   and the Starting Point workflow guide.
 
+## Source-Staged Packages
+
+These packages validate and are tested here but stay out of the index
+(`"publish": false`) until their release gates are met:
+
+- Narrowband Normalization: a GPL-3.0-or-later port of Yannick Dutertre's
+  NarrowbandNormalization Siril script, built on Bill Blanshan and Mike
+  Cranfield's mathematics, for stretched HOO, SHO, HSO and HOS images.
+
 ## Repository Layout
 
 ```text

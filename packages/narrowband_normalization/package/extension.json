@@ -1,0 +1,61 @@
+{
+  "id": "narrowband_normalization",
+  "name": "Narrowband Normalization",
+  "version": "0.1.0",
+  "summary": "Normalizes OIII and SII to Ha in stretched HOO, SHO, HSO and HOS images, ported from the NarrowbandNormalization Siril script.",
+  "description": "AfterNight port of Yannick Dutertre's NarrowbandNormalization script for Siril, which implements Bill Blanshan and Mike Cranfield's NarrowbandNormalization mathematics with Bill Blanshan's permission. It works on a stretched RGB image whose channels hold the palette's lines in its letter order: it scales OIII and SII toward Ha with per-line boosts, builds HOO's green from Ha and OIII in one of three blend modes, can reduce green with SCNR, can take the result's lightness from the original image or one line, and finishes with highlight reduction and a brightness stretch. AfterNight port by Ezequiel Ruiz.",
+  "author": "Yannick Dutertre (original) / Ezequiel Ruiz (port)",
+  "license": "GPL-3.0-or-later",
+  "publisher_id": "afternight",
+  "attribution": "AfterNight port of NarrowbandNormalization for Siril by Yannick Dutertre, built on Bill Blanshan and Mike Cranfield's NarrowbandNormalization mathematics with Bill Blanshan's permission. AfterNight port by Ezequiel Ruiz.",
+  "original_author": "Yannick Dutertre",
+  "original_project": "NarrowbandNormalization for Siril",
+  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/NarrowbandNormalization.py",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/main/processing/NarrowbandNormalization.py",
+  "repository_url": "https://gitlab.com/free-astro/siril-scripts",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
+  "type": "python",
+  "entry_point": "narrowband_normalization_extension",
+  "category": "color",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "narrowband",
+    "HOO",
+    "SHO",
+    "HSO",
+    "HOS",
+    "normalization",
+    "palette",
+    "color",
+    "post-processing"
+  ],
+  "dependencies": {
+    "dependency_context": "shared_host",
+    "shared_host_profile": "scientific_core"
+  },
+  "processes": [
+    {
+      "id_suffix": "normalize",
+      "class": "NarrowbandNormalizationExtension",
+      "display_name": "Narrowband Normalization",
+      "category": "color",
+      "action_object_name": "actionNarrowband_Normalization",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true,
+        "preview_scaling": "full_only"
+      }
+    }
+  ]
+}

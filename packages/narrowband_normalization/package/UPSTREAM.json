@@ -1,0 +1,29 @@
+{
+  "upstream_repo_url": "https://gitlab.com/free-astro/siril-scripts.git",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "port_package_version": "0.1.0",
+  "original_author": "Yannick Dutertre",
+  "license": "GPL-3.0-or-later",
+  "sources": [
+    {
+      "tool": "NarrowbandNormalization",
+      "port_modules": [
+        "narrowband_normalization_core.py",
+        "narrowband_normalization_extension.py",
+        "narrowband_normalization_ui.py"
+      ],
+      "original_path": "processing/NarrowbandNormalization.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/NarrowbandNormalization.py",
+      "original_file_sha256": "87bd4e4608dfda9a0d7bce0597e387ba0b1a7f83eaf4fdb32e7589da3863cb72",
+      "original_file_last_commit": "be8cdaa9f65730fb27ac4f5b913e31a501dda131",
+      "original_version": "1.0.5",
+      "intentional_divergences": [
+        "Replace sirilpy image access, undo and logging with AfterNight SDK image handles, metadata and logging.",
+        "Replace the PyQt6 dialog and its 720-pixel preview proxy with native AfterNight parameters and RT preview; the preview processes the whole image, or the chosen preview sub-area, at full resolution.",
+        "Normalize integer images by their sample type's maximum instead of reading any maximum above 1.5 as 16-bit counts, so 8-bit and 32-bit integer images land in [0, 1]; floating-point images keep the upstream rule.",
+        "Write the result back in the source's sample type.",
+        "Keep every Lightness choice for every palette; HOO's SII choice uses OIII, as the upstream engine does."
+      ]
+    }
+  ]
+}
