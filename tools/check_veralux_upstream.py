@@ -16,6 +16,8 @@ from afternight_repo.veralux_upstream import (  # noqa: E402
     format_veralux_upstream_report,
 )
 
+# The generic form for any ported package is tools/check_upstream.py; this command keeps VeraLux's defaults.
+
 
 def main():
     parser = argparse.ArgumentParser(

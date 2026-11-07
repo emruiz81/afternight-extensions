@@ -71,22 +71,25 @@ python3 packages/graxpert/packaging/refresh_requirements_lock.py \
 
 New extensions must not redistribute public PyPI wheels inside package assets; use explicit indexes plus hash-locked requirements instead.
 
-## Check VeraLux Upstream Provenance
+## Check Upstream Provenance
 
-VeraLux ports keep a machine-readable source baseline in
-`packages/veralux/package/UPSTREAM.json`. To verify the pinned hashes, source
-versions, and file-specific commits against a local `siril-scripts` checkout:
+Ported packages keep a machine-readable source baseline in
+`packages/<extension_id>/package/UPSTREAM.json`: for each upstream file, its
+SHA-256, its last commit, and its version constant (`VERSION`, or the name a
+source gives in `version_constant`). To verify every package that carries one
+against a local `siril-scripts` checkout:
 
 ```bash
-python3 tools/check_veralux_upstream.py \
+python3 tools/check_upstream.py \
   --upstream-checkout /path/to/siril-scripts
 ```
 
-To review what changed in a newer upstream checkout before rebasing the local
-ports, inspect another ref:
+Pass `--package-dir packages/<extension_id>/package`, repeatable, to check
+selected packages. To review what changed in a newer upstream checkout before
+rebasing the ports, inspect another ref:
 
 ```bash
-python3 tools/check_veralux_upstream.py \
+python3 tools/check_upstream.py \
   --upstream-checkout /path/to/siril-scripts \
   --ref HEAD
 ```
@@ -94,6 +97,9 @@ python3 tools/check_veralux_upstream.py \
 The command exits with `0` when every captured source matches, `2` when a source
 differs, and `1` for local tooling or git errors. Use `--json` for machine-readable
 output in review scripts.
+
+`tools/check_veralux_upstream.py` runs the same check with VeraLux's package
+directory as its default.
 
 ## Generate The Index
 
