@@ -53,6 +53,10 @@ These packages validate and are tested here but stay out of the index
 - Continuum Subtraction: a GPL-3.0-only port of the Narrowband Continuum
   Subtraction Siril script by Adrian Knagg-Baugh and Dave Lindner, with an
   estimated continuum factor and a blend into RGB.
+- Gaia Glow Subtraction: a GPL-3.0-or-later port of the GaiaGlowSubtraction
+  Siril script by Adrian Knagg-Baugh, which subtracts a model of bright-star
+  glow with fluxes predicted from Gaia DR3; its numerical core is vendored
+  unchanged.
 
 ## Repository Layout
 

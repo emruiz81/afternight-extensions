@@ -1,0 +1,70 @@
+{
+  "id": "gaia_glow_subtraction",
+  "name": "Gaia Glow Subtraction",
+  "version": "0.1.0",
+  "summary": "Subtracts a physical model of bright-star glow, with fluxes predicted from Gaia DR3, ported from the GaiaGlowSubtraction Siril script.",
+  "description": "AfterNight port of GaiaGlowSubtraction for Siril by Adrian Knagg-Baugh, an independent reimplementation of PixInsight's PhotometricGlowSubtraction from its public documentation. On a linear, plate-solved, stacked image it models the extended glow of each bright star as its flux, predicted from Gaia DR3 (XP spectra or temperature) through a zero point calibrated on the image's own stars, times an extended PSF measured on the image, fits the background jointly, protects star cores, and subtracts the result. Stars brighter than G = 4 take their flux from Hipparcos. Gaia catalogue pieces are downloaded from the Siril catalogue mirror and cached. The numerical core is the upstream script's, unchanged. AfterNight port by Ezequiel Ruiz.",
+  "author": "Adrian Knagg-Baugh (original) / Ezequiel Ruiz (port)",
+  "license": "GPL-3.0-or-later",
+  "publisher_id": "afternight",
+  "attribution": "AfterNight port of GaiaGlowSubtraction for Siril by Adrian Knagg-Baugh. Gaia DR3 data: ESA/Gaia/DPAC. AfterNight port by Ezequiel Ruiz.",
+  "original_author": "Adrian Knagg-Baugh",
+  "original_project": "GaiaGlowSubtraction for Siril",
+  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/GaiaGlowSubtraction.py",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/main/processing/GaiaGlowSubtraction.py",
+  "repository_url": "https://gitlab.com/free-astro/siril-scripts",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
+  "type": "python",
+  "entry_point": "gaia_glow_subtraction_extension",
+  "category": "star_object",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "Gaia",
+    "glow",
+    "halo",
+    "bright stars",
+    "PSF",
+    "photometry",
+    "plate solving",
+    "linear",
+    "pre-processing"
+  ],
+  "dependencies": {
+    "dependency_context": "private",
+    "requirements_file": "requirements.lock",
+    "bundled_runtime_packages": [
+      "numpy",
+      "scipy"
+    ],
+    "pip": {
+      "require_hashes": true,
+      "no_deps": true,
+      "index_urls": [
+        "https://pypi.org/simple"
+      ]
+    }
+  },
+  "processes": [
+    {
+      "id_suffix": "subtract",
+      "class": "GaiaGlowSubtractionExtension",
+      "display_name": "Gaia Glow Subtraction",
+      "category": "star_object",
+      "action_object_name": "actionGaia_Glow_Subtraction",
+      "capabilities": {
+        "execute": true,
+        "keep_open": true
+      }
+    }
+  ]
+}

@@ -14,5 +14,14 @@ select = [
   "F",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Vendored upstream source, kept byte-identical to the Siril script it ports so upstream refreshes stay reviewable
+# (a package test holds it to the upstream text). Only style findings are ignored; the remaining checks still run.
+"packages/gaia_glow_subtraction/package/gaia_glow_subtraction_core.py" = ["E402", "E702", "E731", "F401", "F841"]
+
 [tool.ruff.format]
 line-ending = "lf"
+exclude = [
+  # Vendored upstream source; see the per-file-ignores above.
+  "packages/gaia_glow_subtraction/package/gaia_glow_subtraction_core.py",
+]

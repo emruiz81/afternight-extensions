@@ -1,0 +1,35 @@
+{
+  "upstream_repo_url": "https://gitlab.com/free-astro/siril-scripts.git",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "port_package_version": "0.1.0",
+  "original_author": "Adrian Knagg-Baugh",
+  "license": "GPL-3.0-or-later",
+  "sources": [
+    {
+      "tool": "GaiaGlowSubtraction",
+      "port_modules": [
+        "gaia_glow_subtraction_core.py",
+        "gaia_glow_subtraction_io.py",
+        "gaia_glow_subtraction_extension.py",
+        "gaia_glow_subtraction_ui.py"
+      ],
+      "original_path": "processing/GaiaGlowSubtraction.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/GaiaGlowSubtraction.py",
+      "original_file_sha256": "c9985ad21c6924f6d4772163219ef8ae9bb4e0fbf3c062b41ff65ee204990543",
+      "original_file_last_commit": "47fed0e695c0d684827f839dc3d317e40d3f05ef",
+      "original_version": "1.2.6",
+      "vendored_lines": "1-7400 (sections 0 to 13), with lines 122-127 (the sirilpy import block) replaced",
+      "intentional_divergences": [
+        "Vendor the numerical core (sections 0 to 13) unchanged; replace section 14 (SirilIO) with AfterNightIO over an AfterNight image handle, and sections 15 and 16 (PyQt6 GUI, CLI) with a native Apply-only process window.",
+        "Read the FITS header from the image's AfterNight header cards (typed by parsing each card's raw record) instead of sirilpy, with keywords, HISTORY and DATE-OBS taken from the same cards.",
+        "Detect stars with AfterNight's star finder instead of Siril's findstar; its positions have the first pixel's centre at one half in storage order, so a detection is the position minus one half on both axes, with no row flip.",
+        "Keep the catalogue cache, the bright-star table and the last-output record in a package setting's folder (by default a per-user cache folder) instead of Siril's user data folder; local Siril catalogues can be named in the settings.",
+        "Use the core's top-hat channel responses, since Siril's SPCC preferences have no AfterNight counterpart; the core still fits a zero point and colour term on the image's own stars.",
+        "Without a dialog, soft refusals need Proceed Despite Warnings and an oversized download needs a higher download limit, as the upstream command line's -force and -maxdownload do.",
+        "Leave out PSF from a selection, which needs Siril's rectangle selection; measure or load a PSF instead.",
+        "Write integer images back in their own sample type, open the glow model as a new image instead of a file next to the input, and record the output's fingerprint in the cache folder to refuse a second subtraction.",
+        "Word the linear-WCS warning for AfterNight instead of Siril."
+      ]
+    }
+  ]
+}

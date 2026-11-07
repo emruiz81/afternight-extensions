@@ -1,0 +1,4 @@
+astropy==8.0.2
+astropy-healpix==2.0.1
+requests==2.34.2
+psutil==7.2.2

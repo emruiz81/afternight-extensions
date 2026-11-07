@@ -314,9 +314,12 @@ The current package test suites are standalone Python tests:
   are skipped unless `VERALUX_UPSTREAM_CHECKOUT` or `../siril-scripts` is
   available.
 - Siril script ports (Narrowband Normalization, HDR Multiscale, Continuum
-  Subtraction) cover their engine, adapter and parameter schema; their parity
-  tests load the upstream script from `SIRIL_SCRIPTS_CHECKOUT` or
-  `../siril-scripts` and skip without it.
+  Subtraction, Gaia Glow Subtraction) cover their engine, adapter and
+  parameter schema; their parity tests load the upstream script from
+  `SIRIL_SCRIPTS_CHECKOUT` or `../siril-scripts` and skip without it. Gaia
+  Glow Subtraction's tests need the packages in its
+  `tests/requirements.txt` and run its pipeline on synthetic fields with the
+  network blocked.
 
 No package-local test suite should require opening the AfterNight application.
 Use the sibling app repository for end-to-end Extension Manager and runtime host
