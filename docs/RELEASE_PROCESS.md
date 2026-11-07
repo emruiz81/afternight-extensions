@@ -313,10 +313,10 @@ The current package test suites are standalone Python tests:
   declared in `packages/veralux/tests/requirements.txt`; upstream parity checks
   are skipped unless `VERALUX_UPSTREAM_CHECKOUT` or `../siril-scripts` is
   available.
-- Siril script ports such as Narrowband Normalization and HDR Multiscale
-  cover their engine, adapter and parameter schema; their parity tests load
-  the upstream script from `SIRIL_SCRIPTS_CHECKOUT` or `../siril-scripts`
-  and skip without it.
+- Siril script ports (Narrowband Normalization, HDR Multiscale, Continuum
+  Subtraction) cover their engine, adapter and parameter schema; their parity
+  tests load the upstream script from `SIRIL_SCRIPTS_CHECKOUT` or
+  `../siril-scripts` and skip without it.
 
 No package-local test suite should require opening the AfterNight application.
 Use the sibling app repository for end-to-end Extension Manager and runtime host

@@ -50,6 +50,9 @@ These packages validate and are tested here but stay out of the index
 - HDR Multiscale: a GPL-3.0-or-later port of the HDR Multiscale Siril script
   by Franklin Marek and Cyril Richard, a wavelet dynamic-range compression for
   stretched images.
+- Continuum Subtraction: a GPL-3.0-only port of the Narrowband Continuum
+  Subtraction Siril script by Adrian Knagg-Baugh and Dave Lindner, with an
+  estimated continuum factor and a blend into RGB.
 
 ## Repository Layout
 

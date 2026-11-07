@@ -50,6 +50,7 @@ Host-mode-specific import and licensing rules are defined in
 | `graxpert` | Yes | GPL-3.0 | Contains the AfterNight adapter and hash-locked requirements. GraXpert and public dependency wheels are downloaded from PyPI by the host during install. |
 | `rc_astro` | Yes | GPL-3.0 | Contains the AfterNight adapter only. RC-Astro executables, models, licenses, and activation material are provided by the user and are not bundled. |
 | `veralux` | Yes | GPL-3.0-or-later | Derived from Riccardo Paterniti's VeraLux Siril scripts. Provenance is recorded in `UPSTREAM.md`, `UPSTREAM.json`, and `THIRD_PARTY_NOTICES.md`. |
+| `continuum_subtraction` | No, source-staged | GPL-3.0-only | Derived from the Narrowband Continuum Subtraction Siril script by Adrian Knagg-Baugh and Dave Lindner, which declares GPL-3.0. Provenance is recorded in `UPSTREAM.md`, `UPSTREAM.json`, and `THIRD_PARTY_NOTICES.md`. |
 | `hdr_multiscale` | No, source-staged | GPL-3.0-or-later | Derived from the HDR Multiscale Siril script, written by Franklin Marek for Seti Astro Suite and adapted for Siril by Cyril Richard. Provenance is recorded in `UPSTREAM.md`, `UPSTREAM.json`, and `THIRD_PARTY_NOTICES.md`. |
 | `narrowband_normalization` | No, source-staged | GPL-3.0-or-later | Derived from Yannick Dutertre's NarrowbandNormalization Siril script, a clean-room implementation of Bill Blanshan and Mike Cranfield's mathematics made with Bill Blanshan's permission. Provenance is recorded in `UPSTREAM.md`, `UPSTREAM.json`, and `THIRD_PARTY_NOTICES.md`. |
 

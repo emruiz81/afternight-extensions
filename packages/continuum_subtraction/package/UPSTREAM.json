@@ -1,0 +1,33 @@
+{
+  "upstream_repo_url": "https://gitlab.com/free-astro/siril-scripts.git",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "port_package_version": "0.1.0",
+  "original_author": "Adrian Knagg-Baugh, Dave Lindner",
+  "license": "GPL-3.0-only",
+  "sources": [
+    {
+      "tool": "Continuum Subtraction",
+      "port_modules": [
+        "continuum_subtraction_core.py",
+        "continuum_subtraction_extension.py",
+        "continuum_subtraction_ui.py"
+      ],
+      "original_path": "processing/ContinuumSubtraction.py",
+      "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/ContinuumSubtraction.py",
+      "original_file_sha256": "c449e7f9de75e544e216a5fb7269aea4b85d1af8c64dfff5ea9ce7cc6c40fe75",
+      "original_file_last_commit": "20f08562585289fc9235f702093f10cb90f0ba2d",
+      "original_version": "v3.0.7",
+      "version_constant": "version",
+      "intentional_divergences": [
+        "Replace sirilpy image access, selection statistics, progress and logging, and the astropy FITS files the dialog reads and writes, with AfterNight SDK image handles, open views, metadata and logging.",
+        "Replace the dialog's Estimate, Generate and Blend buttons with two processes: Continuum Subtraction (estimate or set c, then subtract, on the emission image) and Continuum Blend (on the RGB image).",
+        "Take the estimation region from a painted manual mask instead of a Siril selection rectangle; without one the whole image is used, as upstream does.",
+        "Estimate c on every preview and Apply while Estimate c Automatically is on, logging it, since the SDK has no way for a run to move the c slider.",
+        "Fall back to the fine scan's best factor, clipped to [0, 1], when the smooth-V fit fails or its starting point is infeasible, where upstream ends the estimate with an error.",
+        "Read the continuum from an open mono view, and blend into an open RGB view, instead of separate R, G, B and line files; images are compared in [0, 1], integers divided by their type's maximum.",
+        "Express the dialog's per-line channel choice as a Channels preset (Ha into red, SII into green, OIII into blue) or custom weights.",
+        "Drop the matplotlib plot of the fit."
+      ]
+    }
+  ]
+}

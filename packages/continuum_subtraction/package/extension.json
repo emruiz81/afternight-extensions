@@ -1,0 +1,77 @@
+{
+  "id": "continuum_subtraction",
+  "name": "Continuum Subtraction",
+  "version": "0.1.0",
+  "summary": "Subtracts the broadband continuum from narrowband images with an estimated factor, and blends the result into RGB, ported from the Continuum Subtraction Siril script.",
+  "description": "AfterNight port of Narrowband Continuum Subtraction for Siril by Adrian Knagg-Baugh and Dave Lindner. Continuum Subtraction removes the broadband continuum from a linear narrowband image, emission - c x continuum, estimating c by minimizing the result's average absolute deviation over a painted region with a coarse scan, a fine scan and a smooth-V fit, or taking c from a slider. Continuum Blend adds a continuum-subtracted line into a linear RGB image, median-centred, with a strength and per-channel weights. AfterNight port by Ezequiel Ruiz.",
+  "author": "Adrian Knagg-Baugh and Dave Lindner (original) / Ezequiel Ruiz (port)",
+  "license": "GPL-3.0-only",
+  "publisher_id": "afternight",
+  "attribution": "AfterNight port of Narrowband Continuum Subtraction for Siril by Adrian Knagg-Baugh and Dave Lindner. AfterNight port by Ezequiel Ruiz.",
+  "original_author": "Adrian Knagg-Baugh, Dave Lindner",
+  "original_project": "Narrowband Continuum Subtraction for Siril",
+  "original_source_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/c7a185babc74141bfb082059166ede79e4b80ee2/processing/ContinuumSubtraction.py",
+  "upstream_commit": "c7a185babc74141bfb082059166ede79e4b80ee2",
+  "homepage_url": "https://gitlab.com/free-astro/siril-scripts/-/blob/main/processing/ContinuumSubtraction.py",
+  "repository_url": "https://gitlab.com/free-astro/siril-scripts",
+  "support_url": "https://github.com/emruiz81/afternight-extensions/issues",
+  "type": "python",
+  "entry_point": "continuum_subtraction_extension",
+  "category": "color",
+  "launch_mode": "single_image",
+  "sdk_backend": "runtime",
+  "package_format_version": 1,
+  "protocol_version": 1,
+  "sdk_version": 1,
+  "python_compat": ">=3.14,<4",
+  "runtime_targets": [
+    "linux-clang-x86_64",
+    "windows-msvc-x86_64"
+  ],
+  "tags": [
+    "narrowband",
+    "continuum",
+    "Ha",
+    "OIII",
+    "SII",
+    "galaxy",
+    "HII regions",
+    "RGB blend",
+    "post-processing"
+  ],
+  "dependencies": {
+    "dependency_context": "shared_host",
+    "shared_host_profile": "scientific_core"
+  },
+  "processes": [
+    {
+      "id_suffix": "subtract",
+      "class": "ContinuumSubtractionExtension",
+      "display_name": "Continuum Subtraction",
+      "category": "color",
+      "action_object_name": "actionContinuum_Subtraction",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true,
+        "masks": {
+          "input": true
+        },
+        "preview_scaling": "full_only"
+      }
+    },
+    {
+      "id_suffix": "blend",
+      "class": "ContinuumBlendExtension",
+      "display_name": "Continuum Blend",
+      "category": "color",
+      "action_object_name": "actionContinuum_Blend",
+      "capabilities": {
+        "execute": true,
+        "preview": true,
+        "keep_open": true,
+        "preview_scaling": "full_only"
+      }
+    }
+  ]
+}
