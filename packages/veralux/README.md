@@ -52,6 +52,20 @@ AfterNight runtime SDK domains and native process-window schemas.
 The broader extension-author porting notes for this suite are captured in
 `../../docs/VERALUX_PORTING_CASE_STUDY.md`.
 
+## Upstream Tracking
+
+`package/UPSTREAM.json` pins the Siril scripts checkout the port follows.
+Upstream changes that need no port work are recorded here and folded into the
+next VeraLux release instead of being released on their own: any change under
+`package/`, provenance included, changes the release archive and needs a new
+version.
+
+- 2026-11-07, Siril scripts `c7a185b`: StarComposer `2.1.0` -> `2.1.1`
+  (`cb7cbcd`) only adds `*.fit.fz` and `*.fits.fz` to the original "Load FITS"
+  file-dialog filter. The port reads the stars image from an open view, so it
+  needs no change; every other VeraLux source is unchanged. The baseline refresh
+  to `c7a185b` waits for the next VeraLux release.
+
 ## Attribution
 
 Original VeraLux scripts Copyright (c) 2025 Riccardo Paterniti.
